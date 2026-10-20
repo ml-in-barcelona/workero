@@ -12,7 +12,7 @@ depends: [
   "js_of_ocaml" {>= "6.4.1" & < "6.5"}
   "wasm_of_ocaml-compiler" {>= "6.4.1" & < "6.5"}
   "alcotest" {with-test}
-  "ocamlformat" {with-dev-setup}
+  "ocamlformat" {with-dev-setup & = "0.29.0"}
   "odoc" {with-doc}
 ]
 build: [

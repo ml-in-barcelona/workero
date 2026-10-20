@@ -30,7 +30,10 @@
     (>= 6.4.1)
     (< 6.5)))
   (alcotest :with-test)
-  (ocamlformat :with-dev-setup)))
+  (ocamlformat
+   (and
+    :with-dev-setup
+    (= 0.29.0)))))
 
 (package
  (name workero-json)
