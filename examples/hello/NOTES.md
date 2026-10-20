@@ -1,5 +1,7 @@
 # Notes: wasm_of_ocaml in workerd
 
+Historical: written for the standalone experiment (own dune project, `mk-worker.sh`, `dev.sh`, `load-wasm.js`, `eff.ml`). That project is now `examples/hello/main.ml`, built by `workero build`, whose CLI embeds `load-wasm.js` (`bin/load-wasm.js`, identical to the experiment copy) and `Workero.Promise.await`.
+
 Versions: OCaml 5.5.1, dune 3.24.2, js_of_ocaml / wasm_of_ocaml-compiler 6.4.1, binaryen 132 (npm),
 ocamlformat 0.29.0, ocaml-lsp-server 1.27.0, wrangler 4.151.3, workerd 1.20261019.1, node 22.22.3.
 compatibility_date 2026-10-01, no compatibility flags.

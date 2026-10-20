@@ -12,7 +12,8 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 - `examples/features/`: one route per wasm_of_ocaml feature: effects, `await`, JS interop, `Int64`, `Marshal`, `Str`, BLAKE2, an embedded file.
 - `examples/bench.sh`: bundle size and response times for an example (`DIR=examples/react examples/bench.sh`).
 - `template/`: a starter project to copy. See its README.
-- `examples/hello/`, `examples/hello-jspi/`: the experiments that led here. Each one is its own dune project.
+- `examples/hello/`: a minimal worker, plus a user-defined effect handler and `Promise.await` between effects (`/effects`, `/await`, `/fail`). `NOTES.md` has the research notes from the first wasm_of_ocaml experiments.
+- `examples/jspi/`: `Promise.await` in direct style (JSPI): sequential and concurrent timers, and a rejected Promise raised as `Js_error`.
 
 ## Demos
 
