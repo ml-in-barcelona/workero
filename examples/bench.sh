@@ -17,7 +17,7 @@ for f in $(find _worker -type f | sort); do
 done
 printf '%10d %10d  total\n' $total_raw $total_gz
 
-echo "== wrangler deploy --dry-run (limits: 3 MiB free, 10 MiB paid, gzip)"
+echo "== wrangler deploy --dry-run (limit: 64 MiB uncompressed)"
 (cd $dir && $wrangler deploy --dry-run --outdir $tmp/out 2>&1 | grep -i "upload")
 
 echo "== wrangler dev --local, $n warm requests"
