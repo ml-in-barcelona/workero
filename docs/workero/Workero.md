@@ -53,6 +53,11 @@ module Scheduled : sig ... end
 The `controller` argument of a Worker `scheduled` handler.
 
 ```ocaml
+module JSON : sig ... end
+```
+JSON requests and responses for workero (`Workero.JSON`), built on [jsonkit](https://github.com/melange-community/jsonkit).
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
