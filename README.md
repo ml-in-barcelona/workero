@@ -26,6 +26,8 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 - https://workero-example-react.davesnx.workers.dev (`examples/react`): a page rendered on the server from `.mlx` components.
 - https://workero-example-limits.davesnx.workers.dev (`examples/limits`): `/cpu?n=1000&iter=500` renders a Mandelbrot set, `/memory?mb=200` allocates 200 MB. Raise the numbers until it fails.
 - https://workero-example-wasm.davesnx.workers.dev (`examples/features`): `/` lists one route per wasm_of_ocaml feature.
+- https://workero-example-hello.davesnx.workers.dev (`examples/hello`): `/effects` and `/await` run a user-defined effect handler around awaited Promises; `/fail` returns 500.
+- https://workero-example-jspi.davesnx.workers.dev (`examples/jspi`): `/sequential` and `/concurrent` await two 100 ms timers (~200 ms vs ~100 ms); `/rejected` catches a rejected Promise.
 
 ## Size
 
