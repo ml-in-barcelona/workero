@@ -39,7 +39,7 @@ example: ## Build examples/basic into _worker/
 
 .PHONY: docs
 docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
-	$(DUNE) build @doc @doc-markdown
+	$(DUNE) build --cache=disabled @doc @doc-markdown
 	rm -rf docs
 	mkdir docs
 	cp _build/default/_doc/_markdown/index.md docs/
