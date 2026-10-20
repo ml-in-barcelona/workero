@@ -9,6 +9,7 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 - `examples/basic/`: a hello world worker that reports the OCaml version and backend.
 - `examples/react/`: server-side React with `.mlx` components.
 - `examples/limits/`: pushes the Workers limits with a CPU route and a memory route.
+- `examples/wasm/`: one route per wasm_of_ocaml feature: effects, `await`, JS interop, `Int64`, `Marshal`, `Str`, BLAKE2, an embedded file.
 - `examples/bench.sh`: bundle size and response times for an example (`DIR=examples/react examples/bench.sh`).
 - `template/`: a starter project to copy. See its README.
 - `examples/hello/`, `examples/hello-jspi/`: the experiments that led here. Each one is its own dune project.
@@ -18,6 +19,7 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 - https://workero-example.davesnx.workers.dev (`examples/basic`): hello world, reports the OCaml version and backend.
 - https://workero-example-react.davesnx.workers.dev (`examples/react`): a page rendered on the server from `.mlx` components.
 - https://workero-example-limits.davesnx.workers.dev (`examples/limits`): `/cpu?n=1000&iter=500` renders a Mandelbrot set, `/memory?mb=200` allocates 200 MB. Raise the numbers until it fails.
+- https://workero-example-wasm.davesnx.workers.dev (`examples/wasm`): `/` lists one route per wasm_of_ocaml feature.
 
 ## Size
 
