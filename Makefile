@@ -41,6 +41,13 @@ fmt: ## Format the code
 example: ## Build examples/basic into _worker/
 	$(DUNE) exec workero -- build examples/basic/main
 
+.PHONY: docs
+docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
+	$(DUNE) build @doc @doc-markdown
+	rm -rf docs
+	cp -R _build/default/_doc/_markdown docs
+	chmod -R u+w docs
+
 .PHONY: clean
 clean: ## Clean artifacts
 	$(DUNE) clean

@@ -30,6 +30,10 @@
     (>= 6.4.1)
     (< 6.5)))
   (alcotest :with-test)
+  (odoc
+   (and
+    :with-doc
+    (>= 3.2.1)))
   (ocamlformat
    (and
     :with-dev-setup

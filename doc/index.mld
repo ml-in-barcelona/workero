@@ -1,0 +1,14 @@
+{0 workero}
+
+Write Cloudflare Workers in OCaml (via wasm_of_ocaml).
+
+{1 Library}
+
+The entry point is the module {!Workero}.
+
+{!modules: Workero}
+
+{1 Guides}
+
+- {{!page-cli}CLI}: the [workero] command that turns an OCaml executable into a worker.
+- {{!page-template}Template}: a starter project to copy.

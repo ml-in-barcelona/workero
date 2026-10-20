@@ -34,6 +34,7 @@ jobs:
         with:
           ocaml-compiler: 5.4.0
           with-dev-setup: true
+          with-doc: true
           extra-packages: dune-release mlx ocamlformat-mlx
 
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/load@v1
@@ -53,6 +54,18 @@ jobs:
       - name: Build example worker
         run: opam exec -- dune exec workero -- build examples/basic/main
 
+      - name: Check docs/ is up to date
+        run: |
+          make docs DUNE="opam exec -- dune"
+          git add --intent-to-add docs
+          git diff --exit-code -- docs
+
+      - name: Upload HTML docs
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _build/default/_doc/_html
+
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/save@v1
         if: ${{ !cancelled() }}
 
@@ -69,3 +82,18 @@ jobs:
           packages: workero
           changelog: ./CHANGES.md
           github-token: ${{ secrets.GH_TOKEN }}
+
+  docs:
+    name: Deploy docs
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
