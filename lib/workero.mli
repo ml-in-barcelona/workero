@@ -1,4 +1,4 @@
-(** Write a Cloudflare Worker in OCaml, compiled with wasm_of_ocaml. *)
+(** Write Cloudflare Workers in OCaml (via wasm_of_ocaml) *)
 
 type js = Js_of_ocaml.Js.Unsafe.any
 (** A raw JavaScript value. *)

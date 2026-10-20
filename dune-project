@@ -15,7 +15,7 @@
 
 (package
  (name workero)
- (synopsis "Write Cloudflare Workers in OCaml with wasm_of_ocaml")
+ (synopsis "Write Cloudflare Workers in OCaml (via wasm_of_ocaml)")
  (depends
   (ocaml
    (>= 5.4))
