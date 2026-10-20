@@ -36,6 +36,9 @@ jobs:
           with-test: false
           extra-packages: ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx
 
+      - name: Install ocamlformat and dune-release
+        run: opam install ocamlformat.0.29.0 dune-release -y
+
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/load@v1
 
       - name: Build
