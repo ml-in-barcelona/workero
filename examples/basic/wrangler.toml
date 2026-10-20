@@ -1,5 +1,5 @@
 name = "workero-example"
-main = "../_worker/index.js"
+main = "../../_worker/index.js"
 compatibility_date = "2026-10-01"
 
 [vars]

@@ -45,7 +45,7 @@ jobs:
         run: opam exec -- dune build @fmt
 
       - name: Build example worker
-        run: opam exec -- dune exec workero -- build example/main
+        run: opam exec -- dune exec workero -- build examples/basic/main
 
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/save@v1
         if: ${{ !cancelled() }}

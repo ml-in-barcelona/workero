@@ -1,8 +1,8 @@
 #!/bin/sh
-# usage: [DIR=example] [N=50] [PORT=8787] [WRANGLER=wrangler] example/bench.sh
+# usage: [DIR=examples/basic] [N=50] [PORT=8787] [WRANGLER=wrangler] examples/bench.sh
 set -e
 cd "$(dirname "$0")/.."
-dir=${DIR:-example}; n=${N:-50}; port=${PORT:-8787}; wrangler=${WRANGLER:-wrangler}
+dir=${DIR:-examples/basic}; n=${N:-50}; port=${PORT:-8787}; wrangler=${WRANGLER:-wrangler}
 tmp=$(mktemp -d)
 trap 'kill $pid 2>/dev/null; rm -rf $tmp' EXIT
 
