@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (modes wasm)
+ (libraries workero workero_react js_of_ocaml)
+ (preprocess
+  (pps workero_react_ppx)))

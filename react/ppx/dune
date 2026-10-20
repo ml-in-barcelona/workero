@@ -1,0 +1,6 @@
+(library
+ (name workero_react_ppx)
+ (kind ppx_rewriter)
+ (libraries ppxlib ppxlib.astlib compiler-libs.common workero_react_html)
+ (preprocess
+  (pps ppxlib.metaquot)))

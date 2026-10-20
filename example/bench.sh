@@ -1,12 +1,12 @@
 #!/bin/sh
-# usage: [N=50] [PORT=8787] [WRANGLER=wrangler] example/bench.sh
+# usage: [DIR=example] [N=50] [PORT=8787] [WRANGLER=wrangler] example/bench.sh
 set -e
 cd "$(dirname "$0")/.."
-n=${N:-50}; port=${PORT:-8787}; wrangler=${WRANGLER:-wrangler}
+dir=${DIR:-example}; n=${N:-50}; port=${PORT:-8787}; wrangler=${WRANGLER:-wrangler}
 tmp=$(mktemp -d)
 trap 'kill $pid 2>/dev/null; rm -rf $tmp' EXIT
 
-dune exec workero -- build example/main
+dune exec workero -- build $dir/main
 
 echo "== files in _worker/ (bytes raw, gzip)"
 total_raw=0; total_gz=0
@@ -18,10 +18,10 @@ done
 printf '%10d %10d  total\n' $total_raw $total_gz
 
 echo "== wrangler deploy --dry-run (limits: 3 MiB free, 10 MiB paid, gzip)"
-(cd example && $wrangler deploy --dry-run --outdir $tmp/out 2>&1 | grep -i "upload")
+(cd $dir && $wrangler deploy --dry-run --outdir $tmp/out 2>&1 | grep -i "upload")
 
 echo "== wrangler dev --local, $n warm requests"
-(cd example && exec $wrangler dev --local --port $port > $tmp/dev.log 2>&1) &
+(cd $dir && exec $wrangler dev --local --port $port > $tmp/dev.log 2>&1) &
 pid=$!
 url=http://localhost:$port/
 i=0

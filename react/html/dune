@@ -1,0 +1,3 @@
+(library
+ (name workero_react_html)
+ (wrapped false))

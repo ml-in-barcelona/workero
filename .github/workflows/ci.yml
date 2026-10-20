@@ -34,7 +34,7 @@ jobs:
         with:
           ocaml-compiler: 5.4.0
           with-test: false
-          extra-packages: ocamlformat.0.29.0 dune-release
+          extra-packages: ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx
 
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/load@v1
 

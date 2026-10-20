@@ -1,0 +1,3 @@
+name = "workero-example-react"
+main = "../_worker/index.js"
+compatibility_date = "2026-10-01"

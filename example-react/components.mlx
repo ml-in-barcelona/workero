@@ -1,0 +1,37 @@
+module Layout = struct
+  let[@react.component] make ~title ~children () =
+    <html lang="en">
+      <head><meta char_set="utf-8" /> <title>(React.string title)</title></head>
+      <body class_name="page"><h1>(React.string title)</h1> children</body>
+    </html>
+end
+
+module Greeting = struct
+  let[@react.component] make ~name ~score () =
+    <p class_name="greeting" data_testid="greeting" aria_label="greeting">
+      (React.string ("Hello, " ^ name ^ "! Score: ")) (React.float score)
+    </p>
+end
+
+module Fruits = struct
+  let[@react.component] make ~items () =
+    <ul>
+      (items
+      |> List.map (fun item -> <li key=item>(React.string item)</li>)
+      |> React.list)
+    </ul>
+end
+
+module Search = struct
+  let[@react.component] make () =
+    <form>
+      <label html_for="q">(React.string "Search")</label>
+      <input
+        id="q"
+        type_="text"
+        auto_focus=true
+        on_change=(fun _ -> ())
+        aria_valuenow=1.5
+      />
+    </form>
+end

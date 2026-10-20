@@ -30,3 +30,13 @@
     (>= 6.4.1)
     (< 6.5)))
   (ocamlformat :with-dev-setup)))
+
+(dialect
+ (name mlx)
+ (implementation
+  (extension mlx)
+  (merlin_reader mlx)
+  (format
+   (run ocamlformat-mlx %{input-file}))
+  (preprocess
+   (run mlx-pp %{input-file}))))

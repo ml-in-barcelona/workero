@@ -1,0 +1,4 @@
+(library
+ (name workero_react)
+ (wrapped false)
+ (libraries workero_react_html js_of_ocaml))
