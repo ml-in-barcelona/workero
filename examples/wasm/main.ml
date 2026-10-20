@@ -171,14 +171,14 @@ let index () =
        (fun (path, doc, _) -> Printf.sprintf "%-11s %s\n" path doc)
        routes)
 
-let handler req _env =
+let handler req _env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
-  | "GET", "/" -> Response.text (index ())
-  | "GET", path -> (
+  | GET, "/" -> Response.text (index ())
+  | GET, path -> (
       match List.find_opt (fun (p, _, _) -> p = path) routes with
       | Some (_, _, run) -> Response.text (run ())
       | None -> Response.text ~status:404 "not found\n")
   | _ -> Response.text ~status:405 "method not allowed\n"
 
-let () = Workero.fetch handler
+let () = Workero.serve handler
