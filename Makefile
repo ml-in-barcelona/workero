@@ -41,7 +41,9 @@ example: ## Build examples/basic into _worker/
 docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 	$(DUNE) build @doc @doc-markdown
 	rm -rf docs
-	cp -R _build/default/_doc/_markdown docs
+	mkdir docs
+	cp _build/default/_doc/_markdown/index.md docs/
+	for p in $(basename $(wildcard *.opam)); do cp -R _build/default/_doc/_markdown/$$p docs/; done
 	chmod -R u+w docs
 
 .PHONY: clean
