@@ -14,6 +14,7 @@ module Response = Response
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
+module JSON = Json
 
 let register name handler =
   let g = Js.Unsafe.global in

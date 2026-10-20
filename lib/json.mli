@@ -1,4 +1,4 @@
-(** JSON requests and responses for workero, built on
+(** JSON requests and responses for workero ([Workero.JSON]), built on
     {{:https://github.com/melange-community/jsonkit} jsonkit}.
 
     A JSON value is a {!Jsonkit.t}, which is a [Yojson.Basic.t]. Decode it to
@@ -7,12 +7,14 @@
     [dune] file and write:
 
     {[
+    open Jsonkit.Primitives
+
     type user = { name : string; age : int } [@@deriving json]
 
     let handler req _env _ctx =
-      match Workero_json.decode user_of_json req with
-      | Ok user -> Workero_json.response (user_to_json user)
-      | Error message -> Workero_json.error message
+      match Workero.JSON.decode user_of_json req with
+      | Ok user -> Workero.JSON.response (user_to_json user)
+      | Error message -> Workero.JSON.error message
     ]}
 
     Without the ppx, write the decoder by hand:
@@ -26,18 +28,17 @@
 type t = Jsonkit.t
 (** A JSON value. *)
 
-val response :
-  ?status:int -> ?headers:(string * string) list -> t -> Workero.Response.t
+val response : ?status:int -> ?headers:(string * string) list -> t -> Response.t
 (** [response json] is a response with status 200 and the compact JSON text as
     body. It adds [content-type: application/json; charset=utf-8] unless
     [headers] already has a [content-type] (any letter case). Non-ASCII
     characters are sent as UTF-8. *)
 
-val error : ?status:int -> string -> Workero.Response.t
+val error : ?status:int -> string -> Response.t
 (** [error message] is a response with status 400 and the body
     [{"error": message}]. *)
 
-val request : Workero.Request.t -> t
+val request : Request.t -> t
 (** Reads the whole body and parses it as JSON.
 
     @raise Jsonkit.Of_string_error
@@ -45,10 +46,10 @@ val request : Workero.Request.t -> t
       handler that lets it escape makes the runtime answer with status 500; use
       {!parse} or {!decode} to answer with 400. *)
 
-val parse : Workero.Request.t -> (t, string) result
+val parse : Request.t -> (t, string) result
 (** Like {!request}. [Error message] when the body is not valid JSON. *)
 
-val decode : (t -> 'a) -> Workero.Request.t -> ('a, string) result
+val decode : (t -> 'a) -> Request.t -> ('a, string) result
 (** [decode of_json req] parses the body and applies [of_json]. [of_json] is a
     jsonkit decoder, for example [user_of_json] from [[@@deriving json]], or
     [Jsonkit.Of_json.(list int)]. [Error message] when the body is not valid

@@ -16,6 +16,7 @@ module Response = Response
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
+module JSON = Json
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

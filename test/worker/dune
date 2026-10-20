@@ -1,4 +1,6 @@
 (executable
  (name main)
  (modes wasm)
- (libraries workero js_of_ocaml))
+ (preprocess
+  (pps jsonkit.ppx))
+ (libraries workero js_of_ocaml jsonkit))

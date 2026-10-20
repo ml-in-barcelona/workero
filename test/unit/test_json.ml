@@ -3,14 +3,14 @@ let header = Workero.Response.header
 let json = `Assoc [ ("a", `Int 1) ]
 
 let test_defaults () =
-  let r = Workero_json.response json in
+  let r = Workero.JSON.response json in
   Alcotest.(check int) "status" 200 (status r);
   Alcotest.(check (option string))
     "content-type" (Some "application/json; charset=utf-8")
     (header r "content-type")
 
 let test_status_and_headers () =
-  let r = Workero_json.response ~status:201 ~headers:[ ("x-a", "b") ] json in
+  let r = Workero.JSON.response ~status:201 ~headers:[ ("x-a", "b") ] json in
   Alcotest.(check int) "status" 201 (status r);
   Alcotest.(check (option string)) "x-a" (Some "b") (header r "x-a");
   Alcotest.(check (option string))
@@ -19,7 +19,7 @@ let test_status_and_headers () =
 
 let test_content_type_override () =
   let r =
-    Workero_json.response
+    Workero.JSON.response
       ~headers:[ ("Content-Type", "application/vnd.api+json") ]
       json
   in
@@ -27,17 +27,17 @@ let test_content_type_override () =
     "content-type" (Some "application/vnd.api+json") (header r "content-type")
 
 let test_error () =
-  let r = Workero_json.error "bad" in
+  let r = Workero.JSON.error "bad" in
   Alcotest.(check int) "default status" 400 (status r);
   Alcotest.(check (option string))
     "content-type" (Some "application/json; charset=utf-8")
     (header r "content-type");
   Alcotest.(check int)
     "custom status" 422
-    (status (Workero_json.error ~status:422 "x"))
+    (status (Workero.JSON.error ~status:422 "x"))
 
 let () =
-  Alcotest.run "workero-json"
+  Alcotest.run "workero.json"
     [
       ( "response",
         [

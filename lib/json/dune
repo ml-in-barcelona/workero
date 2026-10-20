@@ -1,4 +1,0 @@
-(library
- (name workero_json)
- (public_name workero-json)
- (libraries workero jsonkit))

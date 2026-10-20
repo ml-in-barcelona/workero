@@ -35,6 +35,12 @@ let echo_upstream () =
        (opt (Response.header res "x-upstream"))
        (Response.body_text res))
 
+module Json_user = struct
+  open Jsonkit.Primitives
+
+  type t = { name : string; age : int } [@@deriving json]
+end
+
 let handler req env ctx =
   let open Workero in
   let url = Request.url req in
@@ -43,6 +49,19 @@ let handler req env ctx =
       let name = Option.value (URL.query url "name") ~default:"world" in
       Response.text (Printf.sprintf "hello, %s\n" name)
   | POST, "/echo" -> Response.text (Request.text req)
+  | POST, "/json/echo" -> (
+      match JSON.parse req with
+      | Ok json -> JSON.response json
+      | Error message -> JSON.error message)
+  | POST, "/json/user" -> (
+      match JSON.decode Json_user.of_json req with
+      | Ok user -> JSON.response (Json_user.to_json user)
+      | Error message -> JSON.error ~status:422 message)
+  | POST, "/json/raise" -> JSON.response (JSON.request req)
+  | GET, "/json/custom" ->
+      JSON.response ~status:201
+        ~headers:[ ("Content-Type", "application/vnd.api+json"); ("x-a", "b") ]
+        (`List [ `Int 1; `Null ])
   | _, "/method" -> Response.text (method_name (Request.method_ req))
   | _, "/header" -> Response.text (opt (Request.header req "x-test") ^ "\n")
   | _, "/headers" ->

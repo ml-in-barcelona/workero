@@ -12,12 +12,12 @@ let response ?status ?(headers = []) json =
     if has_content_type headers then headers
     else (content_type, "application/json; charset=utf-8") :: headers
   in
-  Workero.Response.text ?status ~headers (Jsonkit.to_string json)
+  Response.text ?status ~headers (Jsonkit.to_string json)
 
 let error ?(status = 400) message =
   response ~status (`Assoc [ ("error", `String message) ])
 
-let request req = Jsonkit.of_string (Workero.Request.text req)
+let request req = Jsonkit.of_string (Request.text req)
 
 let parse req =
   match request req with

@@ -1,4 +1,4 @@
 (library
  (name workero)
  (public_name workero)
- (libraries js_of_ocaml))
+ (libraries js_of_ocaml jsonkit))

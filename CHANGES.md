@@ -8,4 +8,4 @@
   - `Request`: `method_` (`Method.t`), `url` (`URL.t`), `header`, `headers`, `text`, `bytes`, `cf`.
   - `Response`: `text`, `html`, `make`, `redirect`, and `status`, `header`, `headers`, `body_text`, `body_bytes`.
   - `to_js` and `of_js` on each type.
-- `workero-json`: JSON requests and responses with jsonkit.
+- `Workero.JSON`: JSON requests and responses with jsonkit.

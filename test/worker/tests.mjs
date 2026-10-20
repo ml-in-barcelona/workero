@@ -1,3 +1,9 @@
+const JSON_TYPE = "application/json; charset=utf-8";
+const post = (path, body) => [
+  `http://test${path}`,
+  { method: "POST", body },
+];
+
 const cases = [
   {
     name: "GET with query",
@@ -222,6 +228,64 @@ const cases = [
     status: 200,
     body: "slept\n",
   },
+  {
+    name: "json echo valid JSON",
+    request: post("/json/echo", '{"a":[1,2.5,null,true],"b":{"c":"d"}}'),
+    status: 200,
+    body: '{"a":[1,2.5,null,true],"b":{"c":"d"}}',
+    headers: { "content-type": JSON_TYPE },
+  },
+  {
+    name: "json unicode round trip",
+    request: post("/json/echo", '{"s":"héllo ñ 日本語 😀 \\u00e9"}'),
+    status: 200,
+    body: '{"s":"héllo ñ 日本語 😀 é"}',
+    headers: { "content-type": JSON_TYPE },
+  },
+  {
+    name: "json invalid JSON",
+    request: post("/json/echo", '{"a":'),
+    status: 400,
+    body: '{"error":"Line 1, bytes 4-5:\\nUnexpected end of input"}',
+    headers: { "content-type": JSON_TYPE },
+  },
+  {
+    name: "json empty body",
+    request: post("/json/echo", ""),
+    status: 400,
+    headers: { "content-type": JSON_TYPE },
+  },
+  {
+    name: "json decode a record, ignore extra fields",
+    request: post("/json/user", '{"name":"Ana","age":30,"extra":1}'),
+    status: 200,
+    body: '{"name":"Ana","age":30}',
+    headers: { "content-type": JSON_TYPE },
+  },
+  {
+    name: "json decode type mismatch",
+    request: post("/json/user", '{"name":"Ana","age":"x"}'),
+    status: 422,
+    body: '{"error":"expected int but got string: \\"x\\""}',
+  },
+  {
+    name: "json decode invalid JSON",
+    request: post("/json/user", "nope"),
+    status: 422,
+  },
+  {
+    name: "json uncaught parse error",
+    request: post("/json/raise", "{bad"),
+    throws: "Of_string_error",
+  },
+  {
+    name: "json custom status and headers",
+    request: ["http://test/json/custom"],
+    status: 201,
+    body: "[1,null]",
+    headers: { "content-type": "application/vnd.api+json", "x-a": "b" },
+  },
+  { name: "json unknown route", request: ["http://test/json/nope"], status: 404 },
 ];
 
 const sameBytes = (actual, expected) =>

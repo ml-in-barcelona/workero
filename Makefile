@@ -19,7 +19,7 @@ dev: ## Build in watch mode
 	$(DUNE) build -w
 
 .PHONY: test
-test: test-unit test-worker test-json ## Run the unit tests and the worker tests
+test: test-unit test-worker ## Run the unit tests and the worker tests
 
 .PHONY: test-unit
 test-unit: ## Run the alcotest unit tests (node)
@@ -28,10 +28,6 @@ test-unit: ## Run the alcotest unit tests (node)
 .PHONY: test-worker
 test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in workerd
 	DUNE="$(DUNE)" test/worker/run.sh
-
-.PHONY: test-json
-test-json: ## Build test/json with workero and run test/json/tests.mjs in workerd
-	DUNE="$(DUNE)" test/json/run.sh
 
 .PHONY: fmt
 fmt: ## Format the code
@@ -51,4 +47,4 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 .PHONY: clean
 clean: ## Clean artifacts
 	$(DUNE) clean
-	rm -rf _worker _worker-test _worker-json-test
+	rm -rf _worker _worker-test

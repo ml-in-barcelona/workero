@@ -1,4 +1,11 @@
 (test
  (name test_workero)
+ (modules test_workero)
  (modes js)
  (libraries workero alcotest js_of_ocaml))
+
+(test
+ (name test_json)
+ (modules test_json)
+ (modes js)
+ (libraries workero jsonkit alcotest))

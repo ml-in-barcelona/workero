@@ -29,6 +29,10 @@
    (and
     (>= 6.4.1)
     (< 6.5)))
+  (jsonkit
+   (and
+    (>= 1.1.0)
+    (< 2)))
   (alcotest :with-test)
   (odoc
    (and
@@ -38,17 +42,6 @@
    (and
     :with-dev-setup
     (= 0.29.0)))))
-
-(package
- (name workero-json)
- (synopsis "JSON requests and responses for workero, with jsonkit")
- (depends
-  (workero
-   (= :version))
-  (jsonkit
-   (and
-    (>= 1.1.0)
-    (< 2)))))
 
 (dialect
  (name mlx)
