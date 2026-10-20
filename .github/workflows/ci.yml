@@ -34,15 +34,21 @@ jobs:
         with:
           ocaml-compiler: 5.4.0
           with-test: false
-          extra-packages: ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx
+          extra-packages: ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx alcotest
 
       - name: Install extra packages
-        run: opam install ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx -y
+        run: opam install ocamlformat.0.29.0 dune-release mlx ocamlformat-mlx alcotest -y
 
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/load@v1
 
       - name: Build
         run: opam exec -- dune build
+
+      - name: Install workerd
+        run: npm install -g workerd
+
+      - name: Test
+        run: make test
 
       - name: Check formatting
         run: opam exec -- dune build @fmt

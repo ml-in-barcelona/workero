@@ -5,18 +5,16 @@ let page score =
     <Components.Search />
   </Components.Layout>
 
-let handler req _env =
+let handler req _env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
-  | "GET", "/" ->
+  | GET, "/" ->
       let url = Request.url req in
       let score =
         Option.bind (URL.query url "score") float_of_string_opt
         |> Option.value ~default:1.5
       in
-      Response.text
-        ~headers:[ ("content-type", "text/html; charset=utf-8") ]
-        (React_dom.render_to_string (page score))
+      Response.html (React_dom.render_to_string (page score))
   | _ -> Response.text ~status:404 "not found\n"
 
-let () = Workero.fetch handler
+let () = Workero.serve handler

@@ -1,1 +1,1 @@
-(dirs lib bin examples)
+(dirs lib bin examples test)

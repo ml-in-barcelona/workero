@@ -28,7 +28,7 @@ let int_param url name ~default =
   | Some n when n > 0 -> n
   | _ -> default
 
-let handler req _env =
+let handler req _env _ctx =
   let open Workero in
   let url = Request.url req in
   match URL.path url with
@@ -53,4 +53,4 @@ let handler req _env =
         (Printf.sprintf "allocated and touched %d MB (check %d)\n" mb check)
   | _ -> Response.text ~status:404 "not found\n"
 
-let () = Workero.fetch handler
+let () = Workero.serve handler

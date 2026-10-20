@@ -1,6 +1,7 @@
 (executable
  (name main)
  (public_name workero)
+ (package workero)
  (libraries unix))
 
 (rule

@@ -29,7 +29,19 @@
    (and
     (>= 6.4.1)
     (< 6.5)))
+  (alcotest :with-test)
   (ocamlformat :with-dev-setup)))
+
+(package
+ (name workero-json)
+ (synopsis "JSON requests and responses for workero, with jsonkit")
+ (depends
+  (workero
+   (= :version))
+  (jsonkit
+   (and
+    (>= 1.1.0)
+    (< 2)))))
 
 (dialect
  (name mlx)

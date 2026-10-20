@@ -1,0 +1,4 @@
+(test
+ (name test_workero)
+ (modes js)
+ (libraries workero alcotest js_of_ocaml))

@@ -11,6 +11,7 @@ depends: [
   "dune" {>= "3.24"}
   "js_of_ocaml" {>= "6.4.1" & < "6.5"}
   "wasm_of_ocaml-compiler" {>= "6.4.1" & < "6.5"}
+  "alcotest" {with-test}
   "ocamlformat" {with-dev-setup}
   "odoc" {with-doc}
 ]

@@ -18,3 +18,5 @@ examples/hello-jspi/nodetest/
 /examples/hello*/worker*/*
 !/examples/hello*/worker1/wrangler.toml
 /examples/hello*/w-*/
+_worker-test/
+_worker-json-test/
