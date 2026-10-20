@@ -6,6 +6,7 @@
 
 (package
  (name workero_template)
+ (allow_empty)
  (synopsis "A Cloudflare Worker written in OCaml")
  (depends
   (ocaml

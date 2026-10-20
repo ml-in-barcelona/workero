@@ -1,6 +1,4 @@
 (library
  (name workero)
  (public_name workero)
- (libraries js_of_ocaml uri)
- (wasm_of_ocaml
-  (wasm_files bigstringaf_shim.wat)))
+ (libraries js_of_ocaml))

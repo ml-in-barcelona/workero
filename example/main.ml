@@ -2,24 +2,17 @@ open Js_of_ocaml
 
 exception Failed
 
-let global name = Js.Unsafe.get Js.Unsafe.global name
-
-let promise_with f =
-  let r = Js.Unsafe.meth_call (global "Promise") "withResolvers" [||] in
-  f r;
-  Js.Unsafe.get r "promise"
-
 let sleep ms =
-  promise_with (fun r ->
+  Workero.Promise.make (fun ~resolve ~reject:_ ->
       ignore
-        (Js.Unsafe.fun_call (global "setTimeout")
-           [| Js.Unsafe.get r "resolve"; Js.Unsafe.inject (ms : int) |]))
+        (Js.Unsafe.fun_call
+           (Js.Unsafe.get Js.Unsafe.global "setTimeout")
+           [|
+             Js.Unsafe.inject (Js.wrap_callback (fun () -> resolve ()));
+             Js.Unsafe.inject (ms : int);
+           |]))
 
-let reject () =
-  promise_with (fun r ->
-      ignore
-        (Js.Unsafe.fun_call (Js.Unsafe.get r "reject")
-           [| Js.Unsafe.inject (Js.string "nope") |]))
+let reject () = Workero.Promise.reject "nope"
 
 let backend =
   match Sys.backend_type with
@@ -56,10 +49,10 @@ let handler req env =
         (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
   | _, "/fail" -> raise Failed
   | _, "/reject" ->
-      ignore (await (reject ()));
+      ignore (Promise.await (reject ()));
       Response.text "unreachable\n"
   | _, "/sleep" ->
-      ignore (await (sleep 50));
+      ignore (Promise.await (sleep 50));
       Response.text "slept\n"
   | _ -> Response.text ~status:404 "not found\n"
 

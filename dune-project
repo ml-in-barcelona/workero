@@ -29,8 +29,4 @@
    (and
     (>= 6.4.1)
     (< 6.5)))
-  (uri
-   (and
-    (>= 4.4.0)
-    (< 5)))
   (ocamlformat :with-dev-setup)))
