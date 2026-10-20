@@ -33,24 +33,8 @@ jobs:
       - uses: ml-in-barcelona/gh-ci-action@v1
         with:
           ocaml-compiler: 5.4.0
-          with-dev-setup: true
-
-      - name: Load dune-release cache
-        id: dune-release-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/dune-release-bin
-          key: dune-release-${{ runner.os }}-${{ runner.arch }}-5.4.0
-
-      - name: Install dune-release
-        if: steps.dune-release-cache.outputs.cache-hit != 'true'
-        run: |
-          opam switch create dune-release ocaml-base-compiler.5.4.0 --no-switch -y
-          opam install --switch=dune-release dune-release -y
-          mkdir -p ~/dune-release-bin
-          cp "$(opam var --switch=dune-release bin)/dune-release" ~/dune-release-bin/
-
-      - run: echo ~/dune-release-bin >> "$GITHUB_PATH"
+          with-test: false
+          extra-packages: ocamlformat.0.29.0 dune-release
 
       - uses: ml-in-barcelona/gh-ci-action/dune-cache/load@v1
 
