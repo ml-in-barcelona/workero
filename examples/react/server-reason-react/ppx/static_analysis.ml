@@ -223,54 +223,6 @@ let attr_is_emittable (info : attr_render_info) =
 let attr_is_ignored_by_ssr (info : attr_render_info) =
   info.is_event || (is_react_custom_attribute_name info.html_name && info.kind <> Dom_props.Inner_html)
 
-(* Try to fold a [style] attribute to a compile-time string. After
-   [Style_rewrite] runs (bottom-up, before the Jsx rewrite), a fully-literal
-   [React_dom.Style.make ~color:"red" ()] arrives here as the list literal
-   [("color", "color", "red") :: ([] : ...)]. When every key and value is a
-   string literal we replicate [React_dom_style.write_to_buffer] exactly:
-   skip empty values, separate with ';', write [key ':' String.trim value],
-   no HTML escaping. *)
-let extract_static_style expr =
-  let rec collect acc expr =
-    match (strip_constraint expr).pexp_desc with
-    | Pexp_construct ({ txt = Lident "[]"; _ }, None) -> Some (List.rev acc)
-    | Pexp_construct ({ txt = Lident "::"; _ }, Some arg) -> (
-        match (strip_constraint arg).pexp_desc with
-        | Pexp_tuple [ head; tail ] -> (
-            match (strip_constraint head).pexp_desc with
-            | Pexp_tuple [ key; _camel; value ] -> (
-                match (extract_literal_string key, extract_literal_string value) with
-                | Some key, Some value -> collect ((key, value) :: acc) tail
-                | _ -> None)
-            | _ -> None)
-        | _ -> None)
-    | _ -> None
-  in
-  match collect [] expr with
-  | None -> None
-  | Some entries ->
-      (* Build the [key:value;…] body exactly like [React_dom_style.write_to_buffer],
-         then HTML-escape it as a whole — mirroring [React_dom.write_attribute_to_buffer]'s
-         [Style] case ([Html.escape buf (Style.to_string styles)]) — so a quoted value
-         (e.g. a [font-family]) can't terminate the [style="…"] attribute early. *)
-      let body = Buffer.create 64 in
-      let first = ref true in
-      List.iter
-        (fun (key, value) ->
-          if value <> "" then begin
-            if not !first then Buffer.add_char body ';';
-            Buffer.add_string body key;
-            Buffer.add_char body ':';
-            Buffer.add_string body (String.trim value);
-            first := false
-          end)
-        entries;
-      let buf = Buffer.create 64 in
-      Buffer.add_string buf " style=\"";
-      Html.escape buf (Buffer.contents body);
-      Buffer.add_char buf '"';
-      Some (Buffer.contents buf)
-
 let analyze_attributes ~tag_name attrs =
   let parts = ref [] in
   let static_buf = Buffer.create 64 in
@@ -299,16 +251,9 @@ let analyze_attributes ~tag_name attrs =
         | Ok (Some (Static_attr (info, value))) ->
             Buffer.add_string static_buf (render_static_attr_with_info info value);
             loop rest
-        | Ok (Some (Dynamic_attr (info, expr))) when info.kind = Dom_props.Style -> (
-            (* Fully-literal styles fold to a static string; anything else
-               becomes a Writer hole that calls the runtime serializer. *)
-            match extract_static_style expr with
-            | Some rendered ->
-                Buffer.add_string static_buf rendered;
-                loop rest
-            | None ->
-                push_dynamic info expr ~is_optional:false;
-                loop rest)
+        | Ok (Some (Dynamic_attr (info, expr))) when info.kind = Dom_props.Style ->
+            push_dynamic info expr ~is_optional:false;
+            loop rest
         | Ok (Some (Optional_attr (info, expr))) when attr_is_emittable info ->
             push_dynamic info expr ~is_optional:true;
             loop rest

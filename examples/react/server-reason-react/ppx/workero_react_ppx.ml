@@ -1062,12 +1062,6 @@ let traverse =
 
     method! expression ctx expr =
       let expr = super#expression ctx expr in
-      (* Rewrite React_dom.Style.make(~k:v, ..., ()) to a direct list literal at
-         compile time. On stock OCaml the 347-optional-arg signature forces
-         ~1460 words/call; the PPX elides this entirely when all args are
-         labeled string values. Falls through if optional args or unknown
-         names appear. *)
-      let expr = Style_rewrite.rewrite_expression expr in
       try
         match expr.pexp_desc with
         | Pexp_apply (({ pexp_desc = Pexp_ident _; pexp_loc = loc; _ } as tag), args)
