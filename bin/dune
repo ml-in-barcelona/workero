@@ -1,0 +1,17 @@
+(executable
+ (name main)
+ (public_name workero)
+ (libraries unix))
+
+(rule
+ (targets embedded.ml)
+ (deps load-wasm.js index.js)
+ (action
+  (with-stdout-to
+   embedded.ml
+   (progn
+    (echo "let load_wasm = {js|")
+    (cat load-wasm.js)
+    (echo "|js}\nlet index = {js|")
+    (cat index.js)
+    (echo "|js}\n")))))

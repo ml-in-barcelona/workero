@@ -1,0 +1,10 @@
+name = "workero-demo-template"
+main = "_worker/index.js"
+compatibility_date = "2026-10-01"
+
+[build]
+command = "workero build src/main"
+watch_dir = "src"
+
+[vars]
+GREETING = "hello from vars"

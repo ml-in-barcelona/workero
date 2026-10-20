@@ -1,0 +1,4 @@
+_build
+_worker
+node_modules
+.wrangler

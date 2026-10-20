@@ -1,0 +1,11 @@
+_build/
+_opam/
+.opam-root/
+node_modules/
+.npm-cache/
+.wrangler-logs/
+.config/
+.wrangler/
+.env
+_build-rel/
+deploy/

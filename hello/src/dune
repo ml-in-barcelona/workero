@@ -1,0 +1,6 @@
+(executables
+ (names main eff)
+ (modes wasm)
+ (libraries js_of_ocaml)
+ (preprocess
+  (pps js_of_ocaml-ppx)))

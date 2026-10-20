@@ -1,0 +1,13 @@
+(lang dune 3.24)
+
+(name workero_template)
+
+(generate_opam_files true)
+
+(package
+ (name workero_template)
+ (synopsis "A Cloudflare Worker written in OCaml")
+ (depends
+  (ocaml
+   (>= 5.4))
+  workero))
