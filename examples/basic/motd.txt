@@ -1,0 +1,1 @@
+This file is embedded in the wasm bundle with --file.

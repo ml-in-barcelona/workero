@@ -6,7 +6,7 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 - `lib/json/`: the `workero-json` package (`Workero_json`): JSON request bodies and responses with [jsonkit](https://github.com/melange-community/jsonkit).
 - `test/`: unit tests (`test/unit/`), the worker tests (`test/worker/`) and the JSON tests (`test/json/`). See Development.
 - `bin/`: the `workero` CLI. `workero build <dir>/<name>` writes a worker to `_worker/`.
-- `examples/basic/`: a hello world worker that reports the OCaml version and backend.
+- `examples/basic/`: a hello world worker that reports the OCaml version and backend, plus the feature routes of `examples/wasm/` (`/effects`, `/regex`, `/file`, ...).
 - `examples/react/`: server-side React with `.mlx` components.
 - `examples/limits/`: pushes the Workers limits with a CPU route and a memory route.
 - `examples/wasm/`: one route per wasm_of_ocaml feature: effects, `await`, JS interop, `Int64`, `Marshal`, `Str`, BLAKE2, an embedded file.
@@ -16,7 +16,7 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 
 ## Demos
 
-- https://workero-example.davesnx.workers.dev (`examples/basic`): hello world, reports the OCaml version and backend.
+- https://workero-example.davesnx.workers.dev (`examples/basic`): hello world, reports the OCaml version and backend. `/` also lists the feature routes (`/effects`, `/await`, `/js`, `/numbers`, `/marshal`, `/regex`, `/digest`, `/file`, ...).
 - https://workero-example-react.davesnx.workers.dev (`examples/react`): a page rendered on the server from `.mlx` components.
 - https://workero-example-limits.davesnx.workers.dev (`examples/limits`): `/cpu?n=1000&iter=500` renders a Mandelbrot set, `/memory?mb=200` allocates 200 MB. Raise the numbers until it fails.
 - https://workero-example-wasm.davesnx.workers.dev (`examples/wasm`): `/` lists one route per wasm_of_ocaml feature.
