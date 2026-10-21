@@ -18,7 +18,7 @@ The route list of `examples/features` runs each of these in a deployed Worker:
 
 ## `jsonkit`
 
-[jsonkit](https://github.com/melange-community/jsonkit) reads and writes JSON, with a ppx that derives the functions. [`Workero.JSON`](./Workero-JSON.md) builds on it. See [Requests and responses](./requests.md).
+[jsonkit](https://github.com/melange-community/jsonkit) reads and writes JSON, with a ppx that derives the functions. [`Workero.JSON`](./Workero-JSON.md) builds on it and gives values as `Jsonkit.t`. It does not re-export jsonkit. opam installs jsonkit with workero. Add `jsonkit` to the `libraries` of your `dune` file to use it. See [Requests and responses](./requests.md).
 
 
 ## Server-side React

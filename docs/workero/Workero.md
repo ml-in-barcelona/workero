@@ -62,7 +62,7 @@ The `controller` argument of a Worker `scheduled` handler.
 ```ocaml
 module JSON : sig ... end
 ```
-JSON requests and responses for workero (`Workero.JSON`), built on [jsonkit](https://github.com/melange-community/jsonkit).
+JSON requests and responses for workero (`Workero.JSON`).
 
 ```ocaml
 module KV : sig ... end

@@ -25,7 +25,8 @@ OCaml 5 effects over JSPI, so other requests run meanwhile
 work that continues after the response.
 
 `Workero.JSON` reads and writes JSON with
-[jsonkit](https://github.com/melange-community/jsonkit):
+[jsonkit](https://github.com/melange-community/jsonkit). Values are
+`Jsonkit.t`. Add `jsonkit` to your dune `libraries` to build or decode them:
 
 ```ocaml
 let handler req _env _ctx =

@@ -95,7 +95,9 @@ It differs from the WHATWG [URL] of JavaScript:
 
 {!Workero.JSON} reads and writes JSON with
 {{:https://github.com/melange-community/jsonkit}jsonkit}. A JSON value is a
-[Jsonkit.t].
+[Jsonkit.t]. {!Workero.JSON} does not re-export jsonkit. opam installs jsonkit
+with workero, but you add [jsonkit] to the [libraries] of your [dune] file to
+build or decode values.
 
 {@ocaml[
 open Jsonkit.Primitives
@@ -110,7 +112,8 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-Add [jsonkit] and [jsonkit.ppx] to the [dune] file:
+Add [jsonkit] to [libraries], and [jsonkit.ppx] to [preprocess] for
+[[@@deriving json]]:
 
 {@dune[
 (executable
