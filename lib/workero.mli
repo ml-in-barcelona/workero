@@ -12,7 +12,7 @@ exception Js_error of Promise.error
 
 module Promise = Promise
 module Decode = Decode
-module URL = URL
+module URL = Url
 module Method = Method
 module Cf = Cf
 module Request = Request
@@ -20,8 +20,8 @@ module Response = Response
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
-module JSON = JSON
-module KV = KV
+module JSON = Json
+module KV = Kv
 module Cache = Cache
 module R2 = R2
 module D1 = D1

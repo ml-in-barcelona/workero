@@ -22,9 +22,9 @@ let test_response_html () =
     [ ("content-type", "text/html; charset=latin1") ]
     (headers given)
 
-let test_response_bytes () =
+let test_response_make () =
   let open Workero.Response in
-  let r = bytes ~status:202 "\000\255" in
+  let r = make ~status:202 "\000\255" in
   Alcotest.(check int) "status" 202 (status r);
   Alcotest.(check (option string))
     "no content-type" None (header r "content-type")
@@ -50,7 +50,7 @@ let test_response_null_body_status () =
         (string_of_int code) code
         (status (text ~status:code "")))
     [ 204; 205; 304 ];
-  Alcotest.(check int) "bytes" 204 (status (bytes ~status:204 ""))
+  Alcotest.(check int) "make" 204 (status (make ~status:204 ""))
 
 let () =
   Alcotest.run "workero.response"
@@ -59,7 +59,7 @@ let () =
         [
           Alcotest.test_case "text" `Quick test_response_text;
           Alcotest.test_case "html" `Quick test_response_html;
-          Alcotest.test_case "bytes" `Quick test_response_bytes;
+          Alcotest.test_case "make" `Quick test_response_make;
           Alcotest.test_case "redirect" `Quick test_response_redirect;
           Alcotest.test_case "null body status" `Quick
             test_response_null_body_status;

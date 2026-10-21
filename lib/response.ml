@@ -29,7 +29,7 @@ let html ?(status = 200) ?(headers = []) body =
   build ~content_type:"text/html; charset=utf-8" ~status ~headers
     ~empty_body:(body = "") (str body)
 
-let bytes ?(status = 200) ?(headers = []) body =
+let make ?(status = 200) ?(headers = []) body =
   build ~status ~headers ~empty_body:(body = "") (Wire.body_of_string body)
 
 let redirect ?(status = 302) url =

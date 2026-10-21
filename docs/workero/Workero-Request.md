@@ -8,7 +8,7 @@ type t
 val method_ : t -> Method.t
 ```
 ```ocaml
-val url : t -> URL.t
+val url : t -> Workero__.Url.t
 ```
 The request URL.
 
@@ -25,12 +25,12 @@ val headers : t -> (string * string) list
 All headers, with lower case names, sorted by name, as `Headers` iterates them.
 
 ```ocaml
-val body_text : t -> string
+val text : t -> string
 ```
 Reads the whole body as UTF-8 text. Invalid UTF-8 is replaced.
 
 ```ocaml
-val body_bytes : t -> string
+val bytes : t -> string
 ```
 Reads the whole body as raw bytes.
 

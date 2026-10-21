@@ -41,7 +41,7 @@ let handler req env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
   | GET, "/" -> Response.text "hello\n"
-  | POST, "/echo" -> Response.bytes (Request.body_bytes req)
+  | POST, "/echo" -> Response.make (Request.bytes req)
   | GET, "/upstream" ->
       let r = Workero.fetch "https://example.com/" in
       Response.text ~status:(Response.status r) (Response.body_text r)
@@ -52,7 +52,7 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ```
 
-Handlers run in direct style: `Request.body_text`, `Workero.fetch` and
+Handlers run in direct style: `Request.text`, `Workero.fetch` and
 `Promise.await` wait for the JavaScript Promise without blocking other
 requests. A rejected Promise raises `Workero.Js_error`, which carries the JavaScript
 reason (`Promise.error_to_string` shows it). Use
@@ -63,9 +63,9 @@ reason (`Promise.error_to_string` shows it). Use
 
 ```ocaml
 let handler req _env _ctx =
-  match Workero.JSON.of_request_result req with
+  match Workero.JSON.parse req with
   | Ok json -> Workero.JSON.response json
-  | Error msg -> Workero.JSON.bad_request msg
+  | Error msg -> Workero.JSON.error msg
 ```
 
 ## Cron triggers

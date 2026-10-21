@@ -15,9 +15,9 @@ val html : ?status:int -> ?headers:(string * string) list -> string -> t
 Like [`text`](./#val-text), with `content-type: text/html; charset=utf-8` unless `headers` has a `content-type`.
 
 ```ocaml
-val bytes : ?status:int -> ?headers:(string * string) list -> string -> t
+val make : ?status:int -> ?headers:(string * string) list -> string -> t
 ```
-`bytes body` sends the bytes of `body` as they are, with no `content-type` unless `headers` has one.
+`make body` sends the bytes of `body` as they are, with no `content-type` unless `headers` has one.
 
 ```ocaml
 val redirect : ?status:int -> string -> t

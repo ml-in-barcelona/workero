@@ -201,7 +201,7 @@ let handler req env _ctx =
   | GET, "/hello" ->
       let name = Option.value (URL.query url "name") ~default:"world" in
       Response.text (Printf.sprintf "hello, %s\n" name)
-  | POST, "/echo" -> Response.text (Request.body_text req)
+  | POST, "/echo" -> Response.text (Request.text req)
   | _, "/env" ->
       Response.text
         (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")

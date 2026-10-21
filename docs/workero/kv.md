@@ -31,7 +31,7 @@ let handler req env _ctx =
       | Some value -> Response.text value
       | None -> Response.text ~status:404 "not found\n")
   | PUT, "/kv" ->
-      KV.put ~expiration_ttl:3600 kv key (Request.body_text req);
+      KV.put ~expiration_ttl:3600 kv key (Request.text req);
       Response.text "stored\n"
   | DELETE, "/kv" ->
       KV.delete kv key;

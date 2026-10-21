@@ -33,7 +33,7 @@ let () = Workero.serve handler
 
 ## How it works
 
-Every handler runs in a fiber. [`Workero.Promise.await`](./Workero-Promise.md#val-await) suspends the fiber until the Promise settles. Meanwhile the worker runs other requests. The body readers ([`Workero.Request.body_text`](./Workero-Request.md#val-body_text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way.
+Every handler runs in a fiber. [`Workero.Promise.await`](./Workero-Promise.md#val-await) suspends the fiber until the Promise settles. Meanwhile the worker runs other requests. The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way.
 
 This is the JavaScript Promise Integration (JSPI) of WebAssembly with OCaml 5 effects. wasm\_of\_ocaml enables it by default.
 

@@ -17,7 +17,7 @@ let handler req _env _ctx =
   | GET, "/where" ->
       let country = Option.value (Cf.country (Request.cf req)) ~default:"??" in
       Response.text (country ^ "\n")
-  | POST, "/upload" -> Response.bytes ~status:201 (Request.body_bytes req)
+  | POST, "/upload" -> Response.make ~status:201 (Request.bytes req)
   | GET, "/page" -> Response.html "<h1>hello</h1>"
   | GET, "/old" -> Response.redirect ~status:301 "https://example.com/new"
   | GET, "/done" -> Response.text ~status:204 ""
@@ -36,8 +36,8 @@ let () = Workero.serve handler
 - [`Workero.Request.url`](./Workero-Request.md#val-url) is the [`Workero.URL.t`](./Workero-URL.md#type-t).
 - [`Workero.Request.header`](./Workero-Request.md#val-header) reads one header. The name is not case-sensitive. Repeated headers are joined with `", "`.
 - [`Workero.Request.headers`](./Workero-Request.md#val-headers) lists all headers with lower case names, sorted by name.
-- [`Workero.Request.body_text`](./Workero-Request.md#val-body_text) reads the body as UTF-8 text. Invalid UTF-8 is replaced.
-- [`Workero.Request.body_bytes`](./Workero-Request.md#val-body_bytes) reads the body as raw bytes, in a `string`.
+- [`Workero.Request.text`](./Workero-Request.md#val-text) reads the body as UTF-8 text. Invalid UTF-8 is replaced.
+- [`Workero.Request.bytes`](./Workero-Request.md#val-bytes) reads the body as raw bytes, in a `string`.
 - [`Workero.Request.cf`](./Workero-Request.md#val-cf) gives the [`Workero.Cf.t`](./Workero-Cf.md#type-t), the Cloudflare properties of the request.
 [`Workero.Cf`](./Workero-Cf.md) has `country`, `region`, `city`, `colo`, `timezone` and `asn`. Each one is an option. It is `None` when the runtime gives no value, for example in a local test.
 
@@ -46,7 +46,7 @@ let () = Workero.serve handler
 
 - [`Workero.Response.text`](./Workero-Response.md#val-text) sends a UTF-8 text body. `status` is 200 by default.
 - [`Workero.Response.html`](./Workero-Response.md#val-html) is the same with `content-type: text/html; charset=utf-8`.
-- [`Workero.Response.bytes`](./Workero-Response.md#val-bytes) sends the bytes as they are, with no `content-type`.
+- [`Workero.Response.make`](./Workero-Response.md#val-make) sends the bytes as they are, with no `content-type`.
 - [`Workero.Response.redirect`](./Workero-Response.md#val-redirect) sends a `location` header. The URL must be absolute, and the status 301, 302, 303, 307 or 308 (302 by default). It raises `Invalid_argument` for another status.
 Pass `~headers` as a list of pairs. A `content-type` in `headers` replaces the default one.
 
@@ -80,7 +80,7 @@ type user = { name : string; age : int } [@@deriving json]
 let handler req _env _ctx =
   match Workero.JSON.decode user_of_json req with
   | Ok user -> Workero.JSON.response (user_to_json user)
-  | Error message -> Workero.JSON.bad_request message
+  | Error message -> Workero.JSON.error message
 
 let () = Workero.serve handler
 ```
@@ -95,10 +95,10 @@ Add `jsonkit` and `jsonkit.ppx` to the `dune` file:
  (libraries workero jsonkit))
 ```
 - [`Workero.JSON.decode`](./Workero-JSON.md#val-decode) reads the body and applies a decoder. It gives `Error message` for invalid JSON or when the decoder raises.
-- [`Workero.JSON.of_request_result`](./Workero-JSON.md#val-of_request_result) reads the body and gives the `Jsonkit.t`.
-- [`Workero.JSON.of_request`](./Workero-JSON.md#val-of_request) is `of_request_result` that raises `Jsonkit.Of_string_error`. An escaping exception makes the response a 500\.
+- [`Workero.JSON.parse`](./Workero-JSON.md#val-parse) reads the body and gives the `Jsonkit.t`.
+- [`Workero.JSON.request`](./Workero-JSON.md#val-request) is `parse` that raises `Jsonkit.Of_string_error`. An escaping exception makes the response a 500\.
 - [`Workero.JSON.response`](./Workero-JSON.md#val-response) sends JSON with status 200 and `content-type: application/json; charset=utf-8`.
-- [`Workero.JSON.bad_request`](./Workero-JSON.md#val-bad_request) sends `{"error": message}` with status 400\.
+- [`Workero.JSON.error`](./Workero-JSON.md#val-error) sends `{"error": message}` with status 400\.
 Without the ppx, write the decoder with the combinators of `Jsonkit.Of_json`. See [`Workero.JSON`](./Workero-JSON.md) for an example.
 
 

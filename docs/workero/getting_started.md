@@ -55,7 +55,7 @@ let handler req env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
   | GET, "/" -> Response.text "Hello from OCaml on Cloudflare Workers\n"
-  | POST, "/echo" -> Response.text (Request.body_text req)
+  | POST, "/echo" -> Response.text (Request.text req)
   | GET, "/env" ->
       Response.text
         (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
@@ -63,7 +63,7 @@ let handler req env _ctx =
 
 let () = Workero.serve handler
 ```
-[`Workero.serve`](./Workero.md#val-serve) takes a function with the same three arguments as the JavaScript `fetch(request, env, ctx)` handler. It runs in direct style, so `Request.body_text` and `Workero.fetch` return values, not promises. The next pages explain each part:
+[`Workero.serve`](./Workero.md#val-serve) takes a function with the same three arguments as the JavaScript `fetch(request, env, ctx)` handler. It runs in direct style, so `Request.text` and `Workero.fetch` return values, not promises. The next pages explain each part:
 
 - [Handlers](./handlers.md): `serve`, `scheduled`, and the arguments of a handler.
 - [Requests and responses](./requests.md): read a request, build a response, call other servers, read and write JSON.

@@ -35,7 +35,7 @@ let () = Workero.serve handler
 
 Every handler runs in a fiber. {!Workero.Promise.await} suspends the fiber until
 the Promise settles. Meanwhile the worker runs other requests. The body readers
-({!Workero.Request.body_text}, {!Workero.Response.body_text}) and {!Workero.fetch}
+({!Workero.Request.text}, {!Workero.Response.body_text}) and {!Workero.fetch}
 wait in the same way.
 
 This is the JavaScript Promise Integration (JSPI) of WebAssembly with

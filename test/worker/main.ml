@@ -101,11 +101,11 @@ let storage req env url =
       Response.text (String.concat "," (KV.list ?prefix (KV.of_env env "KV")))
   | "/r2/put" ->
       R2.put ?content_type:(URL.query url "type") (R2.of_env env "BUCKET") key
-        (Request.body_bytes req);
+        (Request.bytes req);
       Response.text "ok"
   | "/r2/get" -> (
       match R2.get (R2.of_env env "BUCKET") key with
-      | Some bytes -> Response.bytes bytes
+      | Some bytes -> Response.make bytes
       | None -> Response.text ~status:404 "none")
   | "/r2/head" -> (
       match R2.head (R2.of_env env "BUCKET") key with
@@ -121,7 +121,7 @@ let storage req env url =
       Cache.put key
         (Response.text
            ~headers:[ ("cache-control", "max-age=60"); ("x-cached", "yes") ]
-           (Request.body_text req));
+           (Request.text req));
       Response.text "ok"
   | "/cache/match" -> (
       match Cache.match_ key with
@@ -221,16 +221,16 @@ let handler req env ctx =
   | GET, "/hello" ->
       let name = Option.value (URL.query url "name") ~default:"world" in
       Response.text (Printf.sprintf "hello, %s\n" name)
-  | POST, "/echo" -> Response.text (Request.body_text req)
+  | POST, "/echo" -> Response.text (Request.text req)
   | POST, "/json/echo" -> (
-      match JSON.of_request_result req with
+      match JSON.parse req with
       | Ok json -> JSON.response json
-      | Error message -> JSON.bad_request message)
+      | Error message -> JSON.error message)
   | POST, "/json/user" -> (
       match JSON.decode Json_user.of_json req with
       | Ok user -> JSON.response (Json_user.to_json user)
-      | Error message -> JSON.bad_request ~status:422 message)
-  | POST, "/json/raise" -> JSON.response (JSON.of_request req)
+      | Error message -> JSON.error ~status:422 message)
+  | POST, "/json/raise" -> JSON.response (JSON.request req)
   | GET, "/json/custom" ->
       JSON.response ~status:201
         ~headers:[ ("Content-Type", "application/vnd.api+json"); ("x-a", "b") ]
@@ -243,8 +243,8 @@ let handler req env ctx =
       |> List.map (fun (k, v) -> k ^ "=" ^ v)
       |> String.concat ";" |> Response.text
   | _, "/bytes" ->
-      let body = Request.body_bytes req in
-      Response.bytes
+      let body = Request.bytes req in
+      Response.make
         ~headers:
           [
             ("content-type", "application/octet-stream");
@@ -268,7 +268,7 @@ let handler req env ctx =
         ~headers:[ ("Content-Type", "text/html; charset=latin1") ]
         "<p>gone</p>"
   | _, "/make" ->
-      Response.bytes ~status:202
+      Response.make ~status:202
         ~headers:[ ("content-type", "image/png"); ("x-a", "1") ]
         "\000\137PNG\255"
   | _, "/redirect" -> Response.redirect "http://test/hello"
@@ -299,12 +299,12 @@ let handler req env ctx =
       Response.text (Response.body_text (fetch (upstream ^ "/echo")))
   | _, "/fetch-raw" ->
       let res =
-        fetch ~method_:POST ~body:(Request.body_bytes req) (upstream ^ "/raw")
+        fetch ~method_:POST ~body:(Request.bytes req) (upstream ^ "/raw")
       in
-      Response.bytes (Response.body_bytes res)
+      Response.make (Response.body_bytes res)
   | _, "/fetch-headers" ->
       let res = fetch (upstream ^ "/bytes") in
-      Response.bytes
+      Response.make
         ~headers:
           [
             ( "x-upstream-headers",
