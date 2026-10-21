@@ -29,6 +29,11 @@ let () = Workero.serve handler
 The handler runs in direct style. It can wait for a body, for [`Workero.fetch`](./Workero.md#val-fetch) or for [`Workero.Promise.await`](./Workero-Promise.md#val-await). Other requests keep running while it waits.
 
 
+## Falling back to the origin
+
+[`Workero.Context.pass_through_on_exception`](./Workero-Context.md#val-pass_through_on_exception) makes the runtime send the request to the origin server when the handler raises. It needs a route with an origin. It has no effect on `workers.dev`.
+
+
 ## Cron triggers
 
 [`Workero.scheduled`](./Workero.md#val-scheduled) registers the handler for [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/). It gets a [`Workero.Scheduled.t`](./Workero-Scheduled.md#type-t), the `env` and the `ctx`, and returns `unit`.

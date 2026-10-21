@@ -1,4 +1,10 @@
-let handlers = [ Routes_stream.handle; Routes_form.handle; Routes_ws.handle ]
+let handlers =
+  [
+    Routes_stream.handle;
+    Routes_form.handle;
+    Routes_ws.handle;
+    Routes_context.handle;
+  ]
 
 let handler req env ctx =
   match List.find_map (fun h -> h req env ctx) handlers with

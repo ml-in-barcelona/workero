@@ -35,6 +35,12 @@ The handler runs in direct style. It can wait for a body, for
 {!Workero.fetch} or for {!Workero.Promise.await}. Other requests keep running
 while it waits.
 
+{1 Falling back to the origin}
+
+{!Workero.Context.pass_through_on_exception} makes the runtime send the request
+to the origin server when the handler raises. It needs a route with an origin.
+It has no effect on [workers.dev].
+
 {1 Cron triggers}
 
 {!Workero.scheduled} registers the handler for

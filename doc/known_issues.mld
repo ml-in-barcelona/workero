@@ -31,7 +31,6 @@ What does not work yet, and what behaves differently from what you may expect.
 
 {1 Not supported yet}
 
-- [passThroughOnException].
 - The [queue] event.
 
 {1 Report a problem}

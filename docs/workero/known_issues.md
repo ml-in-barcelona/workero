@@ -25,7 +25,6 @@ What does not work yet, and what behaves differently from what you may expect.
 
 ## Not supported yet
 
-- `passThroughOnException`.
 - The `queue` event.
 
 ## Report a problem
