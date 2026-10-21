@@ -1,5 +1,5 @@
 open Helpers
-module R = Workero.Router
+module Router = Workero.Router
 
 let env = Workero.Env.of_js (obj [||])
 let ctx = Workero.Context.of_js (obj [||])
@@ -10,13 +10,13 @@ let answer_id res =
   | None -> Alcotest.fail "no x-id header"
 
 let answer router meth path =
-  match R.find router meth path with
-  | R.Found (h, params) ->
+  match Router.find router meth path with
+  | Router.Found (h, params) ->
       let req = request ("http://test" ^ path) in
       `Found (answer_id (h params req env ctx), params)
-  | R.Method_not_allowed ms -> `Not_allowed ms
-  | R.Bad_request _ -> `Bad_request
-  | R.Not_found -> `Not_found
+  | Router.Method_not_allowed ms -> `Not_allowed ms
+  | Router.Bad_request _ -> `Bad_request
+  | Router.Not_found -> `Not_found
 
 let route_with meth path id =
   meth path (fun _ _ _ _ -> Workero.Response.text ~headers:[ ("x-id", id) ] "")
@@ -36,7 +36,7 @@ let get_ = Workero.Method.GET
 
 let value router meth path name =
   match answer router meth path with
-  | `Found (_, params) -> R.param params name
+  | `Found (_, params) -> Router.param params name
   | other -> Alcotest.failf "%s: %s" path (show other)
 
 let raises_invalid name f =
@@ -46,14 +46,14 @@ let raises_invalid name f =
 
 let test_static_param_catch_all () =
   let router =
-    R.make
+    Router.make
       [
-        route_with R.get "/" "root";
-        route_with R.get "/users/me" "me";
-        route_with R.get "/users/:id<string>" "user";
-        route_with R.get "/users/:id<string>/posts" "posts";
-        route_with R.get "/files/:rest<string...>" "files";
-        route_with R.get "/files/img/:name<string>" "img";
+        route_with Router.get "/" "root";
+        route_with Router.get "/users/me" "me";
+        route_with Router.get "/users/:id<string>" "user";
+        route_with Router.get "/users/:id<string>/posts" "posts";
+        route_with Router.get "/files/:rest<string...>" "files";
+        route_with Router.get "/files/img/:name<string>" "img";
       ]
   in
   check_answer router get_ "/" "found root";
@@ -70,11 +70,11 @@ let test_static_param_catch_all () =
 
 let test_params_decoded () =
   let router =
-    R.make
+    Router.make
       [
-        route_with R.get "/n/:id<string>" "n";
-        route_with R.get "/f/:rest<string...>" "f";
-        route_with R.get "/caf\xc3\xa9" "cafe";
+        route_with Router.get "/n/:id<string>" "n";
+        route_with Router.get "/f/:rest<string...>" "f";
+        route_with Router.get "/caf\xc3\xa9" "cafe";
       ]
   in
   let opt = Alcotest.(option string) in
@@ -88,7 +88,7 @@ let test_params_decoded () =
   check_answer router get_ "/caf%C3%A9" "found cafe"
 
 let test_bad_paths () =
-  let router = R.make [ route_with R.get "/:id<string>" "x" ] in
+  let router = Router.make [ route_with Router.get "/:id<string>" "x" ] in
   List.iter
     (fun path -> check_answer router get_ path "bad request")
     [
@@ -115,11 +115,11 @@ let test_bad_paths () =
 
 let test_typed_params () =
   let router =
-    R.make
+    Router.make
       [
-        route_with R.get "/i/:n<int>" "int";
-        route_with R.get "/b/:v<bool>" "bool";
-        route_with R.get "/m/:n<Note_id.t>" "module";
+        route_with Router.get "/i/:n<int>" "int";
+        route_with Router.get "/b/:v<bool>" "bool";
+        route_with Router.get "/m/:n<Note_id.t>" "module";
       ]
   in
   check_answer router get_ "/i/42" "found int";
@@ -135,17 +135,17 @@ let test_typed_params () =
 let test_methods () =
   let open Workero.Method in
   let router =
-    R.make
+    Router.make
       [
-        route_with R.get "/a" "get a";
-        route_with R.post "/a" "post a";
-        route_with R.delete "/a" "delete a";
-        route_with R.put "/b" "put b";
-        route_with R.any "/c" "any c";
-        route_with R.get "/c" "get c";
-        route_with R.patch "/p" "patch p";
-        route_with R.head "/h" "head h";
-        route_with R.options "/o" "options o";
+        route_with Router.get "/a" "get a";
+        route_with Router.post "/a" "post a";
+        route_with Router.delete "/a" "delete a";
+        route_with Router.put "/b" "put b";
+        route_with Router.any "/c" "any c";
+        route_with Router.get "/c" "get c";
+        route_with Router.patch "/p" "patch p";
+        route_with Router.head "/h" "head h";
+        route_with Router.options "/o" "options o";
       ]
   in
   check_answer router GET "/a" "found get a";
@@ -165,14 +165,14 @@ let test_methods () =
   check_answer router POST "/zzz" "not found"
 
 let test_make_rejects () =
-  let ok = route_with R.get in
+  let ok = route_with Router.get in
   let rejects name routes =
-    raises_invalid name (fun () -> ignore (R.make routes))
+    raises_invalid name (fun () -> ignore (Router.make routes))
   in
   rejects "duplicate" [ ok "/a" "1"; ok "/a" "2" ];
   rejects "duplicate params" [ ok "/a/:x<int>" "1"; ok "/a/:x<int>" "2" ];
   rejects "duplicate any"
-    [ route_with R.any "/a" "1"; route_with R.any "/a" "2" ];
+    [ route_with Router.any "/a" "1"; route_with Router.any "/a" "2" ];
   rejects "ambiguous names"
     [ ok "/u/:id<string>" "1"; ok "/u/:name<string>" "2" ];
   rejects "ambiguous crossing"
@@ -184,11 +184,11 @@ let test_make_rejects () =
   rejects "ambiguous crossing catch-all, other order"
     [ ok "/:s<string>/bar/:r<string...>" "2"; ok "/foo/:l<string...>" "1" ];
   ignore
-    (R.make
+    (Router.make
        [
          ok "/a" "1";
-         route_with R.post "/a" "2";
-         route_with R.any "/a" "3";
+         route_with Router.post "/a" "2";
+         route_with Router.any "/a" "3";
          ok "/a/:x<string>" "4";
          ok "/a/b/:x<string...>" "5";
          ok "/a/:x<string>/c" "6";
@@ -198,7 +198,7 @@ let test_invalid_patterns () =
   List.iter
     (fun path ->
       raises_invalid path (fun () ->
-          ignore (R.make [ route_with R.get path "x" ])))
+          ignore (Router.make [ route_with Router.get path "x" ])))
     [
       "a";
       "/a/";
@@ -229,63 +229,67 @@ let test_invalid_patterns () =
       "/:a<string...>/:b<string...>";
     ];
   ignore
-    (R.make
+    (Router.make
        [
-         route_with R.get "" "root";
-         route_with R.get "/a-b/c_d/e.f/~g/!$&'()*+,;=:@" "chars";
-         route_with R.get "/:id'_9<A.B_c.t>" "label";
-         route_with R.get "/x/:_<string>" "underscore";
+         route_with Router.get "" "root";
+         route_with Router.get "/a-b/c_d/e.f/~g/!$&'()*+,;=:@" "chars";
+         route_with Router.get "/:id'_9<A.B_c.t>" "label";
+         route_with Router.get "/x/:_<string>" "underscore";
        ])
 
 let test_scope_wrap () =
-  let wrap_tag : R.handler -> R.handler =
+  let wrap_tag : Router.handler -> Router.handler =
    fun h params req env ctx ->
     let res = h params req env ctx in
     Workero.Response.text ~headers:[ ("x-id", answer_id res ^ "!") ] ""
   in
   let router =
-    R.make
-      (R.scope "/api"
-         (R.scope "/v1"
-            (R.wrap wrap_tag
+    Router.make
+      (Router.scope "/api"
+         (Router.scope "/v1"
+            (Router.wrap wrap_tag
                [
-                 route_with R.get "/" "index";
-                 route_with R.get "/users/:id<string>" "user";
+                 route_with Router.get "/" "index";
+                 route_with Router.get "/users/:id<string>" "user";
                ])
-         @ [ route_with R.get "/health" "health" ]))
+         @ [ route_with Router.get "/health" "health" ]))
   in
   check_answer router get_ "/api/v1" "found index!";
   check_answer router get_ "/api/v1/users/7" "found user!";
   check_answer router get_ "/api/health" "found health";
   check_answer router get_ "/users/7" "not found";
-  let root = R.make (R.scope "/" [ route_with R.get "/a" "a" ]) in
+  let root =
+    Router.make (Router.scope "/" [ route_with Router.get "/a" "a" ])
+  in
   check_answer root get_ "/a" "found a";
   raises_invalid "scope with trailing slash" (fun () ->
-      ignore (R.scope "/api/" [ route_with R.get "/a" "a" ]));
+      ignore (Router.scope "/api/" [ route_with Router.get "/a" "a" ]));
   raises_invalid "scope catch-all prefix" (fun () ->
-      ignore (R.scope "/f/:r<string...>" [ route_with R.get "/a" "a" ]))
+      ignore
+        (Router.scope "/f/:r<string...>" [ route_with Router.get "/a" "a" ]))
 
 let test_param_exn () =
-  let router = R.make [ route_with R.get "/u/:id<string>" "u" ] in
+  let router = Router.make [ route_with Router.get "/u/:id<string>" "u" ] in
   match answer router get_ "/u/1" with
   | `Found (_, params) ->
-      Alcotest.(check string) "present" "1" (R.param_exn params "id");
-      raises_invalid "absent" (fun () -> ignore (R.param_exn params "nope"))
+      Alcotest.(check string) "present" "1" (Router.param_exn params "id");
+      raises_invalid "absent" (fun () ->
+          ignore (Router.param_exn params "nope"))
   | other -> Alcotest.fail (show other)
 
 let run ?(init = []) router path =
   let res =
-    R.to_handler router (request ~init ("http://test" ^ path)) env ctx
+    Router.to_handler router (request ~init ("http://test" ^ path)) env ctx
   in
   (Workero.Response.status res, Workero.Response.header res)
 
 let test_to_handler () =
   let router =
-    R.make
+    Router.make
       [
-        route_with R.get "/a" "a";
-        route_with R.post "/a" "post";
-        route_with R.get "/q/:id<int>" "q";
+        route_with Router.get "/a" "a";
+        route_with Router.post "/a" "post";
+        route_with Router.get "/q/:id<int>" "q";
       ]
   in
   let status, header = run router "/a" in
@@ -302,12 +306,12 @@ let test_to_handler () =
   let status, _ = run router "/a%2Fb" in
   Alcotest.(check int) "400 slash" 400 status;
   let custom =
-    R.make
+    Router.make
       ~not_found:(fun _ _ _ _ ->
         Workero.Response.text ~status:`Not_Found
           ~headers:[ ("x-id", "custom") ]
           "")
-      [ route_with R.get "/a" "a" ]
+      [ route_with Router.get "/a" "a" ]
   in
   let status, header = run custom "/missing" in
   Alcotest.(check (pair int (option string)))
@@ -315,8 +319,10 @@ let test_to_handler () =
     (status, header "x-id")
 
 let test_trailing_slash () =
-  let routes = [ route_with R.get "/a" "a"; route_with R.get "/" "root" ] in
-  let router = R.make routes in
+  let routes =
+    [ route_with Router.get "/a" "a"; route_with Router.get "/" "root" ]
+  in
+  let router = Router.make routes in
   let status, header = run router "/a/" in
   Alcotest.(check int) "308" 308 status;
   Alcotest.(check (option string)) "location" (Some "/a") (header "location");
@@ -328,7 +334,7 @@ let test_trailing_slash () =
   Alcotest.(check int) "protocol-relative is not redirected" 404 status;
   let status, _ = run router "/" in
   Alcotest.(check int) "root" 200 status;
-  let reject = R.make ~trailing_slash:`Reject routes in
+  let reject = Router.make ~trailing_slash:`Reject routes in
   let status, _ = run reject "/a/" in
   Alcotest.(check int) "reject" 404 status
 
