@@ -30,6 +30,7 @@ The pages follow the order of a Worker project.
   {{!page-d1}D1}, {{!page-fetcher}Fetcher}, {{!page-queue}Queue},
   {{!page-rate_limiter}Rate limiting}, {{!page-ai}Workers AI} and
   {{!page-analytics_engine}Analytics Engine}.
+- {{!page-durable_objects}Durable Objects}: classes, stubs, storage and alarms.
 - {{!page-logging}Logging}: output and [Workero.Console].
 - {{!page-globals}JavaScript globals}: timers, [Date], [crypto].
 - {{!page-testing}Testing and limits}.

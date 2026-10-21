@@ -8,7 +8,17 @@ exception Js_error of Jp.error
 
 type _ Effect.t += Await : 'a Jp.t -> 'a Effect.t
 
-let await p = perform (Await p)
+let blocked = ref None
+
+let await p =
+  match !blocked with
+  | Some who -> invalid_arg (who ^ ": Promise.await is not allowed here")
+  | None -> perform (Await p)
+
+let no_await ~who f =
+  let saved = !blocked in
+  blocked := Some who;
+  Fun.protect ~finally:(fun () -> blocked := saved) f
 
 let promising (f : 'a) : js =
   call (Js.Unsafe.get (global "__workero") "promisify") [| Js.Unsafe.inject f |]

@@ -163,6 +163,11 @@ module Analytics_engine : sig ... end
 A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
 
 ```ocaml
+module Durable_object : sig ... end
+```
+Durable Objects with SQLite storage.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.

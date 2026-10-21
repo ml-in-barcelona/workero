@@ -24,6 +24,7 @@
   test_ai
   test_analytics_engine
   test_sql_value
+  test_durable_object
   test_decode
   test_globals
   test_router)

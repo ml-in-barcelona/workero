@@ -91,3 +91,52 @@ for fixture in missing missing-pretty; do
   [ -f "$out/index.js" ] || fail "$fixture: the worker is written with the flag"
   echo "ok - $fixture: --allow-missing-primitives warns and writes the worker"
 done
+
+rm -rf "$out"
+workero test/cli/durable-objects/main.bc.wasm.js || fail "a program with Durable Object classes builds"
+grep -q "workero: Durable Object classes: Alpha, Beta, Error, WorkeroDurableObject, class" "$log" || fail "build lists the Durable Object classes"
+[ -f "$out/durable-object.js" ] || fail "durable-object.js is written when a class is registered"
+for class in Alpha Beta class WorkeroDurableObject Error; do
+  grep -q "^export { workero_class_[0-9]* as $class };" "$out/index.js" ||
+    fail "index.js exports the class $class"
+done
+for probe in workero-probe.mjs workero-probe.capnp workero-probe.log; do
+  [ ! -e "$out/$probe" ] || fail "build removes $probe"
+done
+echo "ok - build exports the registered Durable Object classes"
+
+workero test/cli/present/main.bc.wasm.js || fail "a rebuild without classes builds"
+[ ! -e "$out/durable-object.js" ] || fail "a rebuild without classes removes durable-object.js"
+grep -q "WorkeroDurableObject" "$out/index.js" && fail "a rebuild without classes drops the class exports"
+echo "ok - a program without classes has no Durable Object glue"
+
+probe_files() {
+  for probe in workero-probe.mjs workero-probe.capnp workero-probe.log; do
+    [ ! -e "$out/$probe" ] || fail "$1 leaves $probe in the output"
+  done
+}
+
+rm -rf "$out"
+if workero test/worker-init/main.bc.wasm.js; then fail "build fails when program initialisation raises"; fi
+probe_files "a failing probe"
+echo "ok - a failing probe leaves no probe files"
+
+rm -rf "$out"
+if WORKERO_PROBE_TIMEOUT=2 workero test/cli/hang/main.bc.wasm.js; then fail "build fails when initialisation never ends"; fi
+grep -q "did not finish initialising in workerd within 2 seconds" "$log" || fail "the error reports the timeout"
+probe_files "a timed out probe"
+echo "ok - build fails when initialisation does not end in time"
+
+rm -rf "$out"
+WORKERD=workerd workero test/cli/present/main.bc.wasm.js || fail "WORKERD with a bare name is resolved through PATH"
+echo "ok - WORKERD with a bare name is resolved through PATH"
+
+rm -rf "$out"
+if WORKERD=nonexistent-workerd workero test/cli/present/main.bc.wasm.js; then fail "a bare WORKERD that is not on PATH fails"; fi
+grep -q "workero: WORKERD is set to nonexistent-workerd, which does not exist" "$log" || fail "the error names the missing bare workerd"
+echo "ok - a bare WORKERD that is not on PATH fails"
+
+rm -rf "$out"
+if WORKERD=/nonexistent/workerd workero test/cli/present/main.bc.wasm.js; then fail "build fails without workerd"; fi
+grep -q "workero: WORKERD is set to /nonexistent/workerd, which does not exist" "$log" || fail "the error names the missing workerd"
+echo "ok - build fails when workerd is missing"

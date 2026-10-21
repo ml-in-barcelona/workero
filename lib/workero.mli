@@ -41,6 +41,7 @@ module Queue = Queue
 module Rate_limiter = Rate_limiter
 module Ai = Ai
 module Analytics_engine = Analytics_engine
+module Durable_object = Durable_object
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like
