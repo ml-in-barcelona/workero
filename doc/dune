@@ -5,6 +5,7 @@
   getting_started
   handlers
   requests
+  router
   streams
   forms
   websockets

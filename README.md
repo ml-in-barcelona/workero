@@ -37,6 +37,21 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ```
 
+`Workero.Router` matches methods and paths with parameters, as in
+`/users/:id<int>` and `/files/:rest<string...>`. It answers 404, 405 and 400
+itself:
+
+```ocaml
+let router =
+  Workero.Router.make
+    [
+      Workero.Router.get "/users/:id<int>" (fun params _req _env _ctx ->
+          Workero.Response.text (Workero.Router.param_exn params "id"));
+    ]
+
+let () = Workero.serve (Workero.Router.to_handler router)
+```
+
 Register a Cron Trigger handler with `Workero.scheduled`. It can run alongside
 `Workero.serve`, or on its own. Add the schedule to `wrangler.toml`:
 

@@ -6,6 +6,7 @@
 - `JSON.of_js` and `JSON.to_js` convert between JavaScript values and `Jsonkit.t` through `JSON.stringify` and `JSON.parse`.
 - `Workero.Secret_store`: Secrets Store secrets (`of_env`, `get`).
 - `Workero.Fetcher`: service bindings and assets (`of_env`, `fetch`, `fetch_request`), the type that Durable Object stubs will use.
+- `Workero.Router`: routes with `get`, `post` and the other methods, `any`, `scope`, `wrap`, `make`, `find` and `to_handler`. Patterns follow the server-reason-react route syntax: `/users/:id<int>`, `/files/:rest<string...>`. Static beats parameter beats catch-all; `make` rejects duplicate and ambiguous routes. `to_handler` answers 400, 404, 405 with `Allow`, and a 308 for trailing slashes.
 - `URL.pathname`, `URL.search`, `URL.hash` and `URL.origin` give the raw parts of a URL, as the JavaScript `URL` does.
 - `Context.pass_through_on_exception` binds `ctx.passThroughOnException()`. It needs a route with an origin.
 - `serve` and `scheduled` flush standard output and standard error when a handler ends, also when it raises, so `print_string` and `Printf.printf` reach the logs without `%!`. Output from a `wait_until` function that runs after the handler returns appears when the next handler ends.

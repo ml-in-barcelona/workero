@@ -21,7 +21,8 @@
   test_fetcher
   test_sql_value
   test_decode
-  test_globals)
+  test_globals
+  test_router)
  (modules :standard \ helpers test_json)
  (modes js)
  (libraries helpers workero jsonkit alcotest js_of_ocaml))

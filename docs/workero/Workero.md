@@ -60,6 +60,9 @@ module Context : sig ... end
 The `ctx` argument of a Worker handler.
 
 ```ocaml
+module Router : sig ... end
+```
+```ocaml
 module Scheduled : sig ... end
 ```
 The `controller` argument of a Worker `scheduled` handler.
