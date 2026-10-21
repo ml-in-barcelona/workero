@@ -1,7 +1,7 @@
 
 # Requests and responses
 
-This page covers the types of one HTTP exchange: the [`Workero.Request`](./Workero-Request.md), the [`Workero.Response`](./Workero-Response.md), the [`Workero.URL`](./Workero-URL.md) and the [`Workero.Method`](./Workero-Method.md). It also covers JSON and the outgoing [`Workero.fetch`](./Workero.md#val-fetch).
+This page covers [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.URL`](./Workero-URL.md), [`Workero.Method`](./Workero-Method.md), JSON and the outgoing [`Workero.fetch`](./Workero.md#val-fetch).
 
 ```ocaml
 let handler req _env _ctx =

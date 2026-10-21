@@ -1,7 +1,7 @@
 
 # How it works
 
-A workero Worker is a WebAssembly module that a small JavaScript entry point loads and calls. You write only OCaml. This page names the parts.
+A workero Worker is a WebAssembly module that a small JavaScript entry point loads and calls. You write only OCaml.
 
 
 ## Compilation: wasm\_of\_ocaml
@@ -20,7 +20,7 @@ The OCaml library reaches the runtime APIs (`Request`, `Response`, `fetch`, bind
 
 ## Async: JSPI
 
-wasm\_of\_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly for effects. [`Workero.Promise.await`](./Workero-Promise.md#val-await) performs an OCaml 5 effect inside the library. Your code does not use effects. The handler is suspended, the JavaScript event loop continues, and the handler resumes when the Promise settles. This is why a handler is plain OCaml with no promise chains. See [Waiting for JavaScript](./async.md) for the steps.
+wasm\_of\_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly for effects. [`Workero.Promise.await`](./Workero-Promise.md#val-await) performs an OCaml 5 effect inside the library. The handler is suspended, the JavaScript event loop continues, and the handler resumes when the Promise settles. See [Waiting for JavaScript](./async.md) for the steps.
 
 
 ## Bundling: workero build

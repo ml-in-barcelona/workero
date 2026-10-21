@@ -64,7 +64,7 @@ It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `work
 - `dune build` fails (`workero build` only),
 - dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
 - the target is outside the dune root (`workero build` only),
-- the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They would fail at run time. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, or drop the library that needs them.
+- the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They fail at run time if called. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, drop the library that needs them, or pass `--allow-missing-primitives` if they are never called.
 The check also works for programs built with `--pretty` in `wasm_of_ocaml` `flags`.
 
 
@@ -84,7 +84,7 @@ wasm\_of\_ocaml needs `wasm-opt` from binaryen 119 or later on `PATH`. The npm p
 
 ## Advanced: a dune rule
 
-If you prefer dune to own the whole build, call `workero package` from a rule in the `dune` file next to the executable:
+To let dune own the whole build, call `workero package` from a rule in the `dune` file next to the executable:
 
 ```dune
 (executable
@@ -98,7 +98,7 @@ If you prefer dune to own the whole build, call `workero package` from a rule in
  (action
   (run %{bin:workero} package main.bc.wasm.js --out worker)))
 ```
-`dune build --profile release src/worker` builds the executable and writes the worker to `_build/default/src/worker`. The profile, the build directory and watch mode stay in your hands, as with any other dune target.
+`dune build --profile release src/worker` builds the executable and writes the worker to `_build/default/src/worker`.
 
 Point Wrangler at the built directory:
 

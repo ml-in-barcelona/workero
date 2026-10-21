@@ -23,12 +23,12 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-[`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) takes a `~decode` function. It turns the resolved JavaScript value into an OCaml value. If `decode` raises, the Promise rejects, and [`Workero.Promise.await`](./Workero-Promise.md#val-await) re-raises that exception, for example `Invalid_argument "Workero.Decode: expected string, got number"`.
+[`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) takes a `~decode` function. It turns the resolved JavaScript value into an OCaml value. If `decode` raises, the Promise rejects and [`Workero.Promise.await`](./Workero-Promise.md#val-await) re-raises that exception, for example `Invalid_argument "Workero.Decode: expected string, got number"`.
 
 
 ## Decode
 
-[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js_value`](./Workero.md#type-js_value). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` also reads properties of a function. `field` reads one property of an object:
+[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js_value`](./Workero.md#type-js_value). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` reads one property of an object or a function:
 
 ```ocaml
 open Js_of_ocaml

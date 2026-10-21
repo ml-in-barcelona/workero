@@ -3,7 +3,7 @@
 
 Write a Cloudflare Worker entirely in OCaml. workero compiles your program to WebAssembly with wasm\_of\_ocaml, and its library gives you the [runtime APIs](https://developers.cloudflare.com/workers/runtime-apis/): requests, responses, `fetch`, variables, secrets and cron triggers.
 
-By following this guide you build a Worker, run it locally and deploy it.
+This guide builds a Worker, runs it locally and deploys it.
 
 
 ## Prerequisites
@@ -80,4 +80,4 @@ npx wrangler deploy
 ```
 Preview the Worker at `<your-worker>.<your-subdomain>.workers.dev`. The first deploy to a new subdomain can answer with [523](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-523/) errors until DNS propagates, which takes about a minute.
 
-You now have an OCaml Worker deployed. To learn how it works, read [How it works](./how_it_works.md). To test it, read [Testing and limits](./testing.md).
+To learn how it works, read [How it works](./how_it_works.md). To test it, read [Testing and limits](./testing.md).

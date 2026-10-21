@@ -10,10 +10,10 @@ type t =
       (** [Blob] holds raw bytes.
 
           SQL APIs on the Workers runtime carry numbers as JavaScript numbers,
-          which are 64-bit floats. An [Int] is therefore exact only within
-          ±2{^ 53}, and a column holding [1.0] cannot be told apart from [1]:
-          both are read as [Int 1L]. [Float] is read only for numbers with a
-          fractional part or beyond 2{^ 53}. *)
+          which are 64-bit floats. An [Int] is exact only within ±2{^ 53}, and a
+          column holding [1.0] cannot be told apart from [1]: both are read as
+          [Int 1L]. [Float] is read only for numbers with a fractional part or
+          beyond 2{^ 53}. *)
 
 type row = (string * t) list
 (** The columns of a row in result order, with their names. *)

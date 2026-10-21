@@ -1,7 +1,7 @@
 
 # Handlers
 
-A worker answers events. workero has one handler for each kind of event that a worker can get: [`Workero.serve`](./Workero.md#val-serve) for HTTP requests and [`Workero.scheduled`](./Workero.md#val-scheduled) for cron triggers. Register a handler once, at the top level of your program.
+A worker answers events. workero has one handler for each kind of event: [`Workero.serve`](./Workero.md#val-serve) for HTTP requests and [`Workero.scheduled`](./Workero.md#val-scheduled) for cron triggers. Register a handler once, at the top level of your program.
 
 
 ## HTTP requests

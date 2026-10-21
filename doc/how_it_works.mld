@@ -1,7 +1,7 @@
 {0 How it works}
 
 A workero Worker is a WebAssembly module that a small JavaScript entry point
-loads and calls. You write only OCaml. This page names the parts.
+loads and calls. You write only OCaml.
 
 {1 Compilation: wasm_of_ocaml}
 
@@ -29,19 +29,17 @@ not wrap, see {{!page-interop}JavaScript interop}.
 
 wasm_of_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly
 for effects. {!Workero.Promise.await} performs an OCaml 5 effect inside the
-library. Your code does not use effects. The handler is suspended, the
-JavaScript event loop continues, and the handler resumes when the Promise
-settles. This is why a handler is plain OCaml with no promise chains. See
+library. The handler is suspended, the JavaScript event loop continues, and the
+handler resumes when the Promise settles. See
 {{!page-async}Waiting for JavaScript} for the steps.
 
 {1 Bundling: workero build}
 
-[workero build src/main.bc.wasm.js] is the counterpart of [worker-build] in other
-languages. It builds the executable (in the release profile unless you pass another
-profile), checks that it
-has no missing primitives, and writes the directory that Wrangler bundles and
-deploys. See {{!page-cli}the CLI}. The template runs it as the [[build]]
-command of [wrangler.toml].
+[workero build src/main.bc.wasm.js] is the counterpart of [worker-build] in
+other languages. It builds the executable (in the release profile unless you
+pass another profile), checks that it has no missing primitives, and writes the
+directory that Wrangler bundles and deploys. See {{!page-cli}the CLI}. The
+template runs it as the [[build]] command of [wrangler.toml].
 
 {1 Binary size: wasm-opt}
 
