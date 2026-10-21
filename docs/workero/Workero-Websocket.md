@@ -1,9 +1,9 @@
 
 # Module `Workero.Websocket`
 
-WebSockets served by the Worker, read by pulling events with [`receive`](./#val-receive).
+WebSockets served by the Worker, read by pulling events with [`receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive).
 
-Functions that raise [`Js_error`](./Workero.md#exception-Js_error) do so when the runtime throws. `receive` suspends like [`Promise.await`](./Workero-Promise.md#val-await).
+Functions that raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) do so when the runtime throws. `receive` suspends like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
 
 ```ocaml
 type t
@@ -42,7 +42,7 @@ val accept : t -> unit
 ```ocaml
 val send : t -> message -> unit
 ```
-Raises [`Js_error`](./Workero.md#exception-Js_error) when the socket is closed.
+Raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the socket is closed.
 
 ```ocaml
 val receive : t -> event

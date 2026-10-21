@@ -3,7 +3,7 @@
 
 Byte streams: a JavaScript `ReadableStream` and its readers and writers.
 
-Functions that say "Suspends" suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects.
+Functions that say "Suspends" suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects.
 
 ```ocaml
 type t
@@ -19,7 +19,7 @@ module Writer : sig ... end
 ```ocaml
 val reader : t -> Reader.t
 ```
-Locks the stream. Raises [`Js_error`](./Workero.md#exception-Js_error) when it is already locked.
+Locks the stream. Raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when it is already locked.
 
 ```ocaml
 val iter : (string -> unit) -> t -> unit

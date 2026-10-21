@@ -1,0 +1,49 @@
+{0 JSON}
+
+{!Workero.JSON} reads and writes JSON values of type [Jsonkit.t]. It does not
+re-export jsonkit. Add [jsonkit] to your dune [libraries] and [jsonkit.ppx] to
+[preprocess] when you derive decoders:
+
+{@dune[
+(executable
+ (name main)
+ (modes wasm)
+ (preprocess
+  (pps jsonkit.ppx))
+ (libraries workero jsonkit))
+]}
+
+This handler decodes a request body into a record and returns JSON. The handler
+chooses the response for a decode error:
+
+{@ocaml[
+open Jsonkit.Primitives
+
+type user = { name : string; age : int } [@@deriving json]
+
+let handler req _env _ctx =
+  match Workero.JSON.decode user_of_json req with
+  | Ok user -> Workero.JSON.response (user_to_json user)
+  | Error message -> Workero.JSON.error message
+
+let () = Workero.serve handler
+]}
+
+{!Workero.JSON.decode} reads the body once and returns a result. It returns
+[Error message] for invalid JSON or when the decoder raises
+[Jsonkit.Of_json_error]. It does not itself send a 400 response. An exception
+of another kind from the decoder escapes the handler unless you catch it.
+
+Use {!Workero.JSON.parse} to read a [Jsonkit.t] without decoding it. It also
+returns a result. {!Workero.JSON.request} instead raises
+[Jsonkit.Of_string_error] for invalid JSON. If this exception escapes the
+handler, the runtime answers with status 500.
+
+{!Workero.JSON.response} sends compact JSON with status 200 and
+[content-type: application/json; charset=utf-8] by default.
+{!Workero.JSON.error} sends an [{"error": message}] object with status 400 by
+default. You can choose the response status in either function.
+
+Without the ppx, write a decoder with [Jsonkit.Of_json]. See {!Workero.JSON}
+for an example and the complete API. See
+{{!page-requests}Requests and responses} for other body and response formats.

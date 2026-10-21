@@ -1,31 +1,26 @@
 
 # Logging
 
-Standard output and standard error of the OCaml program reach the Workers logs. Use `wrangler dev`, `wrangler tail` or the dashboard to read them.
+Use [`Workero.Console`](./Workero-Console.md) for one log entry at a chosen level. Use OCaml standard output or standard error when your code already writes there. This Worker logs a warning for a request method it does not serve.
 
 ```ocaml
-let handler _req _env _ctx =
-  print_endline "request received";
-  Printf.printf "answering with %d" 200;
-  prerr_endline "this goes to the error log";
-  Workero.Response.text "ok\n"
+let handler req _env _ctx =
+  let open Workero in
+  match Request.method_ req with
+  | GET ->
+      Console.info "serving GET";
+      Response.text "ok\n"
+  | _ ->
+      Console.warn "request method not allowed";
+      Response.text ~status:`Method_Not_Allowed "method not allowed\n"
 
 let () = Workero.serve handler
 ```
-Workero flushes standard output and standard error when a [`Workero.serve`](./Workero.md#val-serve) or [`Workero.scheduled`](./Workero.md#val-scheduled) handler ends, also when it raises. `print_string` and `Printf.printf` need no newline and no `%!`.
-
-Output written after the handler ends, for example from a function given to [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until), stays in the buffer until the next handler ends. Flush it with `flush stdout` or `%!`.
+Run `npx wrangler dev` in one terminal and `curl -i -X POST http://localhost:8787/` in a second terminal. The response has status 405\. Wrangler prints `request method not allowed` as a warning. Use `npx wrangler tail` or the Cloudflare dashboard for a deployed Worker. See [Workers logs](https://developers.cloudflare.com/workers/observability/logs/).
 
 
-## Console
+## Console and standard output
 
-[`Workero.Console`](./Workero-Console.md) writes to the global `console`. Each call is one log entry with a level: `log`, `info`, `warn`, `error` or `debug`. It needs no flush.
+[`Workero.Console.log`](https://ml-in-barcelona.github.io/workero/workero/Workero/Console/index.html#val-log), `info`, `warn`, `error`, and `debug` call the global `console`. Each call writes one entry without an OCaml buffer to flush. Standard output and standard error also reach Workers logs, but they use OCaml buffers. Workero flushes those buffers when a [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) or [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled) handler finishes, even if it raises. Thus `Printf.printf` inside a handler needs no newline or `%!` to appear when the handler ends.
 
-```ocaml
-let handler _req _env _ctx =
-  Workero.Console.info "request received";
-  Workero.Console.warn "disk is almost full";
-  Workero.Response.text "ok\n"
-
-let () = Workero.serve handler
-```
+Output written after the handler ends, for example from a function given to [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until), stays in the buffer until the next handler ends. Flush `stdout` or `stderr` there if the entry must appear at once, or use [`Workero.Console`](./Workero-Console.md).

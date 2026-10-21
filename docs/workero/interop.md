@@ -1,9 +1,9 @@
 
 # JavaScript interop
 
-Every workero type that wraps a JavaScript object has two conversions: `of_js` and `to_js`. The types are [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Context`](./Workero-Context.md), [`Workero.Scheduled`](./Workero-Scheduled.md), [`Workero.Cf`](./Workero-Cf.md), [`Workero.KV`](./Workero-KV.md), [`Workero.R2`](./Workero-R2.md), [`Workero.D1`](./Workero-D1.md) and [`Workero.Promise`](./Workero-Promise.md). They let you call a JavaScript API that workero does not wrap.
+These modules expose `of_js` and `to_js` to cross the JavaScript boundary: [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Stream`](./Workero-Stream.md), [`Workero.Form_data`](./Workero-Form_data.md), [`Workero.Websocket`](./Workero-Websocket.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Context`](./Workero-Context.md), [`Workero.Scheduled`](./Workero-Scheduled.md), [`Workero.Cf`](./Workero-Cf.md), [`Workero.KV`](./Workero-KV.md), [`Workero.R2`](./Workero-R2.md), [`Workero.D1`](./Workero-D1.md), [`Workero.Sql_value`](./Workero-Sql_value.md) and [`Workero.Promise`](./Workero-Promise.md). Check each linked signature for its conversion types: [`Workero.Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js), for example, requires a decoder. Other modules need not expose a pair. [`Workero.URL`](./Workero-URL.md) parses from a string and has no `of_js`/`to_js` pair. Use the supported conversions to call a JavaScript API that workero does not wrap.
 
-[`Workero.js_value`](./Workero.md#type-js_value) is the type of a raw, unchecked JavaScript value. It is the same type as `Js_of_ocaml.Js.Unsafe.any`. Module signatures show the jsoo name. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings. Workero already wraps timers, `Date`, `crypto` and `console`. See [JavaScript globals](./globals.md).
+[`Workero.js_value`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#type-js_value) is the type of a raw, unchecked JavaScript value. It is the same type as `Js_of_ocaml.Js.Unsafe.any`. Module signatures show the jsoo name. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings. Workero already wraps timers, `Date`, random-value functions, and `console`. See [Timers, time, and randomness](./globals.md) and [Logging](./logging.md).
 
 ```ocaml
 open Js_of_ocaml
@@ -23,12 +23,12 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-[`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) takes a `~decode` function. It turns the resolved JavaScript value into an OCaml value. If `decode` raises, the Promise rejects and [`Workero.Promise.await`](./Workero-Promise.md#val-await) re-raises that exception, for example `Invalid_argument "Workero.Decode: expected string, got number"`.
+[`Workero.Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js) takes a `~decode` function. It turns the resolved JavaScript value into an OCaml value. If `decode` raises, the Promise rejects and [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) re-raises that exception, for example `Invalid_argument "Workero.Decode: expected string, got number"`.
 
 
 ## Decode
 
-[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js_value`](./Workero.md#type-js_value). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` reads one property of an object or a function:
+[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js_value`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#type-js_value). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` reads one property of an object or a function:
 
 ```ocaml
 open Js_of_ocaml

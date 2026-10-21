@@ -52,10 +52,10 @@ val stream :
   Context.t ->
   (Stream.Writer.t -> unit) ->
   t
-(** [stream ctx f] answers at once. [f] runs in its own fiber (see
-    {!Context.wait_until}), may suspend, and ends the body when it returns. If
-    [f] raises, the body is aborted and the error is written with
-    [console.error]. *)
+(** [stream ctx f] starts [f] in its own fiber (see {!Context.wait_until}).
+    Synchronous work before the first suspension can delay the response. [f] may
+    suspend and ends the body when it returns. If [f] raises, the body is
+    aborted and the error is written with [console.error]. *)
 
 val redirect : ?status:[< Status.redirect ] -> string -> t
 (** [redirect url] answers with a [location] header. [url] may be relative, such
@@ -82,9 +82,12 @@ val clone : t -> t
 
 val copy :
   ?status:[< Status.with_body ] -> ?headers:(string * string) list -> t -> t
-(** [copy res] is [new Response(res.body, init)]: the same body, moved, so [res]
-    is used up. [status] and [headers] replace those of [res]. Use it to edit
-    the headers of a [fetch] result, which may be frozen. *)
+(** [copy res] is [new Response(res.body, init)]. Both responses share the same
+    body stream, which can be consumed only once. Use {!clone} first if both
+    responses need to read it. Omitted [status] and [headers] keep those of
+    [res]. Supplied [headers] replace the entire header list, so include
+    existing headers if you need to preserve them. Use it to edit the headers of
+    a [fetch] result, which may be frozen. *)
 
 val body_text : t -> string
 (** Reads the whole body as UTF-8 text. Suspends like {!Promise.await}. *)

@@ -1,7 +1,7 @@
 
 # Module `Workero.Decode`
 
-Decoders for raw JavaScript values, for [`Promise.of_js`](./Workero-Promise.md#val-of_js). A decoder raises `Invalid_argument` naming the expected and the actual JavaScript type.
+Decoders for raw JavaScript values, for [`Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js). A decoder raises `Invalid_argument` naming the expected and the actual JavaScript type.
 
 ```ocaml
 type 'a t = Js_of_ocaml.Js.Unsafe.any -> 'a

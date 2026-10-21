@@ -11,9 +11,9 @@ val text :
   string ->
   t
 ```
-A UTF-8 text body. The runtime sets `content-type` to `text/plain;charset=UTF-8` unless `headers` has one. `status` is 200 by default. The type of `status` leaves out the statuses that allow no body (``No_Content`, ``Reset_Content`, ``Not_Modified`); use [`empty`](./#val-empty) for those. ``Status n` can still name one: with the empty string it works, and the body is sent as no body.
+A UTF-8 text body. The runtime sets `content-type` to `text/plain;charset=UTF-8` unless `headers` has one. `status` is 200 by default. The type of `status` leaves out the statuses that allow no body (``No_Content`, ``Reset_Content`, ``Not_Modified`); use [`empty`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-empty) for those. ``Status n` can still name one: with the empty string it works, and the body is sent as no body.
 
-Raises `Invalid_argument` when ``Status n` has `n` outside 200 to 599 (the runtime accepts no other code), or when `n` is 204, 205 or 304 and the body is not empty. The same holds for [`html`](./#val-html), [`make`](./#val-make), [`of_stream`](./#val-of_stream), [`stream`](./#val-stream), [`copy`](./#val-copy) and [`empty`](./#val-empty).
+Raises `Invalid_argument` when ``Status n` has `n` outside 200 to 599 (the runtime accepts no other code), or when `n` is 204, 205 or 304 and the body is not empty. The same holds for [`html`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-html), [`make`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-make), [`of_stream`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-of_stream), [`stream`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-stream), [`copy`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-copy) and [`empty`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-empty).
 
 ```ocaml
 val html : 
@@ -22,7 +22,7 @@ val html :
   string ->
   t
 ```
-Like [`text`](./#val-text), with `content-type: text/html; charset=utf-8` unless `headers` has a `content-type`.
+Like [`text`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-text), with `content-type: text/html; charset=utf-8` unless `headers` has a `content-type`.
 
 ```ocaml
 val make : 
@@ -58,7 +58,7 @@ val stream :
   (Stream.Writer.t -> unit) ->
   t
 ```
-`stream ctx f` answers at once. `f` runs in its own fiber (see [`Context.wait_until`](./Workero-Context.md#val-wait_until)), may suspend, and ends the body when it returns. If `f` raises, the body is aborted and the error is written with `console.error`.
+`stream ctx f` starts `f` in its own fiber (see [`Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until)). Synchronous work before the first suspension can delay the response. `f` may suspend and ends the body when it returns. If `f` raises, the body is aborted and the error is written with `console.error`.
 
 ```ocaml
 val redirect : ?status:[< Status.redirect ] -> string -> t
@@ -71,17 +71,17 @@ val status : t -> int
 ```ocaml
 val header : t -> string -> string option
 ```
-See [`Request.header`](./Workero-Request.md#val-header). A `set-cookie` value is not usable here: use [`header_all`](./#val-header_all).
+See [`Request.header`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-header). A `set-cookie` value is not usable here: use [`header_all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-header_all).
 
 ```ocaml
 val header_all : t -> string -> string list
 ```
-See [`Request.header_all`](./Workero-Request.md#val-header_all).
+See [`Request.header_all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-header_all).
 
 ```ocaml
 val headers : t -> (string * string) list
 ```
-See [`Request.headers`](./Workero-Request.md#val-headers).
+See [`Request.headers`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-headers).
 
 ```ocaml
 val body : t -> Stream.t option
@@ -100,17 +100,17 @@ val copy :
   t ->
   t
 ```
-`copy res` is `new Response(res.body, init)`: the same body, moved, so `res` is used up. `status` and `headers` replace those of `res`. Use it to edit the headers of a `fetch` result, which may be frozen.
+`copy res` is `new Response(res.body, init)`. Both responses share the same body stream, which can be consumed only once. Use [`clone`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-clone) first if both responses need to read it. Omitted `status` and `headers` keep those of `res`. Supplied `headers` replace the entire header list, so include existing headers if you need to preserve them. Use it to edit the headers of a `fetch` result, which may be frozen.
 
 ```ocaml
 val body_text : t -> string
 ```
-Reads the whole body as UTF-8 text. Suspends like [`Promise.await`](./Workero-Promise.md#val-await).
+Reads the whole body as UTF-8 text. Suspends like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
 
 ```ocaml
 val body_bytes : t -> string
 ```
-Reads the whole body as raw bytes. Suspends like [`Promise.await`](./Workero-Promise.md#val-await).
+Reads the whole body as raw bytes. Suspends like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t

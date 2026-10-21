@@ -70,8 +70,8 @@ val all_settled : 'a t list -> ('a, error) result list t
 val of_js :
   decode:(Js_of_ocaml.Js.Unsafe.any -> 'a) -> Js_of_ocaml.Js.Unsafe.any -> 'a t
 (** [of_js ~decode p] reads a raw JavaScript Promise and applies [decode] to its
-    resolved value. If [decode] raises, the promise rejects with an [Error] that
-    names the exception, so {!await} raises {!Js_error}. See {!Decode}. *)
+    resolved value. If [decode] raises, {!await} re-raises the original OCaml
+    exception. See {!Decode}. *)
 
 val to_js : 'a t -> Js_of_ocaml.Js.Unsafe.any
 (** The underlying JavaScript Promise. A thenable it resolves with is boxed, so

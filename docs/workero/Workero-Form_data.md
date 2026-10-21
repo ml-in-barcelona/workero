@@ -1,9 +1,9 @@
 
 # Module `Workero.Form_data`
 
-Parsed `multipart/form-data` and `application/x-www-form-urlencoded` bodies: a JavaScript `FormData`. Get one from [`Request.form_data`](./Workero-Request.md#val-form_data).
+Parsed `multipart/form-data` and `application/x-www-form-urlencoded` bodies: a JavaScript `FormData`. Get one from [`Request.form_data`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-form_data).
 
-Functions that say "Suspends" suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects.
+Functions that say "Suspends" suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects.
 
 ```ocaml
 type t

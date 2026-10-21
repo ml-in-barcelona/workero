@@ -1,26 +1,21 @@
 
-# Testing and limits
+# Testing a worker
+
+Test your worker with `workerd test` to run the compiled WebAssembly in the Workers runtime. This checks the routes and bindings in your test setup without deploying the worker. See [Limits](./limits.md) for Cloudflare platform limits.
 
 
-## Testing a worker
+## Run a worker test
 
-The workero repository tests its own worker with `workerd test`. You can do the same with yours. It runs the real wasm in the real runtime, so `Promise.await`, `fetch` and bindings all work.
+1. Install `workerd` on `PATH`. The repository CI uses `npm install -g workerd`.
+2. Build the worker: `workero build src/main.bc.wasm.js --out _worker-test`.
+3. Write a `workerd` config. List the files of `_worker-test` as modules (`.js` as `esModule`, `.wasm` as `wasm`). Bind the worker to a test worker as a service.
+4. In the test worker, call the service with `env.WORKER.fetch(url)` and compare the status, headers, and body. Call `env.WORKER.scheduled({ cron, scheduledTime })` to test the cron handler.
+5. Run `workerd test config.capnp`.
+`test/worker/run.sh` shows a working config generator. It builds `test/worker/main.ml`, then runs the suites imported by `test/worker/tests.mjs`. Set `globalOutbound` to a test worker to answer [`Workero.fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) calls without the network. The repository tests exercise compiled Wasm, JSPI waits, and the `workerd` runtime. They use JS test services for KV, R2, and Cache. D1 uses a wrapped adapter backed by Durable Object SQLite. These substitutes test workero calls against the adapter interfaces. They do not test production Cloudflare storage services.
 
-1. Build the worker: `workero build src/main.bc.wasm.js --out _worker-test`.
-2. Write a `workerd` config. It lists the files of `_worker-test` as modules (`.js` as `esModule`, `.wasm` as `wasm`) and binds the worker to a test worker as a service.
-3. In the test worker, call the service, as `env.WORKER.fetch(url)`, and compare status, headers and body. `env.WORKER.scheduled({ cron, scheduledTime })` runs the cron handler.
-4. Run `workerd test config.capnp`.
-`test/worker/run.sh` in the repository generates the config and runs the tests. `test/worker/main.ml` is the worker, and `test/worker/tests.mjs` has the cases. Set `globalOutbound` to a small worker to answer [`Workero.fetch`](./Workero.md#val-fetch) calls without the network.
-
-`workerd` must be on `PATH`. `npm install workerd` or `wrangler` provides it.
-
-An exception that escapes a handler fails the call on a service binding. A real HTTP request gets status 500 instead.
-
-For code that does not wait, such as parsing with [`Workero.URL`](./Workero-URL.md), write unit tests. Build them with `(modes js)` and run them with `dune test`: alcotest runs in node. Node has no JSPI, so code that calls [`Workero.Promise.await`](./Workero-Promise.md#val-await) cannot run there.
+An exception that escapes a handler fails a service-binding call. An HTTP request gets status 500 instead.
 
 
-## Limits
+## Test code without the worker runtime
 
-Cloudflare limits a worker to 64 MiB uncompressed. It sets no compressed limit. See the [Workers limits](https://developers.cloudflare.com/workers/platform/limits/#worker-size). The example workers upload 96 to 123 KiB (31 to 40 KiB gzip).
-
-`examples/limits` pushes the CPU and memory limits with a Mandelbrot route and an allocation route. In our run, 248 MB of allocation worked and 256 MB failed.
+For code that does not wait, such as parsing with [`Workero.URL`](./Workero-URL.md), use the Alcotest unit tests in `test/unit/`. They compile with `(modes js)` and run in Node via `dune test`. They do not exercise compiled Wasm or the worker runtime. Node's JSPI support depends on the version. Use `workerd test` for worker code that calls [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).

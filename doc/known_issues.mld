@@ -7,10 +7,10 @@ not supported yet.
 
 - A handler waits only through {!Workero.Promise.await}, {!Workero.fetch} and the
   body readers. A function that JavaScript calls, such as a [setTimeout]
-  callback, cannot wait. See {{!page-async}Waiting for JavaScript}.
+  callback, cannot wait. See {{!page-async}Async and background work}.
 - {!Workero.URL} uses the WHATWG [URL], but {!Workero.URL.path} is decoded and
   only [http] and [https] URLs parse. See
-  {{!page-requests}Requests and responses}.
+  {{!page-url}URLs}.
 - A response cannot have a status below 200 or above 599. The runtime rejects
   them, so {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to
   read codes; use {!Workero.Websocket} for 101.
@@ -18,8 +18,9 @@ not supported yet.
 {1 Limits of streams, forms and WebSockets}
 
 - A client disconnect shows only as a failed {!Workero.Stream.Writer.write}.
-- {!Workero.Response.copy} and {!Workero.Response.of_stream} use up the original
-  body. Call {!Workero.Response.clone} first to keep it.
+- {!Workero.Response.copy} and {!Workero.Response.of_stream} share the original
+  body stream. It can be consumed only once. Call {!Workero.Response.clone}
+  before reading if you need two copies.
 - {!Workero.Request.form_data} holds the whole upload in memory. See
   {{!page-forms}Forms}.
 
@@ -29,6 +30,10 @@ not supported yet.
 - There is no file system, except files that you embed. See
   {{!page-libraries}Supported libraries}.
 - The program has no threads, sockets or sub-processes.
+
+Successful compilation does not prove that a library's runtime dependencies
+are available in a Worker. See {{!page-libraries}Supported libraries} and
+{{!page-testing}Testing a worker}.
 
 {1 Report a problem}
 

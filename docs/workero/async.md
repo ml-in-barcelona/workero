@@ -1,7 +1,7 @@
 
-# Waiting for JavaScript
+# Async and background work
 
-JavaScript APIs return Promises. In workero you do not chain them. You write direct style code, and a call waits for the result.
+JavaScript APIs return Promises. In workero you can wait for them in direct style, without chaining callbacks.
 
 ```ocaml
 let handler _req _env _ctx =
@@ -11,50 +11,18 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-`fetch` and `body_text` each wait for a Promise. The handler reads from top to bottom.
+`fetch` waits for response headers. `body_text` waits for the body. Other APIs that return a [`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) need an explicit [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
 
 
-## How it works
+## Run independent work together
 
+Start independent Promises before you await either. If you await each before starting the next, their delays add up. If you start both first, their waits can overlap.
 
-### The Worker model
-
-A Worker isolate is one V8 instance. It has one JavaScript thread and one event loop. Many requests share them. The WebAssembly module loads once per isolate.
-
-For each request, Cloudflare calls the JavaScript `fetch(request, env, ctx)` export. This export calls into the wasm module. JavaScript I/O returns Promises. Wasm cannot block the thread. To wait, it must give control back to the event loop and continue later.
-
-
-### Direct style
-
-Your handler is plain OCaml, with no monad and no callbacks. To get a Promise result, call [`Workero.Promise.await`](./Workero-Promise.md#val-await). The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way. Workero implements the wait with OCaml 5 effects, which your code does not use.
-
-
-### The life of one request
-
-1. Cloudflare calls the JavaScript `fetch` export. It calls the OCaml handler through a wasm entry point that `WebAssembly.promising` wraps. A call from JavaScript into OCaml returns a Promise.
-2. Workero runs the handler inside an effect handler. It returns a Promise for the [`Workero.Response.t`](./Workero-Response.md#type-t) to the runtime.
-3. The handler calls `await` on a Promise. This performs an effect. The effect handler captures the rest of the handler as a continuation `k`. It attaches a `then` callback to the Promise: on success it continues `k` with the value, on rejection it raises the error inside `k`. Then it returns.
-4. The wasm call ends. The JavaScript thread is free. The event loop runs other requests.
-5. The Promise settles. The `then` callback continues `k`. Each resume enters wasm again through a `WebAssembly.promising` function.
-6. The handler can wait again. Steps 3 to 5 repeat.
-7. The handler returns a value or raises. Workero resolves or rejects the Promise from step 2\. The runtime sends the response.
-
-### Where JSPI fits
-
-wasm\_of\_ocaml implements effects with the JavaScript Promise Integration (JSPI) of WebAssembly. It is the default. A suspended continuation is a suspended wasm stack. Wasm can suspend only when JavaScript entered it through a `WebAssembly.promising` function. This is why the first call and each resume go through one.
-
-
-### Running things at once
-
-To run two things at once, start both Promises before you wait for either. Waiting for each in turn takes the sum of the times. Waiting after both started takes the longest one.
-
-[`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) returns a Promise that resolves after a delay in milliseconds:
+[`Workero.Timer.sleep`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-sleep) returns a Promise that resolves after a delay in milliseconds:
 
 ```ocaml
 let handler _req _env _ctx =
   let open Workero in
-  Promise.await (Timer.sleep 100);
-  Promise.await (Timer.sleep 100);
   let a = Timer.sleep 100 and b = Timer.sleep 100 in
   Promise.await a;
   Promise.await b;
@@ -62,27 +30,76 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-The first two waits take about 200 ms in total. The next two take about 100 ms, because both sleeps started before the first wait.
+Both timers start before the first wait. The waits take about 100 ms together, not 200 ms. To collect results or handle multiple failures, use [`Workero.Promise.all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all) or [`Workero.Promise.all_settled`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all_settled).
+
+
+## Work after the response
+
+Use [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until) for work that does not determine the response, such as a log write. It starts `f` immediately in its own fiber and registers that fiber's Promise with `ctx.waitUntil`. Synchronous work in `f` runs before `wait_until` returns. If `f` suspends, the handler can continue and send the response while `f` waits. `f` can call [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
+
+```ocaml
+let handler _req _env ctx =
+  let open Workero in
+  Context.wait_until ctx (fun () ->
+      let response =
+        fetch ~method_:Method.POST ~body:"hit" "https://example.com/log"
+      in
+      print_endline ("logged: " ^ string_of_int (Response.status response)));
+  Response.text "ok\n"
+
+let () = Workero.serve handler
+```
+The `POST` starts before `wait_until` returns, then `fetch` suspends. The response does not wait for the `POST` to finish. An exception in `f` rejects its Promise; the runtime logs it, without changing the response.
+
+For HTTP requests, Cloudflare allows all `waitUntil` tasks for the request to continue for up to 30 seconds after the response is sent or the client disconnects. They share this time window; unfinished tasks are canceled. An active response stream has a different lifetime: while the client is connected and receiving it, the request remains active. See [Streams](./streams.md) and [Cloudflare's waitUntil documentation](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
+
+
+## Handle errors
+
+[`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) raises [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when a JavaScript Promise rejects. A rejection from OCaml code, such as an exception in `map`, `bind`, a `make` executor or an `of_js` decoder, instead re-raises the original OCaml exception. [`Workero.Promise.error_of_exn`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_exn) makes such a rejection.
+
+The payload of [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) is a [`Workero.Promise.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-error), the original JavaScript rejection reason. JavaScript allows any value, so the type is opaque.
+
+- [`Workero.Promise.error_to_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_string) converts it with JavaScript `String`, for example `"Error: nope"`.
+- [`Workero.Promise.error_of_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_string) makes a JavaScript `Error` with a message.
+- [`Workero.Promise.error_to_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_js) and [`Workero.Promise.error_of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
+Catch a JavaScript rejection with `match ... with exception Js_error reason -> ...`:
+
+```ocaml
+let handler _req _env _ctx =
+  let open Workero in
+  let failed = Promise.reject (Promise.error_of_string "boom") in
+  match Promise.await failed with
+  | () -> Response.text "unreachable\n"
+  | exception Js_error reason ->
+      Response.text ~status:`Bad_Gateway
+        ("rejected: " ^ Promise.error_to_string reason ^ "\n")
+
+let () = Workero.serve handler
+```
+The response body is `rejected: Error: boom`. An exception that you do not catch is an error of the handler (see [Handlers](./handlers.md)).
+
+An exception that escapes at program start-up fails the Worker load. Fix the exception and rebuild.
 
 
 ## Promise
 
-[`Workero.Promise.t`](./Workero-Promise.md#type-t) is the JavaScript `Promise`.
+[`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) is the JavaScript `Promise`.
 
-- [`Workero.Promise.make`](./Workero-Promise.md#val-make) is `new Promise(executor)`. The executor gets `resolve` and `reject`. `reject` takes a [`Workero.Promise.error`](./Workero-Promise.md#type-error).
-- [`Workero.Promise.resolve`](./Workero-Promise.md#val-resolve) and [`Workero.Promise.reject`](./Workero-Promise.md#val-reject) are `Promise.resolve` and `Promise.reject`.
-- [`Workero.Promise.await`](./Workero-Promise.md#val-await) gives the resolved value.
-- [`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) and [`Workero.Promise.to_js`](./Workero-Promise.md#val-to_js) convert from and to a raw JavaScript Promise. See [JavaScript interop](./interop.md).
+- [`Workero.Promise.make`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-make) is `new Promise(executor)`. The executor gets `resolve` and `reject`. `reject` takes a [`Workero.Promise.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-error).
+- [`Workero.Promise.resolve`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-resolve) and [`Workero.Promise.reject`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-reject) are `Promise.resolve` and `Promise.reject`.
+- [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) gives the resolved value.
+- [`Workero.Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js) and [`Workero.Promise.to_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-to_js) convert from and to a raw JavaScript Promise. See [JavaScript interop](./interop.md).
 `Promise.t` is backed by `Js_of_ocaml.Promise`. A promise resolved with another promise is boxed, so `'a t t` is a promise of a promise, which a raw JavaScript Promise would flatten.
 
 
 ## Combinators
 
-- [`Workero.Promise.map`](./Workero-Promise.md#val-map) and [`Workero.Promise.bind`](./Workero-Promise.md#val-bind) transform the resolved value, like `then`.
-- [`Workero.Promise.all`](./Workero-Promise.md#val-all) resolves with every value in order, or rejects with the first rejection.
-- [`Workero.Promise.race`](./Workero-Promise.md#val-race) settles like the first promise to settle.
-- [`Workero.Promise.any`](./Workero-Promise.md#val-any) resolves with the first value. When all reject, it rejects with an `AggregateError`.
-- [`Workero.Promise.all_settled`](./Workero-Promise.md#val-all_settled) resolves when every promise has settled, with a `result` for each. It never rejects.
+- [`Workero.Promise.map`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-map) and [`Workero.Promise.bind`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-bind) transform the resolved value, like `then`.
+- [`Workero.Promise.all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all) resolves with every value in order, or rejects with the first rejection.
+- [`Workero.Promise.race`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-race) settles like the first promise to settle.
+- [`Workero.Promise.any`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-any) resolves with the first value. When all reject, it rejects with an `AggregateError`.
+- [`Workero.Promise.all_settled`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all_settled) resolves when every promise has settled, with a `result` for each. It never rejects.
 ```ocaml
 let handler _req _env _ctx =
   let open Workero in
@@ -104,58 +121,11 @@ let handler _req _env _ctx =
 let () = Workero.serve handler
 ```
 
-## Errors
+## Where you can await
 
-[`Workero.Promise.await`](./Workero-Promise.md#val-await) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when a JavaScript Promise rejects. A rejection that comes from OCaml code, such as an exception in a `map` or `bind` function, in a `make` executor or in a decoder, is different: `await` re-raises the original OCaml exception. [`Workero.Promise.error_of_exn`](./Workero-Promise.md#val-error_of_exn) makes such a rejection.
+Await only inside a handler given to [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) or [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled), inside a function given to [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until), or in code that these call. Waiting outside these fibers fails:
 
-The payload of [`Workero.Js_error`](./Workero.md#exception-Js_error) is a [`Workero.Promise.error`](./Workero-Promise.md#type-error): the original rejection reason. JavaScript allows any value, so the type is opaque.
-
-- [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) shows it as the JavaScript `String` function does, for example `"Error: nope"`.
-- [`Workero.Promise.error_of_string`](./Workero-Promise.md#val-error_of_string) makes a JavaScript `Error` with a message.
-- [`Workero.Promise.error_to_js`](./Workero-Promise.md#val-error_to_js) and [`Workero.Promise.error_of_js`](./Workero-Promise.md#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
-Catch it with `match ... with exception Js_error reason -> ...`:
-
-```ocaml
-let handler _req _env _ctx =
-  let open Workero in
-  let failed = Promise.reject (Promise.error_of_string "boom") in
-  match Promise.await failed with
-  | () -> Response.text "unreachable\n"
-  | exception Js_error reason ->
-      Response.text ~status:`Bad_Gateway
-        ("rejected: " ^ Promise.error_to_string reason ^ "\n")
-
-let () = Workero.serve handler
-```
-The response body is `rejected: Error: boom`. An exception that you do not catch is an error of the handler (see [Handlers](./handlers.md)).
-
-An exception that escapes the top level of the program, during start-up, fails the load of the Worker. The error is `workero: OCaml initialisation failed (exit code N): ...` followed by the OCaml exception text. Fix the exception and rebuild.
-
-
-## Work after the response
-
-[`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) runs a function in its own fiber, with its own effect handler. It gives that fiber's Promise to `ctx.waitUntil`. The response can go out at once. The runtime keeps the isolate alive until the function returns. The function can call [`Workero.Promise.await`](./Workero-Promise.md#val-await). If it raises, the runtime logs the error. The request that called it and other requests are not affected.
-
-```ocaml
-let handler _req _env ctx =
-  let open Workero in
-  Context.wait_until ctx (fun () ->
-      let response =
-        fetch ~method_:Method.POST ~body:"hit" "https://example.com/log"
-      in
-      print_endline ("logged: " ^ string_of_int (Response.status response)));
-  Response.text "ok\n"
-
-let () = Workero.serve handler
-```
-The client gets `ok` at once. The response does not wait for the `POST`.
-
-
-## What you cannot do
-
-Await only inside a handler given to [`Workero.serve`](./Workero.md#val-serve) or [`Workero.scheduled`](./Workero.md#val-scheduled), inside a function given to [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until), or in code that these call. Anywhere else the wait fails. Observed failures:
-
-- In a callback that JavaScript calls, such as a `setTimeout` function: the callback runs outside any handler fiber, and the wait raises `Stdlib.Effect.Unhandled(Workero__Async.Await(_))`.
-- In the executor of [`Workero.Promise.make`](./Workero-Promise.md#val-make): the wait fails with `SuspendError: trying to suspend JS frames`.
-- At the top level of the program: the load of the Worker fails with `workero: OCaml initialisation failed (exit code 2)` and the same `Effect.Unhandled` message.
-To use the result of a callback, resolve a [`Workero.Promise.t`](./Workero-Promise.md#type-t) from it and await that Promise in the handler, as [`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) does in [Running things at once](./#running).
+- In a [`Workero.Timer.set_timeout`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-set_timeout) callback, the callback runs outside the handler fiber.
+- In a [`Workero.Promise.make`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-make) executor, suspending across the JavaScript executor frame fails.
+- At program start-up, there is no handler fiber, so the Worker fails to load.
+To use a callback result, resolve a [`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) from the callback and await it in a handler. See [How it works](./how_it_works.md) for the suspension mechanism.

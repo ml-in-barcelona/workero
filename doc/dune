@@ -3,8 +3,12 @@
  (mld_files
   index
   getting_started
+  runtime_apis
   handlers
   requests
+  fetch
+  url
+  json
   streams
   forms
   websockets
@@ -13,6 +17,7 @@
   logging
   globals
   testing
+  limits
   bindings
   kv
   cache

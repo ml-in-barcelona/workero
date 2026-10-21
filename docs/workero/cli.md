@@ -19,12 +19,12 @@ They can be anywhere in the arguments.
 
 ### build
 
-`workero build` is a transparent wrapper of `dune build`. It removes its two own options from the arguments and passes every other argument to `dune build` unchanged and in the same order. There is no `--` separator.
+`workero build` removes its own options from the arguments and passes every other argument to `dune build` in the same order. It adds `--profile release` unless another profile is selected. There is no `--` separator.
 
 ```sh
 workero build src/main.bc.wasm.js --profile dev --display short
 ```
-Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`, relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
+Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`. Without an explicit dune root, write it relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
 
 Run it from any directory inside the dune project.
 
@@ -40,10 +40,10 @@ Run it from any directory inside the dune project.
 
 `workero build` finds the output of the `.bc.wasm.js` target the way dune does, so it works when the project is inside another dune project, when you run it from a subdirectory, and when you move the build directory.
 
-1. The dune root is the `--root` directory in the arguments, or `DUNE_ROOT`. With `--release` or `-p` it is the current directory. Otherwise it is the outermost parent directory of the current directory that has a `dune-workspace` file. If there is none, it is the outermost parent that has a `dune-project` file. If there is none, it is the current directory.
+1. The dune root is `--root` from the arguments, if set. With `--release`, `-p`, or `--for-release-of-packages` and no `--root`, it is the current directory. Otherwise `DUNE_ROOT`, if set, supplies the root. If none of these selects a root, it is the outermost parent directory of the current directory that has a `dune-workspace` file. If there is none, it is the outermost parent that has a `dune-project` file. If there is none, it is the current directory.
 2. The build directory is `--build-dir` from the arguments, or `DUNE_BUILD_DIR`, or `_build`. A relative path is relative to the dune root.
 3. The output is in `<build directory>/default/<path of the target from the root>`.
-With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative to that root, not to the current directory, and so does `workero build`. The output is in the directory of the target, and the name is the file name without `.bc.wasm.js`.
+With an explicit root (`--root`, `DUNE_ROOT`, `--release`, `-p`, or `--for-release-of-packages`), `workero build` locates the target relative to that root, not to the current directory. The output is in the directory of the target, and the name is the file name without `.bc.wasm.js`.
 
 
 ## What it does
@@ -52,13 +52,13 @@ With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative 
 2. Removes the `*.wasm.assets` directories that earlier runs left in the output directory, so a second run leaves one set of `.wasm` files.
 3. Copies the wasm\_of\_ocaml loader (`<name>.bc.wasm.js`) and its `<name>.bc.wasm.assets` directory into the output directory.
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
-5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled).
-It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
+5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) and [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled).
+On success it prints `workero: wrote <dir> (<n> wasm file(s))`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, are not wrapped by that error handler.
 
 
 ## Errors
 
-`workero build` and `workero package` exit with code 1 and print `workero: <reason>` to stderr when:
+`workero build` and `workero package` use `workero: <reason>` and exit with code 1 for these handled errors:
 
 - the arguments do not match the usage,
 - `dune build` fails (`workero build` only),

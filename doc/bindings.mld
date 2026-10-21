@@ -1,66 +1,54 @@
 {0 Bindings}
 
-A binding connects your Worker to a Cloudflare resource, such as a key-value
-namespace or a database. You declare it in [wrangler.toml]. At run time it is a
-name in [env], and you open it with [of_env].
+Bindings give a Worker access to values and Cloudflare resources through its
+[env] argument. Configure variables and resources in [wrangler.toml], and set
+secrets with Wrangler. Use {!Workero.Env.var} to read a string variable or
+secret. Use the resource's [of_env] function to read a resource binding.
 
-{1 What workero supports}
+{1 Choose an API}
 
-- {{!page-kv}KV}: {!Workero.KV}, Workers KV namespaces.
-- {{!page-cache}Cache}: {!Workero.Cache}, the Cache API.
-- {{!page-r2}R2}: {!Workero.R2}, object storage.
-- {{!page-d1}D1}: {!Workero.D1} and {!Workero.Sql_value}, SQL databases.
+- {{!page-env}Variables and secrets}: read string configuration with
+  {!Workero.Env.var}.
+- {{!page-kv}KV}: store text by key with {!Workero.KV}.
+- {{!page-r2}R2}: store buffered object bytes with {!Workero.R2}.
+- {{!page-d1}D1}: run SQL with {!Workero.D1} and {!Workero.Sql_value}.
 
-String variables and secrets are not bindings. {!Workero.Env.var} reads them.
-See {{!page-env}Variables and secrets}.
+workero supports these bindings, not every binding type in the
+{{:https://developers.cloudflare.com/workers/runtime-apis/bindings/}Cloudflare bindings API}.
+The {{!page-cache}Cache API} is not a binding. {!Workero.Cache} uses the global
+[caches.default] runtime API; see {{!page-runtime_apis}Runtime APIs}.
 
-{1 Declare a binding}
+{1 Declare resource names}
 
-Each resource has a table in [wrangler.toml]. [binding] is the name that you
-pass to [of_env]:
+For local development, Wrangler can create local resources from the binding
+names alone:
 
 {@toml[
 [[kv_namespaces]]
 binding = "KV"
-id = "<namespace id>"
 
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "my-bucket"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "my-database"
-database_id = "<database id>"
 ]}
 
-The Cache API has no binding. {!Workero.Cache} uses the cache of the data
-center that runs the Worker.
+[npx wrangler dev] uses local storage by default. You do not need to create
+remote resources to test these bindings locally. For a deploy, either let
+{{:https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning}Wrangler provision resources}
+from these names or create remote resources with an authenticated Wrangler and
+add their IDs or names to [wrangler.toml]. Each resource guide shows both paths.
 
-{1 Use a binding}
+{1 Read a binding in a handler}
 
-[of_env env name] returns the binding. It raises [Invalid_argument] when [env]
-has no binding with that name. The message names it. Open the binding inside the
-handler, where you have [env].
+The handler receives [env]. {!Workero.Env.var} returns [Some value] only for a
+string variable or secret; a missing or non-string value returns [None].
+[KV.of_env env "KV"], [R2.of_env env "BUCKET"] and [D1.of_env env "DB"]
+look up resource objects. They raise [Invalid_argument] with the binding name
+when the name is missing, the value is not an object of the expected shape, or
+the object lacks a required method. [of_env] does not perform a storage request.
 
-Every operation suspends like {!Workero.Promise.await}, so you call it in direct
-style. When the runtime fails, for example on an SQL error or a network error,
-the operation raises {!Workero.Js_error}. The payload is a
-{!Workero.Promise.error}, the original JavaScript error. That includes errors
-that JavaScript throws before it returns a Promise.
-{!Workero.Promise.error_to_string} gives ["Name: message"].
-
-{1 Develop locally}
-
-[wrangler dev] runs bindings against local storage by default. KV, R2 and D1
-need no Cloudflare account for this, and the data stays on your machine. Create
-the resources for a deploy with Wrangler:
-
-{@sh[
-npx wrangler kv namespace create KV
-npx wrangler r2 bucket create my-bucket
-npx wrangler d1 create my-database
-]}
-
-Each command prints the values for [wrangler.toml]. Each binding page has a
-complete Worker.
+Storage operations suspend like {!Workero.Promise.await}, so call them in
+direct style inside the handler. Runtime errors raise {!Workero.Js_error};
+{!Workero.Promise.error_to_string} formats the underlying JavaScript error.

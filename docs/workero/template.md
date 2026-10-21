@@ -1,39 +1,27 @@
 
 # The project template
 
-The `template/` directory of the repository is a starter project for a Cloudflare Worker written in OCaml. Copy it to start a new worker.
+The `template/` directory is a starter Cloudflare Worker project. Copy it outside the workero source checkout so Dune treats the copy as its own project. Follow [Getting started](./getting_started.md) for the complete path from a fresh directory to a deployed Worker.
 
 
 ## Files
 
-- `dune-project`: a package that depends on `workero`.
-- `src/dune`: the executable `main`, built with `(modes wasm)`.
-- `src/main.ml`: the worker.
-- `wrangler.toml`: runs `workero build src/main.bc.wasm.js` as the build command (see [the CLI](./cli.md)) and sets `GREETING` in `[vars]`.
-- `package.json`: `wrangler` and `binaryen` as development dependencies.
+- `dune-project` requires OCaml 5\.4 or later and the `workero` package.
+- `src/dune` builds `src/main.ml` with `(modes wasm)` and links `workero`.
+- `src/main.ml` registers a handler for `GET /`, `POST /echo`, and `GET /env`.
+- `wrangler.toml` points to `_worker/index.js`, runs `workero build src/main.bc.wasm.js` on build, watches `src/`, and sets `GREETING` in `[vars]`.
+- `package.json` pins Wrangler 4\.151.3 and binaryen 132 as development dependencies. binaryen supplies `wasm-opt` for wasm\_of\_ocaml.
+- `.gitignore` excludes build output, npm dependencies, Wrangler state, and local `.dev.vars` and `.env` files that may hold secrets.
 
-## Run it
+## Run the copied project
+
+With the `workero` source package installed in an active opam switch, enter your copy and install the JavaScript tools:
 
 ```sh
-opam install workero
-npm install          # wrangler, and binaryen for wasm_of_ocaml
-npx wrangler dev     # builds src/main.ml, serves on localhost:8787
-npx wrangler deploy
+cd my-worker
+npm install
+npx wrangler dev
 ```
+Wrangler builds the worker and serves it locally, usually at `http://127.0.0.1:8787`. In another terminal, run `curl http://127.0.0.1:8787/`. Expect `Hello from OCaml on Cloudflare Workers`. `GET /env` reads `GREETING` through [`Workero.Env.var`](https://ml-in-barcelona.github.io/workero/workero/Workero/Env/index.html#val-var); it returns `hello from vars` with the default configuration.
 
-## The worker
-
-```ocaml
-let handler req env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "Hello from OCaml on Cloudflare Workers\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | GET, "/env" ->
-      Response.text
-        (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:`Not_Found "not found\n"
-
-let () = Workero.serve handler
-```
-`GET /env` reads `GREETING` with [`Workero.Env.var`](./Workero-Env.md#val-var).
+To deploy, authenticate with `npx wrangler login`, then run `npx wrangler deploy`. Wrangler prints the public `workers.dev` URL. A Cloudflare account is needed for deployment, not for local `wrangler dev`.

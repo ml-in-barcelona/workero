@@ -1,24 +1,21 @@
 {0 KV}
 
-{!Workero.KV} is a
-{{:https://developers.cloudflare.com/kv/}Workers KV} namespace: a global
-key-value store with text values.
+Store and list text values by key with {!Workero.KV}, the supported subset of
+{{:https://developers.cloudflare.com/kv/}Workers KV}. KV is eventually
+consistent across locations. Changes often become visible elsewhere within
+60 seconds, but 60 seconds is not a guaranteed upper bound.
 
-{1 Configure}
+{1 Configure the binding}
 
-{@sh[
-npx wrangler kv namespace create KV
-]}
-
-Copy the printed [id] into [wrangler.toml]:
+For local development, put this in [wrangler.toml]. Wrangler creates local
+storage when you run [npx wrangler dev]:
 
 {@toml[
 [[kv_namespaces]]
 binding = "KV"
-id = "<namespace id>"
 ]}
 
-{1 Use}
+{1 Write the Worker}
 
 {@ocaml[
 let handler req env _ctx =
@@ -45,25 +42,40 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ]}
 
-- {!Workero.KV.of_env} opens the namespace bound as ["KV"]. It raises
-  [Invalid_argument] when there is no such binding.
-- {!Workero.KV.get} gives [Some value], or [None] when the key does not exist.
-- {!Workero.KV.put} stores a value. [~expiration_ttl] is a number of seconds.
-  Cloudflare requires at least 60.
-- {!Workero.KV.delete} removes a key. A missing key is not an error.
-- {!Workero.KV.list} gives the names of all keys that start with [~prefix], in
-  lexicographic order. KV returns at most 1000 keys for each request.
-  [list] follows the cursor until the listing is complete, so a large namespace
-  takes several requests and its names are all held in memory. It raises
-  [Failure "Workero.KV.list: ..."] when KV reports an incomplete page.
+[KV.get] returns [None] for a missing key. [KV.put] takes text and an optional
+expiration time in seconds (at least 60). [KV.delete] accepts a missing key.
+[KV.list] returns names in lexicographic order. It follows cursors across pages
+of at most 1000 keys and holds all names in memory. It raises [Failure] if KV
+reports an incomplete page without a cursor. See {!Workero.KV} for the API.
 
-Values are text. KV is eventually consistent: a change can take up to 60 seconds
-to show in other locations.
+{1 Verify locally}
 
-{1 Test locally}
+Run [npx wrangler dev] in one terminal. In a second terminal:
 
 {@sh[
-npx wrangler dev
-curl -X PUT -d hello "localhost:8787/kv?k=greeting"
-curl "localhost:8787/kv?k=greeting"
+curl -X PUT -d hello "http://localhost:8787/kv?k=greeting"
+curl "http://localhost:8787/kv?k=greeting"
+curl "http://localhost:8787/keys?prefix=greet"
 ]}
+
+The responses are [stored], [hello] and [greeting], in that order.
+
+{1 Deploy with an existing namespace}
+
+Remote creation requires an authenticated Wrangler. If you do not let
+{{:https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning}Wrangler provision it on deploy},
+create a namespace and copy its printed ID into [wrangler.toml]:
+
+{@sh[
+npx wrangler kv namespace create KV
+]}
+
+{@toml[
+[[kv_namespaces]]
+binding = "KV"
+id = "<namespace id>"
+]}
+
+See {{:https://developers.cloudflare.com/kv/get-started/}Cloudflare KV setup}
+and {{:https://developers.cloudflare.com/kv/api/list-keys/}listing keys}.
+See {{!page-getting_started}Getting started} for deployment steps.

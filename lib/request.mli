@@ -16,8 +16,8 @@ val query_string : t -> string
 
 val header : t -> string -> string option
 (** [header req name] is the value of header [name], matched without regard to
-    letter case. Repeated headers are joined with [", "]. Use {!header_all} for
-    [cookie] lists and [set-cookie]. *)
+    letter case. Ordinary repeated headers are joined with [", "]. Use
+    {!header_all} to read each [set-cookie] separately. *)
 
 val header_all : t -> string -> string list
 (** Every value of a header; one entry per [set-cookie], one joined entry for
@@ -34,7 +34,8 @@ val bytes : t -> string
 (** Reads the whole body as raw bytes. *)
 
 val body : t -> Stream.t option
-(** The body as a stream; [None] when the request has none (GET, HEAD). *)
+(** The body as a stream; [None] when the request has none. Getting the stream
+    does not consume it. Reading from the stream does. *)
 
 val form_data : t -> Form_data.t
 (** Parses a multipart or urlencoded body with the platform parser. Suspends

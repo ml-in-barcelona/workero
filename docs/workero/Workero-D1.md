@@ -1,7 +1,7 @@
 
 # Module `Workero.D1`
 
-A Cloudflare D1 database, bound in `wrangler.toml` with `[[d1_databases]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects, for example on an SQL error.
+Basic SQL queries on a Cloudflare D1 database, bound with `[[d1_databases]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects, for example on an SQL error.
 
 ```ocaml
 type t
@@ -9,9 +9,7 @@ type t
 ```ocaml
 val of_env : Env.t -> string -> t
 ```
-`of_env env name` is the database bound as `name`.
-
-Raises `Invalid_argument` when `env` has no binding `name`.
+`of_env env name` looks up the database bound as `name`. It does not suspend. Raises `Invalid_argument` if the binding is missing, is not a D1 object, or lacks a required method. The error names the binding.
 
 ```ocaml
 type value = Sql_value.t = 

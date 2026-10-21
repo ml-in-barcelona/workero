@@ -1,0 +1,19 @@
+
+# Limits
+
+Cloudflare Workers limits apply to deployed workero workers. Local `workerd` tests do not establish what a deployment can consume. For the current values, see the [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/).
+
+
+## Bundle size
+
+Cloudflare limits the uncompressed Worker bundle to 64 MiB on both Free and Paid plans. It does not set a compressed bundle-size limit. Use `wrangler deploy --outdir bundled/ --dry-run` to inspect the `Total Upload` size before deployment. See [Worker size](https://developers.cloudflare.com/workers/platform/limits/#worker-size).
+
+
+## Memory
+
+Cloudflare allows 128 MB of memory per isolate, including the JavaScript heap and WebAssembly allocations. An isolate can handle multiple requests, so this is not a per-request budget. See [Memory](https://developers.cloudflare.com/workers/platform/limits/#memory).
+
+
+## CPU time
+
+The CPU-time limit depends on the plan and trigger type. Cloudflare lists 10 ms per HTTP request on the Free plan and a default of 30 seconds per HTTP request on the Paid plan, configurable up to 5 minutes. Waiting on network requests does not count as CPU time. See [CPU time](https://developers.cloudflare.com/workers/platform/limits/#cpu-time).

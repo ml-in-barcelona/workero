@@ -1,0 +1,43 @@
+{0 Runtime APIs}
+
+Workero provides OCaml interfaces to APIs in the Cloudflare Workers runtime.
+Use them to read requests, return responses, make HTTP requests, and manage
+background work. For configured resources such as KV, R2, and D1, see
+{{!page-bindings}Bindings}.
+
+{1 HTTP}
+
+- {{!page-handlers}Handlers}: register HTTP and scheduled handlers with
+  {!Workero.serve} and {!Workero.scheduled}.
+- {{!page-requests}Requests and responses}: methods, headers, status codes,
+  request metadata, and body ownership.
+- {{!page-fetch}Fetch}: make outgoing HTTP requests with a string body.
+- {{!page-url}URLs}: read encoded and decoded paths and query parameters.
+- {{!page-json}JSON}: parse, decode, and return JSON with jsonkit.
+- {{!page-streams}Streams}: read and write bodies in chunks or forward a body.
+- {{!page-forms}Forms and file uploads}: read multipart and URL-encoded forms.
+- {{!page-websockets}WebSockets}: accept connections and receive messages.
+
+{1 Execution}
+
+- {{!page-async}Async and background work}: wait for results, run concurrent
+  operations, and use {!Workero.Context.wait_until}.
+- {{!page-logging}Console and logging}: write log entries or use OCaml standard
+  output.
+- {{!page-globals}Timers, time, and randomness}: delays, timestamps, random
+  bytes, and UUIDs.
+
+{1 Cache}
+
+The {{!page-cache}Cache API} reads and writes cached responses in the data center
+that runs your Worker. It uses [caches.default] and needs no [env] binding.
+
+{1 API coverage}
+
+Each guide describes the operations that Workero exposes. The
+{{:https://developers.cloudflare.com/workers/runtime-apis/}Cloudflare runtime API reference}
+describes the wider platform. Use {{!page-interop}JavaScript interop} when you
+need an available runtime operation without a typed Workero wrapper.
+
+See {!Workero} for OCaml signatures and {{!page-limits}Runtime limits} for the
+conditions that apply to your Worker.

@@ -1,7 +1,7 @@
 {0 Requests and responses}
 
-This page covers {!Workero.Request}, {!Workero.Response}, {!Workero.URL},
-{!Workero.Method}, JSON and the outgoing {!Workero.fetch}.
+Use {!Workero.Request} to read an incoming request and {!Workero.Response} to
+answer it. Match on {!Workero.Request.method_} and the path to select a route:
 
 {@ocaml[
 let handler req _env _ctx =
@@ -11,212 +11,65 @@ let handler req _env _ctx =
   | GET, "/hello" ->
       let name = Option.value (URL.query url "name") ~default:"world" in
       Response.text (Printf.sprintf "hello, %s\n" name)
-  | GET, "/agent" ->
-      let agent = Option.value (Request.header req "user-agent") ~default:"?" in
-      Response.text ~headers:[ ("x-agent", agent) ] "ok\n"
-  | GET, "/where" ->
-      let country = Option.value (Cf.country (Request.cf req)) ~default:"??" in
-      Response.text (country ^ "\n")
-  | POST, "/upload" -> Response.make ~status:`Created (Request.bytes req)
-  | GET, "/page" -> Response.html "<h1>hello</h1>"
-  | GET, "/old" -> Response.redirect ~status:`Moved_Permanently "/new"
-  | GET, "/done" -> Response.empty `No_Content
+  | POST, "/echo" -> Response.text (Request.text req)
   | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ]}
 
-{1 Method}
+{1 Read the request body}
 
-{!Workero.Method.t} is a variant: [GET], [HEAD], [POST], [PUT], [DELETE],
-[PATCH], [OPTIONS] or [Other of string]. Match on {!Workero.Request.method_}.
-{!Workero.Method.of_string} is case-sensitive, as HTTP is. A name that is not
-one of the seven becomes [Other name].
+{!Workero.Request.text} reads the whole body as UTF-8 text.
+{!Workero.Request.bytes} reads raw bytes into a string. Both consume the body.
+To read a body in chunks, get its stream with {!Workero.Request.body} and read
+the stream. Getting the stream does not itself consume it. A request without a
+body returns [None]. See {{!page-streams}Streams} for stream readers and
+{{!page-forms}Forms and file uploads} for form bodies.
 
-{1 Request}
+A body can be consumed only once. Call {!Workero.Request.clone} before reading
+if you need to read it twice.
 
-- {!Workero.Request.url} is the {!Workero.URL.t}.
-- {!Workero.Request.path} is the raw path as sent. It is still percent-encoded,
-  so [%2F] stays [%2F]. {!Workero.URL.path} is decoded.
-- {!Workero.Request.query_string} is the raw query without the ["?"], or [""].
-- {!Workero.Request.header} reads one header. The name is not case-sensitive.
-  Repeated headers are joined with [", "].
-- {!Workero.Request.header_all} gives every value of a header as a list. Use it
-  for [set-cookie], which cannot be joined.
-- {!Workero.Request.headers} lists all headers with lower case names, sorted by
-  name.
-- {!Workero.Request.text} reads the body as UTF-8 text. Invalid UTF-8 is
-  replaced.
-- {!Workero.Request.bytes} reads the body as raw bytes, in a [string].
-- {!Workero.Request.body} gives the body as a {!Workero.Stream.t}, or [None]
-  when there is no body. See {{!page-streams}Streams}.
-- {!Workero.Request.form_data} reads a form. See {{!page-forms}Forms}.
-- {!Workero.Request.clone} gives a copy. Both copies can read the body.
-- {!Workero.Request.cf} gives the {!Workero.Cf.t}, the Cloudflare properties of
-  the request.
+{1 Work with headers}
 
-A body can be read once. {!Workero.Request.text}, {!Workero.Request.bytes},
-{!Workero.Request.body} and {!Workero.Request.form_data} all use it up. Call
-{!Workero.Request.clone} first to read it again.
+Header names are case-insensitive. {!Workero.Request.header} and
+{!Workero.Response.header} read a joined value. For an ordinary repeated header,
+{!Workero.Request.header_all} and {!Workero.Response.header_all} return a list
+with one joined value, not one item per original header. For [set-cookie],
+[header_all] returns one item per cookie. Do not split a [set-cookie] value at
+commas: a cookie can contain a comma.
 
-{!Workero.Cf} has [country], [region], [city], [colo], [timezone] and [asn].
-Each one is an option. It is [None] when the runtime gives no value, for
-example in a local test.
+{1 Send a response}
 
-{1 Response}
+{!Workero.Response.text} sends text, {!Workero.Response.html} sends HTML, and
+{!Workero.Response.make} sends raw bytes. Pass [~status] and [~headers] to set
+the status and headers. For a response without a body, use
+[Response.empty `No_Content]. To send a redirect, use
+{!Workero.Response.redirect}. Named statuses that do not allow a body do not
+type-check with the body constructors. A numeric [`Status n] still type-checks:
+an invalid status or a non-empty body with status 204, 205, or 304 raises
+[Invalid_argument] at runtime. See {{!page-streams}Streams} for a streamed
+response and {!Workero.Response} for the status rules.
 
-- {!Workero.Response.text} sends a UTF-8 text body. [status] is a
-  {!Workero.Status} such as [`Created] and is [`OK] by default. [`Status 418]
-  names a code with no tag.
-- {!Workero.Response.html} is the same with [content-type: text/html;
-  charset=utf-8].
-- {!Workero.Response.make} sends the bytes as they are, with no [content-type].
-- {!Workero.Response.empty} has a status and no body: [Response.empty `No_Content].
-- {!Workero.Response.redirect} sends a [location] header. The URL can be
-  relative, such as ["/login"]. The status is [`Moved_Permanently], [`Found],
-  [`See_Other], [`Temporary_Redirect] or [`Permanent_Redirect] ([`Found] by
-  default). Another status does not type-check.
-- {!Workero.Response.of_stream} and {!Workero.Response.stream} send a body in
-  chunks. See {{!page-streams}Streams}.
-
-Pass [~headers] as a list of pairs. A [content-type] in [headers] replaces the
-default one.
-
-A status that allows no body ([`No_Content], [`Reset_Content] and
-[`Not_Modified]) does not type-check with a body. Use
-{!Workero.Response.empty}. [`Status n] with [n] in 204, 205 or 304 and a
-non-empty body raises [Invalid_argument]. So does a [`Status n] outside 200 to
-599, which the runtime rejects.
-
-A response that you got from {!Workero.fetch} has readers:
-{!Workero.Response.status}, {!Workero.Response.header},
-{!Workero.Response.header_all}, {!Workero.Response.headers},
-{!Workero.Response.body}, {!Workero.Response.body_text} and
-{!Workero.Response.body_bytes}.
-
-The headers of a {!Workero.fetch} result may be read-only. To change them, make
-a new response with {!Workero.Response.copy}:
+To forward a fetched response with one added header, keep its existing headers
+when you call {!Workero.Response.copy}:
 
 {@ocaml[
 let handler _req _env _ctx =
   let open Workero in
   let upstream = fetch "https://example.com/" in
-  Response.copy ~headers:[ ("x-via", "workero") ] upstream
+  let headers = Response.headers upstream @ [ ("x-via", "workero") ] in
+  Response.copy ~headers upstream
 
 let () = Workero.serve handler
 ]}
 
-{!Workero.Response.copy} moves the body, so [upstream] is used up. Use
-{!Workero.Response.clone} when you need the body twice, for example to give one
-copy to {!Workero.Cache} and send the other.
+[Response.copy ~headers] replaces the entire header list. Without [~headers],
+it keeps the existing headers. Both responses share one body stream, which
+can be consumed only once. Use {!Workero.Response.clone} before reading if
+you need two copies. See {{!page-fetch}Fetch} for outgoing requests.
 
-{2 Cookies}
+{1 Reference}
 
-{!Workero.Request.header} and {!Workero.Response.header} join repeated values
-with [", "]. This breaks [set-cookie], because a cookie can contain a comma.
-Read it with {!Workero.Response.header_all}: it gives one entry for each
-[set-cookie] header.
-
-{1 URL}
-
-{!Workero.URL} wraps the JavaScript [URL]. It parses [http] and [https] URLs
-and follows the WHATWG rules.
-
-- {!Workero.URL.path} is decoded and starts with ["/"].
-- {!Workero.URL.pathname} is the raw path, still percent-encoded: [%2F] stays
-  [%2F].
-- {!Workero.URL.search} is the raw query string with its ["?"], and {!Workero.URL.hash}
-  is the fragment with its ["#"]. Each is [""] when empty.
-- {!Workero.URL.origin} is the scheme, host and port, such as
-  ["https://a.test:8443"].
-- {!Workero.URL.query}, {!Workero.URL.query_all} and {!Workero.URL.query_args}
-  give decoded values, and ["+"] in a query is a space.
-- {!Workero.URL.to_string} gives the normalised [href]: ["http://a.test"]
-  becomes ["http://a.test/"], and the fragment stays.
-- {!Workero.URL.of_string} gives [None] for any scheme other than [http] and
-  [https], and for a string that is not a URL.
-
-Changes from the earlier parser:
-
-- A host with ["_"], and a URL with userinfo such as [http://user:pw@host/],
-  now parse. {!Workero.URL.host} does not contain the userinfo.
-- A query key without [=] is kept: [?a] gives [("a", "")].
-- ["+"] in a path stays ["+"]. Only a query decodes it to a space.
-- A malformed escape such as [%zz] leaves the whole path undecoded.
-- {!Workero.Request.url} no longer raises for the cases above.
-
-{1 JSON}
-
-{!Workero.JSON} reads and writes JSON with
-{{:https://github.com/melange-community/jsonkit}jsonkit}. A JSON value is a
-[Jsonkit.t]. {!Workero.JSON} does not re-export jsonkit. opam installs jsonkit
-with workero, but you add [jsonkit] to the [libraries] of your [dune] file to
-build or decode values.
-
-{@ocaml[
-open Jsonkit.Primitives
-
-type user = { name : string; age : int } [@@deriving json]
-
-let handler req _env _ctx =
-  match Workero.JSON.decode user_of_json req with
-  | Ok user -> Workero.JSON.response (user_to_json user)
-  | Error message -> Workero.JSON.error message
-
-let () = Workero.serve handler
-]}
-
-Add [jsonkit] to [libraries], and [jsonkit.ppx] to [preprocess] for
-[[@@deriving json]]:
-
-{@dune[
-(executable
- (name main)
- (modes wasm)
- (preprocess
-  (pps jsonkit.ppx))
- (libraries workero jsonkit))
-]}
-
-- {!Workero.JSON.decode} reads the body and applies a decoder. It gives
-  [Error message] for invalid JSON or when the decoder raises.
-- {!Workero.JSON.parse} reads the body and gives the [Jsonkit.t].
-- {!Workero.JSON.request} is [parse] that raises [Jsonkit.Of_string_error]. An
-  escaping exception makes the response a 500.
-- {!Workero.JSON.response} sends JSON with status 200 and
-  [content-type: application/json; charset=utf-8].
-- {!Workero.JSON.error} sends [{"error": message}] with status 400.
-
-Without the ppx, write the decoder with the combinators of
-[Jsonkit.Of_json]. See {!Workero.JSON} for an example.
-
-{1 Calling other servers}
-
-{!Workero.fetch} sends an HTTP request and waits for the response headers.
-
-{@ocaml[
-let handler _req _env _ctx =
-  let open Workero in
-  let res =
-    fetch ~method_:POST
-      ~headers:[ ("content-type", "application/json") ]
-      ~body:{|{"ping":true}|} "https://example.com/api"
-  in
-  match Response.status res with
-  | 200 -> Response.text (Response.body_text res)
-  | status -> Response.text ~status:`Bad_Gateway (Printf.sprintf "upstream %d\n" status)
-
-let () = Workero.serve handler
-]}
-
-- [method_] is [GET] by default.
-- [body] is a [string] of raw bytes. It sets no [content-type]: add one in
-  [headers].
-- [Invalid_argument] is raised when [body] is given with [GET] or [HEAD].
-- {!Workero.Js_error} is raised when the request fails, for example on a
-  network error.
-- Read the body with {!Workero.Response.body_text} or
-  {!Workero.Response.body_bytes}.
-
-Call {!Workero.fetch} only from a handler or from a function given to
-{!Workero.Context.wait_until}.
+See {!Workero.Method}, {!Workero.Request}, {!Workero.Response},
+{!Workero.Status}, and {!Workero.Cf} for the complete API. For URL parsing
+and query parameters, see {{!page-url}URLs}.

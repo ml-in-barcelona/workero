@@ -1,16 +1,18 @@
-(** A Cloudflare R2 bucket, bound in [wrangler.toml] with [[[r2_buckets]]]. Each
-    function suspends like {!Promise.await} and raises {!Js_error} when the
-    runtime rejects. Objects are raw bytes held in OCaml strings. *)
+(** Buffered object bytes in a Cloudflare R2 bucket, bound with [[[r2_buckets]]]
+    in [wrangler.toml]. Storage operations suspend like {!Promise.await} and
+    raise {!Js_error} when the runtime rejects. Objects are raw bytes held in
+    OCaml strings. *)
 
 type t
 
 val of_env : Env.t -> string -> t
-(** [of_env env name] is the bucket bound as [name].
-
-    Raises [Invalid_argument] when [env] has no binding [name]. *)
+(** [of_env env name] looks up the bucket bound as [name]. It does not suspend.
+    Raises [Invalid_argument] if the binding is missing, is not an R2 object, or
+    lacks a required method. The error names the binding. *)
 
 val get : t -> string -> string option
-(** The bytes of an object, or [None] when the key does not exist. *)
+(** The entire body of an object as bytes, or [None] when the key does not
+    exist. Reads the body into Worker memory. *)
 
 val put : ?content_type:string -> t -> string -> string -> unit
 (** [put bucket key bytes] stores [bytes] under [key], replacing any object.
@@ -23,7 +25,7 @@ type info = { size : int; etag : string; content_type : string option }
 
 val head : t -> string -> info option
 (** The metadata of an object without its body, or [None] when the key does not
-    exist. *)
+    exist. [head] and [get] are separate, non-atomic requests. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
