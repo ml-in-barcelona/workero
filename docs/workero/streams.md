@@ -60,7 +60,7 @@ let handler _req _env _ctx =
   let upstream = fetch "https://example.com/big-file" in
   match Response.body upstream with
   | Some body -> Response.of_stream ~headers:[ ("x-via", "workero") ] body
-  | None -> Response.empty 502
+  | None -> Response.empty `Bad_Gateway
 
 let () = Workero.serve handler
 ```

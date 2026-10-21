@@ -45,6 +45,11 @@ module Request : sig ... end
 module Response : sig ... end
 ```
 ```ocaml
+module Status : sig ... end
+```
+HTTP status codes as polymorphic variants, with the names and groups of Dream. ``Status n` stands for any other code.
+
+```ocaml
 module Env : sig ... end
 ```
 The `env` argument of a Worker handler: its variables, secrets and bindings.

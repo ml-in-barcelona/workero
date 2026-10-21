@@ -90,7 +90,11 @@ let close ?code ?reason t =
 
 let response t =
   let init =
-    Js.Unsafe.obj [| ("status", Js.Unsafe.inject 101); ("webSocket", t.js) |]
+    Js.Unsafe.obj
+      [|
+        ("status", Js.Unsafe.inject (Status.to_int `Switching_Protocols));
+        ("webSocket", t.js);
+      |]
   in
   Response.of_js (Js.Unsafe.new_obj (global "Response") [| null; init |])
 

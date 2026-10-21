@@ -23,4 +23,5 @@
 - New `Request` values: `path`, `query_string`, `header_all`, `clone`, `body`.
 - New `Response` values: `empty`, `copy`, `clone`, `header_all`, `body`, `of_stream`, `stream`.
 - `Response.redirect` accepts a relative URL, such as `"/login"`.
+- Breaking: `~status` is a `Workero.Status` variant, not an `int`: ``Response.text ~status:`Not_Found``, ``Response.empty `No_Content``. Tags follow Dream; ``Status n`` names any other code. ``Response.redirect`` takes only the redirect tags. A no-body status with a body does not type-check; ``Status 204`` with a body, or a code outside 200..599, raises `Invalid_argument`. `Response.status` still returns an `int`.
 - `URL` uses the JavaScript `URL`. A host with `_` and a URL with userinfo now parse, and `Request.url` does not raise for them. `?a` gives `("a", "")`. `+` in a path stays `+`. A malformed escape such as `%zz` leaves the whole path undecoded. `to_string` gives the normalised `href`: a trailing `/` is added and the fragment is kept.

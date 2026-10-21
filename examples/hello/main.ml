@@ -48,6 +48,6 @@ let handler req _env _ctx =
   | GET, "/fail" ->
       Promise.await (sleep 20);
       raise (Failed (ask_twice ()))
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler

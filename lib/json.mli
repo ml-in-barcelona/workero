@@ -28,13 +28,17 @@
 type t = Jsonkit.t
 (** A JSON value. *)
 
-val response : ?status:int -> ?headers:(string * string) list -> t -> Response.t
+val response :
+  ?status:[< Status.with_body ] ->
+  ?headers:(string * string) list ->
+  t ->
+  Response.t
 (** [response json] is a response with status 200 and the compact JSON text as
     body. It adds [content-type: application/json; charset=utf-8] unless
     [headers] already has a [content-type] (any letter case). Non-ASCII
     characters are sent as UTF-8. *)
 
-val error : ?status:int -> string -> Response.t
+val error : ?status:[< Status.with_body ] -> string -> Response.t
 (** [error message] is a response with status 400 and the body
     [{"error": message}]. *)
 

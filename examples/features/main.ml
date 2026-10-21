@@ -178,7 +178,7 @@ let handler req _env _ctx =
   | GET, path -> (
       match List.find_opt (fun (p, _, _) -> p = path) routes with
       | Some (_, _, run) -> Response.text (run ())
-      | None -> Response.text ~status:404 "not found\n")
-  | _ -> Response.text ~status:405 "method not allowed\n"
+      | None -> Response.text ~status:`Not_Found "not found\n")
+  | _ -> Response.text ~status:`Method_Not_Allowed "method not allowed\n"
 
 let () = Workero.serve handler

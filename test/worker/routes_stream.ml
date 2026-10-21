@@ -109,8 +109,9 @@ let upstream = "http://upstream.test"
 let pass_through req =
   let res = fetch ~method_:POST ~body:(Request.bytes req) (upstream ^ "/raw") in
   match Response.body res with
-  | Some s -> Response.of_stream ~status:202 ~headers:[ ("x-pass", "1") ] s
-  | None -> Response.text ~status:500 "no body"
+  | Some s ->
+      Response.of_stream ~status:`Accepted ~headers:[ ("x-pass", "1") ] s
+  | None -> Response.text ~status:`Internal_Server_Error "no body"
 
 let copy_headers () =
   let res = fetch (upstream ^ "/bytes") in
@@ -135,7 +136,9 @@ let handle req _env ctx =
       Some (cache_clone (Option.value (Request.header req "x-key") ~default:""))
   | _, "/stream/pass" -> Some (pass_through req)
   | _, "/stream/copy" -> Some (copy_headers ())
-  | _, "/stream/empty" -> Some (Response.empty ~headers:[ ("x-a", "1") ] 404)
-  | _, "/stream/redirect" -> Some (Response.redirect ~status:307 "/login?x=1")
+  | _, "/stream/empty" ->
+      Some (Response.empty ~headers:[ ("x-a", "1") ] `Not_Found)
+  | _, "/stream/redirect" ->
+      Some (Response.redirect ~status:`Temporary_Redirect "/login?x=1")
   | _, "/stream/redirect-abs" -> Some (Response.redirect "http://test/login")
   | _ -> None

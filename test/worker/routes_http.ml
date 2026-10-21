@@ -97,14 +97,14 @@ let storage req env url =
   | "/r2/get" -> (
       match R2.get (R2.of_env env "BUCKET") key with
       | Some bytes -> Response.make bytes
-      | None -> Response.text ~status:404 "none")
+      | None -> Response.text ~status:`Not_Found "none")
   | "/r2/head" -> (
       match R2.head (R2.of_env env "BUCKET") key with
       | Some { size; etag; content_type } ->
           Response.text
             (Printf.sprintf "size=%d etag=%s type=%s" size etag
                (opt content_type))
-      | None -> Response.text ~status:404 "none")
+      | None -> Response.text ~status:`Not_Found "none")
   | "/r2/delete" ->
       R2.delete (R2.of_env env "BUCKET") key;
       Response.text "ok"
@@ -121,7 +121,7 @@ let storage req env url =
             (Printf.sprintf "%d %s %s" (Response.status res)
                (opt (Response.header res "x-cached"))
                (Response.body_text res))
-      | None -> Response.text ~status:404 "miss")
+      | None -> Response.text ~status:`Not_Found "miss")
   | "/cache/delete" -> Response.text (string_of_bool (Cache.delete key))
   | "/d1/types" ->
       let db = D1.of_env env "DB" in
@@ -162,7 +162,8 @@ let storage req env url =
           ~params:[ Int 9_007_199_254_740_993L ]
       with
       | _ -> Response.text "unreachable"
-      | exception Invalid_argument message -> Response.text ~status:400 message)
+      | exception Invalid_argument message ->
+          Response.text ~status:`Bad_Request message)
   | "/d1/no-params" ->
       let db = D1.of_env env "DB" in
       Response.text
@@ -172,14 +173,14 @@ let storage req env url =
       match D1.query (D1.of_env env "DB") "SELEKT nothing" with
       | _ -> Response.text "unreachable"
       | exception Js_error message ->
-          Response.text ~status:502
+          Response.text ~status:`Bad_Gateway
             ("sql error: " ^ Promise.error_to_string message))
   | "/d1/sync-throw" -> (
       match D1.query (D1.of_env env "DB") "" with
       | _ -> Response.text "unreachable"
       | exception Js_error message ->
-          Response.text ~status:502 ("caught " ^ Promise.error_to_string message)
-      )
+          Response.text ~status:`Bad_Gateway
+            ("caught " ^ Promise.error_to_string message))
   | "/d1/columns" ->
       let db = D1.of_env env "DB" in
       Response.text
@@ -189,7 +190,7 @@ let storage req env url =
   | "/kv/list-broken" -> (
       match KV.list ~prefix:"kv-broken-" (KV.of_env env "KV") with
       | _ -> Response.text "unreachable"
-      | exception Failure message -> Response.text ~status:502 message)
+      | exception Failure message -> Response.text ~status:`Bad_Gateway message)
   | "/binding/shape" ->
       let name = arg "name" in
       let kv () = ignore (KV.of_env env name) in
@@ -203,7 +204,7 @@ let storage req env url =
       in
       Response.text (String.concat "\n" [ message kv; message r2; message d1 ])
   | "/binding/missing" -> missing_binding ()
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let handle req env ctx =
   let open Workero in
@@ -220,10 +221,10 @@ let handle req env ctx =
   | POST, "/json/user" -> (
       match JSON.decode Json_user.of_json req with
       | Ok user -> JSON.response (Json_user.to_json user)
-      | Error message -> JSON.error ~status:422 message)
+      | Error message -> JSON.error ~status:(`Status 422) message)
   | POST, "/json/raise" -> JSON.response (JSON.request req)
   | GET, "/json/custom" ->
-      JSON.response ~status:201
+      JSON.response ~status:`Created
         ~headers:[ ("Content-Type", "application/vnd.api+json"); ("x-a", "b") ]
         (`List [ `Int 1; `Null ])
   | _, "/method" -> Response.text (method_name (Request.method_ req))
@@ -251,20 +252,20 @@ let handle req env ctx =
            (opt (Cf.colo cf))
            (opt_int (Cf.asn cf)))
   | _, "/status" ->
-      Response.text ~status:201 ~headers:[ ("x-made", "yes") ] "made\n"
-  | _, "/no-content" -> Response.text ~status:204 ""
+      Response.text ~status:`Created ~headers:[ ("x-made", "yes") ] "made\n"
+  | _, "/no-content" -> Response.empty `No_Content
   | _, "/html" -> Response.html "<p>hi</p>"
   | _, "/html-type" ->
-      Response.html ~status:404
+      Response.html ~status:`Not_Found
         ~headers:[ ("Content-Type", "text/html; charset=latin1") ]
         "<p>gone</p>"
   | _, "/make" ->
-      Response.make ~status:202
+      Response.make ~status:`Accepted
         ~headers:[ ("content-type", "image/png"); ("x-a", "1") ]
         "\000\137PNG\255"
   | _, "/redirect" -> Response.redirect "http://test/hello"
-  | _, "/redirect-301" -> Response.redirect ~status:301 "http://test/hello"
-  | _, "/redirect-bad" -> Response.redirect ~status:200 "http://test/hello"
+  | _, "/redirect-301" ->
+      Response.redirect ~status:`Moved_Permanently "http://test/hello"
   | _, p when String.starts_with ~prefix:"/req/path" p ->
       Response.text
         (Printf.sprintf "path=%s query=%s" (Request.path req)
@@ -330,7 +331,8 @@ let handle req env ctx =
       match fetch (upstream ^ "/boom") with
       | _ -> Response.text "unreachable"
       | exception Js_error msg ->
-          Response.text ~status:502 ("caught " ^ Promise.error_to_string msg))
+          Response.text ~status:`Bad_Gateway
+            ("caught " ^ Promise.error_to_string msg))
   | _, "/fetch-reject" -> fetch (upstream ^ "/boom")
   | _, "/background/start" ->
       let v = Option.value (URL.query url "v") ~default:"" in
@@ -373,8 +375,8 @@ let handle req env ctx =
       in
       match Promise.await p with
       | s -> Response.text s
-      | exception Invalid_argument m -> Response.text ~status:502 ("caught " ^ m)
-      )
+      | exception Invalid_argument m ->
+          Response.text ~status:`Bad_Gateway ("caught " ^ m))
   | _, "/promise/raise-after-await" ->
       Promise.await (sleep 10);
       raise Failed
@@ -416,7 +418,7 @@ let handle req env ctx =
       match Promise.await (Promise.any [ boom; boom ]) with
       | () -> Response.text "unreachable"
       | exception Js_error e ->
-          Response.text ~status:502 (Promise.error_to_string e))
+          Response.text ~status:`Bad_Gateway (Promise.error_to_string e))
   | _, "/promise/all-settled" ->
       let results =
         Promise.await
@@ -484,7 +486,7 @@ let handle req env ctx =
            (fun prefix -> String.starts_with ~prefix p)
            [ "/kv/"; "/r2/"; "/cache/"; "/d1/"; "/binding/" ] ->
       storage req env url
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () =
   Workero.scheduled (fun controller env ctx ->

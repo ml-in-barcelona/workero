@@ -3,9 +3,17 @@ open Internal
 
 type t = js
 
-let null_body_statuses = [ 101; 204; 205; 304 ]
+let null_body_statuses = [ 204; 205; 304 ]
+let code = function None -> 200 | Some s -> Status.to_int s
 
 let build ?content_type ~status ~headers ~empty_body body =
+  if status < 200 || status > 599 then
+    invalid_arg
+      (Printf.sprintf "Workero.Response: status %d is outside 200..599" status);
+  let body = if empty_body then Js.Unsafe.inject Js.null else body in
+  if List.mem status null_body_statuses && not (is_nullish body) then
+    invalid_arg
+      (Printf.sprintf "Workero.Response: status %d allows no body" status);
   let h = Wire.headers_of_list headers in
   Option.iter
     (fun ct ->
@@ -15,28 +23,25 @@ let build ?content_type ~status ~headers ~empty_body body =
   let init =
     Js.Unsafe.obj [| ("status", Js.Unsafe.inject status); ("headers", h) |]
   in
-  let body =
-    if List.mem status null_body_statuses && empty_body then
-      Js.Unsafe.inject Js.null
-    else body
-  in
   Js.Unsafe.new_obj (global "Response") [| body; init |]
 
-let text ?(status = 200) ?(headers = []) body =
-  build ~status ~headers ~empty_body:(body = "") (str body)
+let text ?status ?(headers = []) body =
+  build ~status:(code status) ~headers ~empty_body:(body = "") (str body)
 
-let html ?(status = 200) ?(headers = []) body =
-  build ~content_type:"text/html; charset=utf-8" ~status ~headers
+let html ?status ?(headers = []) body =
+  build ~content_type:"text/html; charset=utf-8" ~status:(code status) ~headers
     ~empty_body:(body = "") (str body)
 
-let make ?(status = 200) ?(headers = []) body =
-  build ~status ~headers ~empty_body:(body = "") (Wire.body_of_string body)
+let make ?status ?(headers = []) body =
+  build ~status:(code status) ~headers ~empty_body:(body = "")
+    (Wire.body_of_string body)
 
 let empty ?(headers = []) status =
-  build ~status ~headers ~empty_body:false (Js.Unsafe.inject Js.null)
+  build ~status:(Status.to_int status) ~headers ~empty_body:true
+    (Js.Unsafe.inject Js.null)
 
-let of_stream ?(status = 200) ?(headers = []) s =
-  build ~status ~headers ~empty_body:false (Stream.to_js s)
+let of_stream ?status ?(headers = []) s =
+  build ~status:(code status) ~headers ~empty_body:false (Stream.to_js s)
 
 let stream ?status ?headers ctx f =
   let writer, readable = Stream.pipe () in
@@ -49,12 +54,11 @@ let stream ?status ?headers ctx f =
           Stream.Writer.abort ~reason:message writer);
   of_stream ?status ?headers readable
 
-let redirect ?(status = 302) url =
-  if not (List.mem status [ 301; 302; 303; 307; 308 ]) then
-    invalid_arg (Printf.sprintf "Workero.Response.redirect: status %d" status);
+let redirect ?status url =
+  let status = match status with None -> 302 | Some s -> Status.to_int s in
   if Js.to_bool (meth (global "URL") "canParse" [| str url |]) then
     meth (global "Response") "redirect" [| str url; Js.Unsafe.inject status |]
-  else empty ~headers:[ ("location", url) ] status
+  else empty ~headers:[ ("location", url) ] (`Status status)
 
 let status r = int_of_js (Js.Unsafe.get r "status")
 let header = Wire.header
@@ -69,7 +73,9 @@ let clone r : t = Binding.invoke r "clone" [||]
 
 let copy ?status ?headers:new_headers r =
   let status =
-    Option.value status ~default:(int_of_js (Js.Unsafe.get r "status"))
+    match status with
+    | Some s -> Status.to_int s
+    | None -> int_of_js (Js.Unsafe.get r "status")
   in
   let headers = Option.value new_headers ~default:(Wire.headers r) in
   build ~status ~headers ~empty_body:false (Js.Unsafe.get r "body")

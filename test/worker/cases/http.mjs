@@ -162,11 +162,6 @@ const cases = [
     headers: { location: "http://test/hello" },
   },
   {
-    name: "redirect with a bad status",
-    request: ["http://test/redirect-bad"],
-    throws: "Invalid_argument",
-  },
-  {
     name: "to_js and of_js",
     request: ["http://test/js"],
     status: 200,

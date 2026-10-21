@@ -13,9 +13,9 @@ let handler req _env _ctx =
           Response.text
             (Printf.sprintf "%s: %d bytes\n" (Form_data.file_name file)
                (Form_data.file_size file))
-      | Some (Text _) -> Response.text ~status:400 "avatar must be a file\n"
-      | None -> Response.text ~status:400 "no avatar\n")
-  | exception Js_error _ -> Response.text ~status:400 "not a form\n"
+      | Some (Text _) -> Response.text ~status:`Bad_Request "avatar must be a file\n"
+      | None -> Response.text ~status:`Bad_Request "no avatar\n")
+  | exception Js_error _ -> Response.text ~status:`Bad_Request "not a form\n"
 
 let () = Workero.serve handler
 ]}

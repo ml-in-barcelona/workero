@@ -10,7 +10,9 @@ What does not work yet, and what behaves differently from what you may expect.
 - {!Workero.URL} uses the WHATWG [URL], but {!Workero.URL.path} is decoded and
   only [http] and [https] URLs parse. See
   {{!page-requests}Requests and responses}.
-- A status that allows no body (101, 204, 205, 304) needs an empty body.
+- A response cannot have a status below 200 or above 599. The runtime rejects
+  them, so {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to
+  read codes; use {!Workero.Websocket} for 101.
 
 {1 Limits of streams, forms and WebSockets}
 

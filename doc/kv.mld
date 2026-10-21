@@ -30,7 +30,7 @@ let handler req env _ctx =
   | GET, "/kv" -> (
       match KV.get kv key with
       | Some value -> Response.text value
-      | None -> Response.text ~status:404 "not found\n")
+      | None -> Response.text ~status:`Not_Found "not found\n")
   | PUT, "/kv" ->
       KV.put ~expiration_ttl:3600 kv key (Request.text req);
       Response.text "stored\n"
@@ -40,7 +40,7 @@ let handler req env _ctx =
   | GET, "/keys" ->
       let prefix = URL.query url "prefix" in
       Response.text (String.concat "\n" (KV.list ?prefix kv) ^ "\n")
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ]}

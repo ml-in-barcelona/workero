@@ -12,6 +12,7 @@ module Method = Method
 module Cf = Cf
 module Request = Request
 module Response = Response
+module Status = Status
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled

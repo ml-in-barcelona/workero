@@ -17,11 +17,11 @@ let handler req _env _ctx =
   | GET, "/where" ->
       let country = Option.value (Cf.country (Request.cf req)) ~default:"??" in
       Response.text (country ^ "\n")
-  | POST, "/upload" -> Response.make ~status:201 (Request.bytes req)
+  | POST, "/upload" -> Response.make ~status:`Created (Request.bytes req)
   | GET, "/page" -> Response.html "<h1>hello</h1>"
-  | GET, "/old" -> Response.redirect ~status:301 "/new"
-  | GET, "/done" -> Response.text ~status:204 ""
-  | _ -> Response.text ~status:404 "not found\n"
+  | GET, "/old" -> Response.redirect ~status:`Moved_Permanently "/new"
+  | GET, "/done" -> Response.empty `No_Content
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ```
@@ -52,15 +52,15 @@ A body can be read once. [`Workero.Request.text`](./Workero-Request.md#val-text)
 
 ## Response
 
-- [`Workero.Response.text`](./Workero-Response.md#val-text) sends a UTF-8 text body. `status` is 200 by default.
+- [`Workero.Response.text`](./Workero-Response.md#val-text) sends a UTF-8 text body. `status` is a [`Workero.Status`](./Workero-Status.md) such as ``Created` and is ``OK` by default. ``Status 418` names a code with no tag.
 - [`Workero.Response.html`](./Workero-Response.md#val-html) is the same with `content-type: text/html; charset=utf-8`.
 - [`Workero.Response.make`](./Workero-Response.md#val-make) sends the bytes as they are, with no `content-type`.
-- [`Workero.Response.empty`](./Workero-Response.md#val-empty) has a status and no body: `Response.empty 204`.
-- [`Workero.Response.redirect`](./Workero-Response.md#val-redirect) sends a `location` header. The URL can be relative, such as `"/login"`. The status is 301, 302, 303, 307 or 308 (302 by default). It raises `Invalid_argument` for another status.
+- [`Workero.Response.empty`](./Workero-Response.md#val-empty) has a status and no body: `Response.empty `No_Content`.
+- [`Workero.Response.redirect`](./Workero-Response.md#val-redirect) sends a `location` header. The URL can be relative, such as `"/login"`. The status is ``Moved_Permanently`, ``Found`, ``See_Other`, ``Temporary_Redirect` or ``Permanent_Redirect` (``Found` by default). Another status does not type-check.
 - [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) and [`Workero.Response.stream`](./Workero-Response.md#val-stream) send a body in chunks. See [Streams](./streams.md).
 Pass `~headers` as a list of pairs. A `content-type` in `headers` replaces the default one.
 
-A status that allows no body (101, 204, 205 and 304\) works only with an empty body. The runtime rejects a response with one of these statuses and a body. [`Workero.Response.empty`](./Workero-Response.md#val-empty) is the simple way to make one.
+A status that allows no body (``No_Content`, ``Reset_Content` and ``Not_Modified`) does not type-check with a body. Use [`Workero.Response.empty`](./Workero-Response.md#val-empty). ``Status n` with `n` in 204, 205 or 304 and a non-empty body raises `Invalid_argument`. So does a ``Status n` outside 200 to 599, which the runtime rejects.
 
 A response that you got from [`Workero.fetch`](./Workero.md#val-fetch) has readers: [`Workero.Response.status`](./Workero-Response.md#val-status), [`Workero.Response.header`](./Workero-Response.md#val-header), [`Workero.Response.header_all`](./Workero-Response.md#val-header_all), [`Workero.Response.headers`](./Workero-Response.md#val-headers), [`Workero.Response.body`](./Workero-Response.md#val-body), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text) and [`Workero.Response.body_bytes`](./Workero-Response.md#val-body_bytes).
 
@@ -149,7 +149,7 @@ let handler _req _env _ctx =
   in
   match Response.status res with
   | 200 -> Response.text (Response.body_text res)
-  | status -> Response.text ~status:502 (Printf.sprintf "upstream %d\n" status)
+  | status -> Response.text ~status:`Bad_Gateway (Printf.sprintf "upstream %d\n" status)
 
 let () = Workero.serve handler
 ```

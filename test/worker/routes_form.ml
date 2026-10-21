@@ -38,7 +38,7 @@ let dump req =
         (String.concat "\n"
            (List.map describe (Form_data.to_list form)
            @ [ "first=" ^ first; "all=" ^ String.concat "|" all ]))
-  | exception Js_error _ -> Response.text ~status:400 "not a form"
+  | exception Js_error _ -> Response.text ~status:`Bad_Request "not a form"
 
 let handle req _env _ctx =
   match URL.path (Request.url req) with

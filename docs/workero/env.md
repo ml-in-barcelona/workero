@@ -9,7 +9,7 @@ let handler _req env _ctx =
   | Some token ->
       Workero.Response.text
         (Printf.sprintf "token of %d bytes\n" (String.length token))
-  | None -> Workero.Response.text ~status:500 "API_TOKEN is not set\n"
+  | None -> Workero.Response.text ~status:`Internal_Server_Error "API_TOKEN is not set\n"
 
 let () = Workero.serve handler
 ```

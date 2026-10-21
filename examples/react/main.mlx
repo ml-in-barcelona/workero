@@ -15,6 +15,6 @@ let handler req _env _ctx =
         |> Option.value ~default:1.5
       in
       Response.html (React_dom.render_to_string (page score))
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
