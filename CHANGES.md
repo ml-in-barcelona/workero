@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `serve` and `scheduled` flush standard output and standard error when a handler ends, also when it raises, so `print_string` and `Printf.printf` reach the logs without `%!`. Output from a `wait_until` function that runs after the handler returns appears when the next handler ends.
 - First release: the `workero` library and the `workero build` CLI.
   - `Workero.serve` (HTTP handler with `Request`, `Env`, `Context`) and `Workero.scheduled` (Cron Triggers). `workero build` exports only the registered handlers.
   - `Workero.fetch` for outgoing requests, `Context.wait_until`, `Promise.await` in direct style.

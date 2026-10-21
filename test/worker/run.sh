@@ -78,4 +78,13 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo ');'
 } >"$out/config.capnp"
 
-exec $workerd test "$out/config.capnp"
+status=0
+$workerd test "$out/config.capnp" >"$out/workerd.log" 2>&1 || status=$?
+cat "$out/workerd.log"
+for marker in log-marker-unflushed log-marker-raise; do
+  grep -q "$marker" "$out/workerd.log" || {
+    echo "FAIL - $marker is not in the workerd log"
+    status=1
+  }
+done
+exit $status

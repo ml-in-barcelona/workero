@@ -6,14 +6,12 @@ Standard output and standard error of the OCaml program reach the Workers logs. 
 ```ocaml
 let handler _req _env _ctx =
   print_endline "request received";
-  Printf.printf "answering with %d%!" 200;
+  Printf.printf "answering with %d" 200;
   prerr_endline "this goes to the error log";
   Workero.Response.text "ok\n"
 
 let () = Workero.serve handler
 ```
-These forms work (checked in workerd):
+Workero flushes standard output and standard error when a [`Workero.serve`](./Workero.md#val-serve) or [`Workero.scheduled`](./Workero.md#val-scheduled) handler ends, also when it raises. `print_string` and `Printf.printf` need no newline and no `%!`.
 
-- `print_endline` and `prerr_endline`.
-- `Printf.printf` and `Printf.eprintf` when the format ends with `%!`.
-Output that is not flushed stays in the buffer and does not appear. This covers `Printf.printf` without `%!`, and `print_string` without a newline or a flush. Flush it with `%!` or `flush stdout`.
+Output written after the handler ends, for example from a function given to [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until), stays in the buffer until the next handler ends. Flush it with `flush stdout` or `%!`.

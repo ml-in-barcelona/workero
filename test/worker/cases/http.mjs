@@ -494,6 +494,8 @@ const cases = [
     status: 200,
     body: "2:a=1; Path=/|b=2; Expires=Wed, 21 Oct 2026 07:28:00 GMT",
   },
+  { name: "print_string without flush", request: ["http://test/log/unflushed"], status: 200, body: "logged" },
+  { name: "print_string before an exception", request: ["http://test/log/raise"], throws: "Failed" },
   { name: "json unknown route", request: ["http://test/json/nope"], status: 404 },
 ];
 

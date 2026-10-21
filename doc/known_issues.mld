@@ -27,13 +27,12 @@ What does not work yet, and what behaves differently from what you may expect.
 - [Sys.word_size] is 32, and [int] has 31 bits.
 - There is no file system, except files that you embed. See
   {{!page-libraries}Supported libraries}.
-- Output must be flushed to reach the logs. See {{!page-logging}Logging}.
 - The program has no threads, sockets or sub-processes.
 
 {1 Not supported yet}
 
 - [passThroughOnException].
-- The [start] and [queue] events.
+- The [queue] event.
 
 {1 Report a problem}
 

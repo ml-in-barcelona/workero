@@ -343,6 +343,12 @@ let handle req env ctx =
           ignore (Promise.await (sleep 10));
           raise Failed);
       Response.text "started"
+  | _, "/log/unflushed" ->
+      print_string "log-marker-unflushed";
+      Response.text "logged"
+  | _, "/log/raise" ->
+      print_string "log-marker-raise";
+      raise Failed
   | _, "/scheduled/read" -> Response.text !last_scheduled
   | _, "/background/read" -> Response.text !background
   | _, "/promise/nested" ->

@@ -21,13 +21,12 @@ What does not work yet, and what behaves differently from what you may expect.
 
 - `Sys.word_size` is 32, and `int` has 31 bits.
 - There is no file system, except files that you embed. See [Supported libraries](./libraries.md).
-- Output must be flushed to reach the logs. See [Logging](./logging.md).
 - The program has no threads, sockets or sub-processes.
 
 ## Not supported yet
 
 - `passThroughOnException`.
-- The `start` and `queue` events.
+- The `queue` event.
 
 ## Report a problem
 
