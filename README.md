@@ -70,11 +70,11 @@ and [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html).
 
 ## Demos
 
-- [https://workero-example-basic.davesnx.workers.dev](https://workero-example-basic.davesnx.workers.dev) ([source](examples/basic/)): reports the OCaml version and backend.
+- [https://workero-example-basic.davesnx.workers.dev](https://workero-example-basic.davesnx.workers.dev) ([source](examples/basic/)): reports the OCaml version, the backend and the requests served by the isolate.
 - [https://workero-example-react.davesnx.workers.dev](https://workero-example-react.davesnx.workers.dev) ([source](examples/react/)): renders a page on the server.
 - [https://workero-example-limits.davesnx.workers.dev](https://workero-example-limits.davesnx.workers.dev) ([source](examples/limits/)): runs a CPU task or allocates memory.
 - [https://workero-example-features.davesnx.workers.dev](https://workero-example-features.davesnx.workers.dev) ([source](examples/features/)): serves routes for wasm_of_ocaml features.
 - [https://workero-example-hello.davesnx.workers.dev](https://workero-example-hello.davesnx.workers.dev) ([source](examples/hello/)): runs effect handlers and awaits promises.
-- [https://workero-example-jspi.davesnx.workers.dev](https://workero-example-jspi.davesnx.workers.dev) ([source](examples/jspi/)): compares sequential and concurrent waits.
+- [https://workero-example-promise.davesnx.workers.dev](https://workero-example-promise.davesnx.workers.dev) ([source](examples/promise/)): compares sequential and concurrent waits.
 
 To work on the repository, see [CONTRIBUTING.md](CONTRIBUTING.md).

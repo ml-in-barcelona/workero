@@ -14,11 +14,11 @@ node_modules
 *.log
 /examples/hello/deploy/
 /examples/hello/nodetest/
-/examples/jspi/nodetest/
+/examples/promise/nodetest/
 /examples/hello/worker*/
-/examples/jspi/worker*/
+/examples/promise/worker*/
 /examples/hello/probe/
-/examples/jspi/w-*/
+/examples/promise/w-*/
 _worker-test/
 _worker-init-test/
 _worker-cli-test/
