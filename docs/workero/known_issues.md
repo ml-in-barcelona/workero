@@ -8,10 +8,14 @@ What does not work yet, and what behaves differently from what you may expect.
 
 - A handler waits only through [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the body readers. A function that JavaScript calls, such as a `setTimeout` callback, cannot wait. See [Waiting for JavaScript](./async.md).
 - [`Workero.URL`](./Workero-URL.md) is not the WHATWG `URL`. See [Requests and responses](./requests.md).
-- [`Workero.Response.redirect`](./Workero-Response.md#val-redirect) needs an absolute URL.
 - A status that allows no body (101, 204, 205, 304\) needs an empty body.
-- Request and response bodies are whole strings. There is no streaming.
-- [`Workero.Request.url`](./Workero-Request.md#val-url) raises `Invalid_argument` for a host with `"_"` and for a URL with userinfo.
+
+## Limits of streams, forms and WebSockets
+
+- A client disconnect shows only as a failed [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write). There is no event, and no `Request.signal`.
+- [`Workero.Response.copy`](./Workero-Response.md#val-copy) and [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) use up the original body. Call [`Workero.Response.clone`](./Workero-Response.md#val-clone) first to keep it.
+- [`Workero.Request.form_data`](./Workero-Request.md#val-form_data) holds the whole upload in memory. See [Forms](./forms.md).
+- There is no outbound WebSocket and no hibernation. See [WebSockets](./websockets.md).
 
 ## Differences from native OCaml
 
@@ -22,7 +26,6 @@ What does not work yet, and what behaves differently from what you may expect.
 
 ## Not supported yet
 
-- Streaming bodies.
 - `passThroughOnException`.
 - The `start` and `queue` events.
 

@@ -19,6 +19,9 @@ same order as a Worker project.
   arguments of a handler.
 - {{!page-requests}Requests and responses}: requests, responses, URLs, JSON and
   [Workero.fetch].
+- {{!page-streams}Streams}: read a body in chunks, send a body in steps.
+- {{!page-forms}Forms}: forms and file uploads.
+- {{!page-websockets}WebSockets}: accept a connection and read its messages.
 - {{!page-env}Variables and secrets}.
 - {{!page-async}Waiting for JavaScript}: direct style, [Promise.await] and
   background work.

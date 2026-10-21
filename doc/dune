@@ -5,6 +5,9 @@
   getting_started
   handlers
   requests
+  streams
+  forms
+  websockets
   async
   env
   logging

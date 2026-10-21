@@ -14,3 +14,10 @@
 - An exception during program initialisation fails the worker load with its message, instead of "registered no handler".
 - `workero build` fails when the program uses functions with no wasm implementation, instead of failing on each request.
 - Naming: `Sql_value.row`, one `__workero` JS global, `Decode.unit`, `Makefile` targets `test-worker-init` and `test-worker-exports`.
+- `Workero.Stream`: byte streams with `Reader`, `Writer`, `iter` and `pipe`. `Request.body` and `Response.body` give a stream. `Response.stream` writes a body in its own fiber with back-pressure, and a client disconnect raises `Js_error` on write. `Response.of_stream` passes a body through.
+- `Workero.Form_data` and `Request.form_data`: multipart and urlencoded forms, with text values and files (`file_name`, `file_type`, `file_size`, `file_bytes`, `file_stream`). The runtime buffers the whole upload.
+- `Workero.Websocket`: `upgrade` with a receive loop, `pair`, `accept`, `send`, `receive`, `close`, `response`. Events come in order; there are no callbacks.
+- New `Request` values: `path`, `query_string`, `header_all`, `clone`, `body`.
+- New `Response` values: `empty`, `copy`, `clone`, `header_all`, `body`, `of_stream`, `stream`.
+- `Response.redirect` accepts a relative URL, such as `"/login"`.
+- `URL` uses the JavaScript `URL`. A host with `_` and a URL with userinfo now parse, and `Request.url` does not raise for them. `?a` gives `("a", "")`. `+` in a path stays `+`. A malformed escape such as `%zz` leaves the whole path undecoded. `to_string` gives the normalised `href`: a trailing `/` is added and the fragment is kept.

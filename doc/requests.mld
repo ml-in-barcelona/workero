@@ -20,7 +20,7 @@ let handler req _env _ctx =
       Response.text (country ^ "\n")
   | POST, "/upload" -> Response.make ~status:201 (Request.bytes req)
   | GET, "/page" -> Response.html "<h1>hello</h1>"
-  | GET, "/old" -> Response.redirect ~status:301 "https://example.com/new"
+  | GET, "/old" -> Response.redirect ~status:301 "/new"
   | GET, "/done" -> Response.text ~status:204 ""
   | _ -> Response.text ~status:404 "not found\n"
 
@@ -37,15 +37,28 @@ one of the seven becomes [Other name].
 {1 Request}
 
 - {!Workero.Request.url} is the {!Workero.URL.t}.
+- {!Workero.Request.path} is the raw path as sent. It is still percent-encoded,
+  so [%2F] stays [%2F]. {!Workero.URL.path} is decoded.
+- {!Workero.Request.query_string} is the raw query without the ["?"], or [""].
 - {!Workero.Request.header} reads one header. The name is not case-sensitive.
   Repeated headers are joined with [", "].
+- {!Workero.Request.header_all} gives every value of a header as a list. Use it
+  for [set-cookie], which cannot be joined.
 - {!Workero.Request.headers} lists all headers with lower case names, sorted by
   name.
 - {!Workero.Request.text} reads the body as UTF-8 text. Invalid UTF-8 is
   replaced.
 - {!Workero.Request.bytes} reads the body as raw bytes, in a [string].
+- {!Workero.Request.body} gives the body as a {!Workero.Stream.t}, or [None]
+  when there is no body. See {{!page-streams}Streams}.
+- {!Workero.Request.form_data} reads a form. See {{!page-forms}Forms}.
+- {!Workero.Request.clone} gives a copy. Both copies can read the body.
 - {!Workero.Request.cf} gives the {!Workero.Cf.t}, the Cloudflare properties of
   the request.
+
+A body can be read once. {!Workero.Request.text}, {!Workero.Request.bytes},
+{!Workero.Request.body} and {!Workero.Request.form_data} all use it up. Call
+{!Workero.Request.clone} first to read it again.
 
 {!Workero.Cf} has [country], [region], [city], [colo], [timezone] and [asn].
 Each one is an option. It is [None] when the runtime gives no value, for
@@ -57,39 +70,70 @@ example in a local test.
 - {!Workero.Response.html} is the same with [content-type: text/html;
   charset=utf-8].
 - {!Workero.Response.make} sends the bytes as they are, with no [content-type].
-- {!Workero.Response.redirect} sends a [location] header. The URL must be
-  absolute, and the status 301, 302, 303, 307 or 308 (302 by default). It
-  raises [Invalid_argument] for another status.
+- {!Workero.Response.empty} has a status and no body: [Response.empty 204].
+- {!Workero.Response.redirect} sends a [location] header. The URL can be
+  relative, such as ["/login"]. The status is 301, 302, 303, 307 or 308 (302 by
+  default). It raises [Invalid_argument] for another status.
+- {!Workero.Response.of_stream} and {!Workero.Response.stream} send a body in
+  chunks. See {{!page-streams}Streams}.
 
 Pass [~headers] as a list of pairs. A [content-type] in [headers] replaces the
 default one.
 
 A status that allows no body (101, 204, 205 and 304) works only with an empty
 body. The runtime rejects a response with one of these statuses and a body.
+{!Workero.Response.empty} is the simple way to make one.
 
 A response that you got from {!Workero.fetch} has readers:
 {!Workero.Response.status}, {!Workero.Response.header},
-{!Workero.Response.headers}, {!Workero.Response.body_text} and
+{!Workero.Response.header_all}, {!Workero.Response.headers},
+{!Workero.Response.body}, {!Workero.Response.body_text} and
 {!Workero.Response.body_bytes}.
+
+The headers of a {!Workero.fetch} result may be read-only. To change them, make
+a new response with {!Workero.Response.copy}:
+
+{@ocaml[
+let handler _req _env _ctx =
+  let open Workero in
+  let upstream = fetch "https://example.com/" in
+  Response.copy ~headers:[ ("x-via", "workero") ] upstream
+
+let () = Workero.serve handler
+]}
+
+{!Workero.Response.copy} moves the body, so [upstream] is used up. Use
+{!Workero.Response.clone} when you need the body twice, for example to give one
+copy to {!Workero.Cache} and send the other.
+
+{2 Cookies}
+
+{!Workero.Request.header} and {!Workero.Response.header} join repeated values
+with [", "]. This breaks [set-cookie], because a cookie can contain a comma.
+Read it with {!Workero.Response.header_all}: it gives one entry for each
+[set-cookie] header.
 
 {1 URL}
 
-{!Workero.URL} wraps [Js_of_ocaml.Url]. It parses [http] and [https] URLs.
-{!Workero.URL.path} is decoded and starts with ["/"].
-{!Workero.URL.query}, {!Workero.URL.query_all} and {!Workero.URL.query_args}
-give decoded values, and ["+"] in a query is a space.
+{!Workero.URL} wraps the JavaScript [URL]. It parses [http] and [https] URLs
+and follows the WHATWG rules.
 
-It differs from the WHATWG [URL] of JavaScript:
-
-- A query key without [=], such as [?a], is dropped.
-- The path is decoded, so [%2F] and ["/"] look the same.
-- {!Workero.URL.to_string} encodes again: [%zz] becomes [%25zz], and a space in
-  the query becomes [%20].
-- There is no [search], [hash] or [origin].
+- {!Workero.URL.path} is decoded and starts with ["/"].
+- {!Workero.URL.query}, {!Workero.URL.query_all} and {!Workero.URL.query_args}
+  give decoded values, and ["+"] in a query is a space.
+- {!Workero.URL.to_string} gives the normalised [href]: ["http://a.test"]
+  becomes ["http://a.test/"], and the fragment stays.
 - {!Workero.URL.of_string} gives [None] for any scheme other than [http] and
-  [https].
-- {!Workero.Request.url} raises [Invalid_argument] when the URL has a host with
-  ["_"], or userinfo as in [http://user:pw@host/].
+  [https], and for a string that is not a URL.
+
+Changes from the earlier parser:
+
+- A host with ["_"], and a URL with userinfo such as [http://user:pw@host/],
+  now parse. {!Workero.URL.host} does not contain the userinfo.
+- A query key without [=] is kept: [?a] gives [("a", "")].
+- ["+"] in a path stays ["+"]. Only a query decodes it to a space.
+- A malformed escape such as [%zz] leaves the whole path undecoded.
+- {!Workero.Request.url} no longer raises for the cases above.
 
 {1 JSON}
 

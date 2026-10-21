@@ -1,4 +1,4 @@
-(** An absolute [http] or [https] URL, parsed by [Js_of_ocaml.Url]. Paths and
+(** An absolute [http] or [https] URL, parsed by the JavaScript [URL]. Paths and
     query arguments are percent-decoded. In a query, [+] decodes to a space, as
     in WHATWG [URLSearchParams]. *)
 
@@ -18,7 +18,8 @@ val port : t -> int
 
 val path : t -> string
 (** The decoded path, starting with ["/"]. The query string and fragment are not
-    part of it. *)
+    part of it. A path with a malformed escape, such as ["%zz"], is returned
+    undecoded. *)
 
 val query : t -> string -> string option
 (** [query url name] is the first decoded value of [name]. *)

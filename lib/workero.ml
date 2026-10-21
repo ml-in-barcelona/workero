@@ -21,6 +21,9 @@ module Cache = Cache
 module R2 = R2
 module D1 = D1
 module Sql_value = Sql_value
+module Stream = Stream
+module Form_data = Form_data
+module Websocket = Websocket
 
 let register name handler =
   let g = Js.Unsafe.global in

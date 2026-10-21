@@ -1,0 +1,79 @@
+{0 WebSockets}
+
+{!Workero.Websocket.upgrade} accepts a WebSocket connection. Your function
+gets the server end. It reads events with a loop.
+
+{@ocaml[
+let handler _req _env ctx =
+  let open Workero in
+  Websocket.upgrade ctx (fun ws ->
+      let rec loop () =
+        match Websocket.receive ws with
+        | Message (Text s) ->
+            Websocket.send ws (Text ("echo: " ^ s));
+            loop ()
+        | Message (Binary b) ->
+            Websocket.send ws (Binary b);
+            loop ()
+        | Close _ -> Websocket.close ws
+        | Failed _ -> loop ()
+      in
+      loop ())
+
+let () = Workero.serve handler
+]}
+
+{!Workero.Websocket.upgrade} returns the [101] response at once. Your function
+runs in its own fiber, through {!Workero.Context.wait_until}.
+
+- When your function returns, the socket closes with code 1000, if it is still
+  open.
+- If your function raises, the socket closes with code 1011. The error goes to
+  [console.error].
+
+A socket that stays open was tested for 60 seconds on Cloudflare.
+
+Handle upgrade requests only. Check the [upgrade] header first when the same
+route also serves normal requests.
+
+{1 Events}
+
+{!Workero.Websocket.receive} gives the next {!Workero.Websocket.event}. It
+waits while no event is ready.
+
+- [Message (Text s)] and [Message (Binary b)]: a message. Binary data is a
+  [string] of bytes.
+- [Close { code; reason; was_clean }]: the peer closed the connection. A second
+  {!Workero.Websocket.receive} gives the same [Close].
+- [Failed message]: the [error] event. A [Close] follows it.
+
+Events come in the order they arrived. The queue starts when
+{!Workero.Websocket.accept} runs, so no message is lost between the accept and
+your first {!Workero.Websocket.receive}.
+
+Only one fiber may wait in {!Workero.Websocket.receive}. A second concurrent
+call raises [Invalid_argument].
+
+{1 Why no callbacks}
+
+A callback that JavaScript calls cannot wait. See
+{{!page-async}Waiting for JavaScript}. A receive loop runs in direct style, so
+it can call {!Workero.fetch}, {!Workero.KV} or {!Workero.Promise.await} between
+two messages.
+
+{1 Send and close}
+
+- {!Workero.Websocket.send} sends [Text s] or [Binary b]. It raises
+  {!Workero.Js_error} when the socket is closed.
+- {!Workero.Websocket.close} closes with an optional [code] and [reason].
+
+{1 Without upgrade}
+
+{!Workero.Websocket.upgrade} is {!Workero.Websocket.val-pair},
+{!Workero.Websocket.accept} and {!Workero.Websocket.response} in one call. Use
+the parts to keep the [client] end, or to start the loop yourself.
+
+{1 Not supported yet}
+
+- A WebSocket that the Worker opens to another server.
+- Hibernation, which lets a Durable Object sleep between messages.

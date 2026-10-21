@@ -12,12 +12,27 @@ val url : t -> Workero__.Url.t
 ```
 The request URL.
 
-Raises `Invalid_argument` when `Js_of_ocaml.Url` cannot parse it. A host containing `"_"` and a URL with userinfo, like `http://user:pw@host/`, are not parsed.
+Raises `Invalid_argument` when it is not an `http` or `https` URL.
+
+```ocaml
+val path : t -> string
+```
+The raw path as sent, percent-encoded, starting with `"/"`. `"%2F"` stays `"%2F"`.
+
+```ocaml
+val query_string : t -> string
+```
+The raw query without the `"?"`; `""` when there is none.
 
 ```ocaml
 val header : t -> string -> string option
 ```
-`header req name` is the value of header `name`, matched without regard to letter case. Repeated headers are joined with `", "`.
+`header req name` is the value of header `name`, matched without regard to letter case. Repeated headers are joined with `", "`. Use [`header_all`](./#val-header_all) for `cookie` lists and `set-cookie`.
+
+```ocaml
+val header_all : t -> string -> string list
+```
+Every value of a header; one entry per `set-cookie`, one joined entry for other names.
 
 ```ocaml
 val headers : t -> (string * string) list
@@ -33,6 +48,21 @@ Reads the whole body as UTF-8 text. Invalid UTF-8 is replaced.
 val bytes : t -> string
 ```
 Reads the whole body as raw bytes.
+
+```ocaml
+val body : t -> Stream.t option
+```
+The body as a stream; `None` when the request has none (GET, HEAD).
+
+```ocaml
+val form_data : t -> Form_data.t
+```
+Parses a multipart or urlencoded body with the platform parser. Suspends like [`Promise.await`](./Workero-Promise.md#val-await). Raises [`Js_error`](./Workero.md#exception-Js_error) for another content type.
+
+```ocaml
+val clone : t -> t
+```
+`request.clone()`; both copies can read the body.
 
 ```ocaml
 val cf : t -> Cf.t

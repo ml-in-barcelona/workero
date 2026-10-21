@@ -1,7 +1,7 @@
 
 # Module `Workero.URL`
 
-An absolute `http` or `https` URL, parsed by `Js_of_ocaml.Url`. Paths and query arguments are percent-decoded. In a query, `+` decodes to a space, as in WHATWG `URLSearchParams`.
+An absolute `http` or `https` URL, parsed by the JavaScript `URL`. Paths and query arguments are percent-decoded. In a query, `+` decodes to a space, as in WHATWG `URLSearchParams`.
 
 ```ocaml
 type t
@@ -30,7 +30,7 @@ The port, or 80 or 443 when the URL has none.
 ```ocaml
 val path : t -> string
 ```
-The decoded path, starting with `"/"`. The query string and fragment are not part of it.
+The decoded path, starting with `"/"`. The query string and fragment are not part of it. A path with a malformed escape, such as `"%zz"`, is returned undecoded.
 
 ```ocaml
 val query : t -> string -> string option

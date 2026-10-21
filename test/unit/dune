@@ -9,6 +9,9 @@
   test_method
   test_request
   test_response
+  test_stream
+  test_form_data
+  test_websocket
   test_fetch
   test_env
   test_scheduled
