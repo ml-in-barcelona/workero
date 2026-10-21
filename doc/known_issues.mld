@@ -30,6 +30,21 @@ not supported yet.
   {{!page-libraries}Supported libraries}.
 - The program has no threads, sockets or sub-processes.
 
+{1 Not supported yet}
+
+- The [queue], [tail] and [email] handlers.
+- Durable Objects: classes, storage, alarms and namespace bindings.
+- Workflows.
+- Service bindings and RPC ([WorkerEntrypoint]).
+- Queues producer bindings.
+- Workers AI, Vectorize, Hyperdrive, Analytics Engine, the static assets binding
+  and the Send Email binding.
+- [HTMLRewriter].
+- A WebSocket that the Worker opens to another server, and WebSocket
+  hibernation.
+- [crypto.subtle] and outbound TCP sockets ([connect]).
+- [AbortController] and request cancellation ([Request.signal]).
+
 {1 Report a problem}
 
 Open an issue in the

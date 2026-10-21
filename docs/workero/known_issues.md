@@ -22,6 +22,19 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - There is no file system, except files that you embed. See [Supported libraries](./libraries.md).
 - The program has no threads, sockets or sub-processes.
 
+## Not supported yet
+
+- The `queue`, `tail` and `email` handlers.
+- Durable Objects: classes, storage, alarms and namespace bindings.
+- Workflows.
+- Service bindings and RPC (`WorkerEntrypoint`).
+- Queues producer bindings.
+- Workers AI, Vectorize, Hyperdrive, Analytics Engine, the static assets binding and the Send Email binding.
+- `HTMLRewriter`.
+- A WebSocket that the Worker opens to another server, and WebSocket hibernation.
+- `crypto.subtle` and outbound TCP sockets (`connect`).
+- `AbortController` and request cancellation (`Request.signal`).
+
 ## Report a problem
 
 Open an issue in the [workero repository](https://github.com/ml-in-barcelona/workero). Include the OCaml, wasm\_of\_ocaml and Wrangler versions, and the smallest worker that shows the problem.
