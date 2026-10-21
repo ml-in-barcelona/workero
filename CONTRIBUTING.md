@@ -21,7 +21,13 @@ worker, worker-init, worker-exports, and CLI tests.
   for a handler that raises. A service binding rethrows where HTTP answers
   500. `workerd` must be on `PATH`; `npm install workerd` or `wrangler`
   provides it. KV, R2, and Cache bindings point at small JS services in
-  `test/worker/services/`. D1 is a `wrapped` binding over SQLite there.
+  `test/worker/services/`. D1 is a `wrapped` binding over SQLite there. The
+  Queue producer binding points at an HTTP service that records what the
+  runtime sends. Rate limiter, AI and Analytics Engine are `wrapped` stubs.
+  Queue consumer cases run in a second test service, `test-queue`
+  (`tests_queue.mjs`), because `env.WORKER.queue(...)` needs the
+  `service_binding_extra_handlers` compatibility flag, which changes how
+  `scheduled` reports a failure, and `workerd test --experimental`.
 - Init tests in `test/worker-init/` run with `make test-worker-init`. They load
   a worker whose toplevel raises and expect the load to fail with the OCaml
   exception.

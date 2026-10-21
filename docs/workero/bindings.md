@@ -11,6 +11,10 @@ A binding connects your Worker to a Cloudflare resource, such as a key-value nam
 - [R2](./r2.md): [`Workero.R2`](./Workero-R2.md), object storage.
 - [D1](./d1.md): [`Workero.D1`](./Workero-D1.md) and [`Workero.Sql_value`](./Workero-Sql_value.md), SQL databases.
 - [Fetcher](./fetcher.md): [`Workero.Fetcher`](./Workero-Fetcher.md), service bindings and static assets.
+- [Queue](./queue.md): [`Workero.Queue`](./Workero-Queue.md), producers and consumers of Cloudflare Queues.
+- [Rate limiting](./rate_limiter.md): [`Workero.Rate_limiter`](./Workero-Rate_limiter.md).
+- [Workers AI](./ai.md): [`Workero.Ai`](./Workero-Ai.md).
+- [Analytics Engine](./analytics_engine.md): [`Workero.Analytics_engine`](./Workero-Analytics_engine.md).
 - [Secrets Store](./env.md): [`Workero.Secret_store`](./Workero-Secret_store.md), secrets that Workers share.
 String variables and secrets are not bindings. [`Workero.Env.var`](./Workero-Env.md#val-var) and [`Workero.Env.secret`](./Workero-Env.md#val-secret) read them. See [Variables and secrets](./env.md).
 
@@ -36,6 +40,10 @@ database_id = "<database id>"
 [[services]]
 binding = "BACKEND"
 service = "backend-worker"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "jobs"
 ```
 The Cache API has no binding. [`Workero.Cache`](./Workero-Cache.md) uses the cache of the data center that runs the Worker.
 

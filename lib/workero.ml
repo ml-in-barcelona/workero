@@ -32,6 +32,10 @@ module Crypto = Crypto
 module Console = Console
 module Secret_store = Secret_store
 module Fetcher = Fetcher
+module Queue = Queue
+module Rate_limiter = Rate_limiter
+module Ai = Ai
+module Analytics_engine = Analytics_engine
 
 let register name handler = Registry.set name (Async.promising handler)
 let flushing f = Fun.protect ~finally:flush_all f
@@ -51,6 +55,14 @@ let scheduled handler =
               handler
                 (Scheduled.of_js controller)
                 (Env.of_js env) (Context.of_js ctx);
+              Js.Unsafe.inject Js.undefined)))
+
+let queue handler =
+  register "queue" (fun batch env ctx : js ->
+      Async.run (fun () ->
+          flushing (fun () ->
+              handler (Queue.Batch.of_js batch) (Env.of_js env)
+                (Context.of_js ctx);
               Js.Unsafe.inject Js.undefined)))
 
 let fetch ?method_ ?headers ?body url =

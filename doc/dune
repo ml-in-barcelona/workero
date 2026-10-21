@@ -20,6 +20,10 @@
   r2
   d1
   fetcher
+  queue
+  rate_limiter
+  ai
+  analytics_engine
   interop
   how_it_works
   libraries
