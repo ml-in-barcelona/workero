@@ -42,7 +42,7 @@ let stream ?status ?headers ctx f =
   let writer, readable = Stream.pipe () in
   Context.wait_until ctx (fun () ->
       match f writer with
-      | () -> Stream.Writer.close writer
+      | () -> ( try Stream.Writer.close writer with Promise.Js_error _ -> ())
       | exception e ->
           let message = "Workero.Response.stream: " ^ Printexc.to_string e in
           ignore (meth (global "console") "error" [| str message |]);

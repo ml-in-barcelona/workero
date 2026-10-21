@@ -36,9 +36,12 @@ let iter f s =
   let r = reader s in
   let rec loop () =
     match Reader.read r with
-    | Some chunk ->
-        f chunk;
-        loop ()
+    | Some chunk -> (
+        match f chunk with
+        | () -> loop ()
+        | exception e ->
+            (try Reader.cancel r with Promise.Js_error _ -> ());
+            raise e)
     | None -> ()
   in
   loop ()

@@ -148,6 +148,17 @@ const echoCase = async (env, failures) => {
   );
 };
 
+const selfCloseCase = async (env, failures) => {
+  const res = await env.WORKER.fetch("http://test/stream/self-close");
+  const body = await res.text();
+  await sleep(100);
+  const { outcome } = await state(env);
+  const problems = [];
+  if (body !== "x") problems.push(`body ${JSON.stringify(body)}`);
+  if (outcome !== "ok") problems.push(`fiber outcome ${outcome}`);
+  report("stream: function that closes the writer itself ends cleanly", problems, failures);
+};
+
 const cacheCase = async (env, failures) => {
   const key = "http://test/cache-clone-key";
   const problems = [];
@@ -164,6 +175,12 @@ const cacheCase = async (env, failures) => {
 };
 
 const cases = [
+  {
+    name: "stream: iter cancels the source when the function raises",
+    request: ["http://test/stream/iter-cancel"],
+    status: 200,
+    body: "cancelled",
+  },
   {
     name: "response: empty has status, headers and no body",
     request: ["http://test/stream/empty"],
@@ -203,6 +220,7 @@ export default async (env, failures) => {
   await bodyCases(env, failures);
   await responseStreamCases(env, failures);
   await echoCase(env, failures);
+  await selfCloseCase(env, failures);
   await cacheCase(env, failures);
   await runCases(env, cases, failures);
 };
