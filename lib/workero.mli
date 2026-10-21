@@ -34,6 +34,8 @@ module Timer = Timer
 module Date = Date
 module Crypto = Crypto
 module Console = Console
+module Secret_store = Secret_store
+module Fetcher = Fetcher
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

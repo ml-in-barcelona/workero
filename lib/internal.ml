@@ -23,3 +23,12 @@ external js_equals : js -> js -> bool = "caml_js_equals"
 
 let null : js = Js.Unsafe.inject Js.null
 let is_nullish (v : js) = js_equals v null
+
+let describe v =
+  match typeof v with
+  | "object" -> if is_nullish v then "null" else "an object"
+  | "undefined" -> "undefined"
+  | t -> "a " ^ t
+
+let has_own o name =
+  Js.to_bool (meth (global "Object") "hasOwn" [| o; str name |])

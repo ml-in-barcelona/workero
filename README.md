@@ -51,6 +51,22 @@ let () =
       ignore (Workero.Scheduled.cron controller))
 ```
 
+Read required secrets with `Env.secret`, object variables with `Env.json`, and
+Secrets Store secrets with `Secret_store`. Call another Worker through a service
+binding with `Fetcher`:
+
+```ocaml
+let handler req env _ctx =
+  let open Workero in
+  let token = Env.secret env "API_TOKEN" in
+  let backend = Fetcher.of_env env "BACKEND" in
+  let res =
+    Fetcher.fetch ~headers:[ ("authorization", "Bearer " ^ token) ] backend
+      "http://backend/users"
+  in
+  Response.text ~status:(`Status (Response.status res)) (Response.body_text res)
+```
+
 ## Build and package a worker
 
 Build an executable with `(modes wasm)` from the dune project:

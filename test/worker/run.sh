@@ -33,12 +33,20 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      ],'
   echo '      bindings = ['
   echo '        (name = "GREETING", text = "from test config"),'
+  echo '        (name = "API_TOKEN", text = "tok-123"),'
+  printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
+  printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
+  echo '        (name = "BACKEND", service = "backend"),'
   echo '        (name = "KV", kvNamespace = "kv"),'
   echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
   echo '          moduleName = "workero-test:d1",'
   echo '          innerBindings = [(name = "DATABASE", service = (name = "d1", entrypoint = "D1"))],'
   echo '        )),'
+  echo '        (name = "STORE", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "VALUE", text = "store-value")])),'
+  echo '        (name = "STORE_NULL", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "null")])),'
+  echo '        (name = "STORE_UNDEFINED", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "undefined")])),'
+  echo '        (name = "STORE_BROKEN", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "fail")])),'
   echo '      ],'
   echo '      globalOutbound = "upstream",'
   echo '      cacheApiOutbound = "cache",'
@@ -47,7 +55,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache; do
+  for svc in kv r2 cache backend; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
@@ -74,6 +82,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '  ],'
   echo '  extensions = ['
   echo '    (modules = [(name = "workero-test:d1", internal = true, esModule = embed "d1-binding.mjs")]),'
+  echo '    (modules = [(name = "workero-test:secret-store", internal = true, esModule = embed "secret-store-binding.mjs")]),'
   echo '  ],'
   echo ');'
 } >"$out/config.capnp"

@@ -56,3 +56,18 @@ val decode : (Jsonkit.t -> 'a) -> Request.t -> ('a, string) result
     jsonkit decoder, for example [user_of_json] from [[@@deriving json]], or
     [Jsonkit.Of_json.(list int)]. [Error message] when the body is not valid
     JSON or when [of_json] raises [Jsonkit.Of_json_error]. *)
+
+val of_js : Js_of_ocaml.Js.Unsafe.any -> Jsonkit.t
+(** [of_js v] is the JSON form of the JavaScript value [v], the one that
+    [JSON.stringify] gives. A [Date] becomes a string, and a key whose value is
+    [undefined] or a function is dropped, as in [JSON.stringify].
+
+    Raises [Invalid_argument] when [v] has no JSON form ([undefined], a function
+    or a symbol), or when [JSON.stringify] throws, for example on a cyclic
+    object or a [BigInt]. *)
+
+val to_js : Jsonkit.t -> Js_of_ocaml.Js.Unsafe.any
+(** [to_js json] is a new JavaScript value, built with [JSON.parse].
+
+    Raises [Invalid_argument] when [json] holds a float that JSON cannot write:
+    [nan] or an infinity. *)

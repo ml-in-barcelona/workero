@@ -20,9 +20,9 @@ The pages follow the order of a Worker project.
 - [Streams](./streams.md): read a body in chunks, send a body in steps.
 - [Forms](./forms.md): forms and file uploads.
 - [WebSockets](./websockets.md): accept a connection and read its messages.
-- [Variables and secrets](./env.md).
+- [Variables and secrets](./env.md): `Env.var`, `Env.secret`, `Env.json` and Secrets Store.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
-- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md).
+- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md).
 - [Logging](./logging.md): output and `Workero.Console`.
 - [JavaScript globals](./globals.md): timers, `Date`, `crypto`.
 - [Testing and limits](./testing.md).

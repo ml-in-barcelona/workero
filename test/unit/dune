@@ -17,15 +17,17 @@
   test_env
   test_scheduled
   test_bindings
+  test_secret_store
+  test_fetcher
   test_sql_value
   test_decode
   test_globals)
  (modules :standard \ helpers test_json)
  (modes js)
- (libraries helpers workero alcotest js_of_ocaml))
+ (libraries helpers workero jsonkit alcotest js_of_ocaml))
 
 (test
  (name test_json)
  (modules test_json)
  (modes js)
- (libraries workero jsonkit alcotest))
+ (libraries helpers workero jsonkit alcotest js_of_ocaml))

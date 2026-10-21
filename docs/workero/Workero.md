@@ -130,6 +130,16 @@ module Console : sig ... end
 The global `console`. Each call writes one entry to the Workers logs, with its level. Unlike `print_string`, it needs no flush.
 
 ```ocaml
+module Secret_store : sig ... end
+```
+A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. The value is plain text: do not log it. For a secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
+
+```ocaml
+module Fetcher : sig ... end
+```
+A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Bind it in `wrangler.toml` with `[[services]]` or `[assets]`. The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.

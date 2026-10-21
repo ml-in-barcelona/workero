@@ -10,9 +10,13 @@ name in [env], and you open it with [of_env].
 - {{!page-cache}Cache}: {!Workero.Cache}, the Cache API.
 - {{!page-r2}R2}: {!Workero.R2}, object storage.
 - {{!page-d1}D1}: {!Workero.D1} and {!Workero.Sql_value}, SQL databases.
+- {{!page-fetcher}Fetcher}: {!Workero.Fetcher}, service bindings and static
+  assets.
+- {{!page-env}Secrets Store}: {!Workero.Secret_store}, secrets that Workers
+  share.
 
-String variables and secrets are not bindings. {!Workero.Env.var} reads them.
-See {{!page-env}Variables and secrets}.
+String variables and secrets are not bindings. {!Workero.Env.var} and
+{!Workero.Env.secret} read them. See {{!page-env}Variables and secrets}.
 
 {1 Declare a binding}
 
@@ -32,6 +36,10 @@ bucket_name = "my-bucket"
 binding = "DB"
 database_name = "my-database"
 database_id = "<database id>"
+
+[[services]]
+binding = "BACKEND"
+service = "backend-worker"
 ]}
 
 The Cache API has no binding. {!Workero.Cache} uses the cache of the data

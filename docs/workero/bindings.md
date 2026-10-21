@@ -10,7 +10,9 @@ A binding connects your Worker to a Cloudflare resource, such as a key-value nam
 - [Cache](./cache.md): [`Workero.Cache`](./Workero-Cache.md), the Cache API.
 - [R2](./r2.md): [`Workero.R2`](./Workero-R2.md), object storage.
 - [D1](./d1.md): [`Workero.D1`](./Workero-D1.md) and [`Workero.Sql_value`](./Workero-Sql_value.md), SQL databases.
-String variables and secrets are not bindings. [`Workero.Env.var`](./Workero-Env.md#val-var) reads them. See [Variables and secrets](./env.md).
+- [Fetcher](./fetcher.md): [`Workero.Fetcher`](./Workero-Fetcher.md), service bindings and static assets.
+- [Secrets Store](./env.md): [`Workero.Secret_store`](./Workero-Secret_store.md), secrets that Workers share.
+String variables and secrets are not bindings. [`Workero.Env.var`](./Workero-Env.md#val-var) and [`Workero.Env.secret`](./Workero-Env.md#val-secret) read them. See [Variables and secrets](./env.md).
 
 
 ## Declare a binding
@@ -30,6 +32,10 @@ bucket_name = "my-bucket"
 binding = "DB"
 database_name = "my-database"
 database_id = "<database id>"
+
+[[services]]
+binding = "BACKEND"
+service = "backend-worker"
 ```
 The Cache API has no binding. [`Workero.Cache`](./Workero-Cache.md) uses the cache of the data center that runs the Worker.
 
