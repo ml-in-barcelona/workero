@@ -28,10 +28,11 @@ not wrap, see {{!page-interop}JavaScript interop}.
 {1 Async: JSPI}
 
 wasm_of_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly
-for effects. {!Workero.Promise.await} performs an effect. The handler is
-suspended, the JavaScript event loop continues, and the handler resumes when
-the Promise settles. This is why a handler is plain OCaml with no promise
-chains. See {{!page-async}Waiting for JavaScript}.
+for effects. {!Workero.Promise.await} performs an OCaml 5 effect inside the
+library. Your code does not use effects. The handler is suspended, the
+JavaScript event loop continues, and the handler resumes when the Promise
+settles. This is why a handler is plain OCaml with no promise chains. See
+{{!page-async}Waiting for JavaScript} for the steps.
 
 {1 Bundling: workero build}
 

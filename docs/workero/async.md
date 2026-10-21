@@ -33,9 +33,35 @@ let () = Workero.serve handler
 
 ## How it works
 
-Every handler runs in a fiber. [`Workero.Promise.await`](./Workero-Promise.md#val-await) suspends the fiber until the Promise settles. Meanwhile the worker runs other requests. The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way.
 
-This is the JavaScript Promise Integration (JSPI) of WebAssembly with OCaml 5 effects. wasm\_of\_ocaml enables it by default.
+### The Worker model
+
+A Worker isolate is one V8 instance. It has one JavaScript thread and one event loop. Many requests share them. The WebAssembly module loads once per isolate.
+
+For each request, Cloudflare calls the JavaScript `fetch(request, env, ctx)` export. This export calls into the wasm module. JavaScript I/O returns Promises. Wasm cannot block the thread. To wait, it must give control back to the event loop and continue later.
+
+
+### Direct style
+
+Your handler is plain OCaml. It has no monad and no callbacks. Where it needs a Promise result, it calls [`Workero.Promise.await`](./Workero-Promise.md#val-await). The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way. Workero implements the wait with OCaml 5 effects. The effects are internal. Your code does not use them.
+
+
+### The life of one request
+
+1. Cloudflare calls the JavaScript `fetch` export. It calls the OCaml handler through a wasm entry point that `WebAssembly.promising` wraps. A call from JavaScript into OCaml returns a Promise.
+2. Workero runs the handler inside an effect handler. It returns a Promise for the [`Workero.Response.t`](./Workero-Response.md#type-t) to the runtime.
+3. The handler calls `await` on a Promise. This performs an effect. The effect handler captures the rest of the handler as a continuation `k`. It attaches a `then` callback to the Promise: on success it continues `k` with the value, on rejection it raises the error inside `k`. Then it returns.
+4. The wasm call ends. The JavaScript thread is free. The event loop runs other requests.
+5. The Promise settles. The `then` callback continues `k`. Each resume enters wasm again through a `WebAssembly.promising` function.
+6. The handler can wait again. Steps 3 to 5 repeat.
+7. The handler returns a value or raises. Workero resolves or rejects the Promise from step 2\. The runtime sends the response.
+
+### Where JSPI fits
+
+wasm\_of\_ocaml implements effects with the JavaScript Promise Integration (JSPI) of WebAssembly. It is the default. A suspended continuation is a suspended wasm stack. Wasm can suspend only when JavaScript entered it through a `WebAssembly.promising` function. This is why the first call and each resume go through one.
+
+
+### Running things at once
 
 To run two things at once, start both Promises before you wait for either. Waiting for each in turn takes the sum of the times. Waiting after both started takes the longest one.
 
@@ -97,7 +123,7 @@ An exception that escapes the top level of the program, during start-up, fails t
 
 ## Work after the response
 
-[`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) runs a function in its own fiber and keeps the worker alive until it returns, after the response is sent. The function can call [`Workero.Promise.await`](./Workero-Promise.md#val-await). If it raises, the runtime logs the error. The request that called it and other requests are not affected.
+[`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) runs a function in its own fiber, with its own effect handler. It gives that fiber's Promise to `ctx.waitUntil`. The response can go out at once. The runtime keeps the isolate alive until the function returns. The function can call [`Workero.Promise.await`](./Workero-Promise.md#val-await). If it raises, the runtime logs the error. The request that called it and other requests are not affected.
 
 
 ## What you cannot do

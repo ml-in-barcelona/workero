@@ -33,13 +33,53 @@ let () = Workero.serve handler
 
 {1 How it works}
 
-Every handler runs in a fiber. {!Workero.Promise.await} suspends the fiber until
-the Promise settles. Meanwhile the worker runs other requests. The body readers
-({!Workero.Request.text}, {!Workero.Response.body_text}) and {!Workero.fetch}
-wait in the same way.
+{2 The Worker model}
 
-This is the JavaScript Promise Integration (JSPI) of WebAssembly with
-OCaml 5 effects. wasm_of_ocaml enables it by default.
+A Worker isolate is one V8 instance. It has one JavaScript thread and one
+event loop. Many requests share them. The WebAssembly module loads once per
+isolate.
+
+For each request, Cloudflare calls the JavaScript [fetch(request, env, ctx)]
+export. This export calls into the wasm module. JavaScript I/O returns
+Promises. Wasm cannot block the thread. To wait, it must give control back to
+the event loop and continue later.
+
+{2 Direct style}
+
+Your handler is plain OCaml. It has no monad and no callbacks. Where it needs a
+Promise result, it calls {!Workero.Promise.await}. The body readers
+({!Workero.Request.text}, {!Workero.Response.body_text}) and {!Workero.fetch}
+wait in the same way. Workero implements the wait with OCaml 5 effects. The
+effects are internal. Your code does not use them.
+
+{2 The life of one request}
+
++ Cloudflare calls the JavaScript [fetch] export. It calls the OCaml handler
+  through a wasm entry point that [WebAssembly.promising] wraps. A call from
+  JavaScript into OCaml returns a Promise.
++ Workero runs the handler inside an effect handler. It returns a Promise for
+  the {!Workero.Response.t} to the runtime.
++ The handler calls [await] on a Promise. This performs an effect. The effect
+  handler captures the rest of the handler as a continuation [k]. It attaches
+  a [then] callback to the Promise: on success it continues [k] with the value,
+  on rejection it raises the error inside [k]. Then it returns.
++ The wasm call ends. The JavaScript thread is free. The event loop runs other
+  requests.
++ The Promise settles. The [then] callback continues [k]. Each resume enters
+  wasm again through a [WebAssembly.promising] function.
++ The handler can wait again. Steps 3 to 5 repeat.
++ The handler returns a value or raises. Workero resolves or rejects the
+  Promise from step 2. The runtime sends the response.
+
+{2 Where JSPI fits}
+
+wasm_of_ocaml implements effects with the JavaScript Promise Integration
+(JSPI) of WebAssembly. It is the default. A suspended continuation is a
+suspended wasm stack. Wasm can suspend only when JavaScript entered it through
+a [WebAssembly.promising] function. This is why the first call and each resume
+go through one.
+
+{2 Running things at once}
 
 To run two things at once, start both Promises before you wait for either.
 Waiting for each in turn takes the sum of the times. Waiting after both started
@@ -124,10 +164,12 @@ N): ...] followed by the OCaml exception text. Fix the exception and rebuild.
 
 {1 Work after the response}
 
-{!Workero.Context.wait_until} runs a function in its own fiber and keeps the
-worker alive until it returns, after the response is sent. The function can
-call {!Workero.Promise.await}. If it raises, the runtime logs the error. The
-request that called it and other requests are not affected.
+{!Workero.Context.wait_until} runs a function in its own fiber, with its own
+effect handler. It gives that fiber's Promise to [ctx.waitUntil]. The response
+can go out at once. The runtime keeps the isolate alive until the function
+returns. The function can call {!Workero.Promise.await}. If it raises, the
+runtime logs the error. The request that called it and other requests are not
+affected.
 
 {1 What you cannot do}
 
