@@ -114,3 +114,11 @@ let upgrade ctx f =
                [| str ("Workero.Websocket.upgrade: " ^ Printexc.to_string e) |]);
           if is_open server then close ~code:1011 server);
   response client
+
+let serialize_attachment t value =
+  ignore (Binding.invoke t.js "serializeAttachment" [| Json_js.to_js value |])
+
+let deserialize_attachment t =
+  let v = Binding.invoke t.js "deserializeAttachment" [||] in
+  if is_nullish v || typeof v = "undefined" then None
+  else Some (Json_js.of_js v)

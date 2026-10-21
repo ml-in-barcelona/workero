@@ -24,6 +24,34 @@ module Id = struct
   let to_js (t : t) : js = t
 end
 
+module Sql = struct
+  type t = js
+
+  let run_cursor t sql params =
+    let args = Array.of_list (str sql :: List.map Sql_value.to_js params) in
+    let cursor = Binding.invoke t "exec" args in
+    let rows =
+      Binding.guard (fun () ->
+          meth (global "Array") "from" [| meth cursor "raw" [||] |])
+    in
+    (cursor, rows)
+
+  let query ?(params = []) t sql =
+    let cursor, rows = run_cursor t sql params in
+    let names = Decode.(list string) (Js.Unsafe.get cursor "columnNames") in
+    List.map
+      (fun row -> List.combine names (Decode.(list Sql_value.of_js) row))
+      (Decode.(list js) rows)
+
+  let run ?(params = []) t sql =
+    let cursor, _ = run_cursor t sql params in
+    int_of_js (Js.Unsafe.get cursor "rowsWritten")
+
+  let database_size t = int_of_js (Js.Unsafe.get t "databaseSize")
+  let of_js (v : js) : t = v
+  let to_js (t : t) : js = t
+end
+
 module Storage = struct
   type t = js
 
@@ -63,6 +91,20 @@ module Storage = struct
         let entry = Js.Unsafe.get entries i in
         ( Js.to_string (Js.Unsafe.coerce (Js.Unsafe.get entry 0)),
           Json_js.of_js (Js.Unsafe.get entry 1) ))
+
+  let sql t = Sql.of_js (Js.Unsafe.get t "sql")
+
+  let transaction_sync t f =
+    let result = ref None in
+    let work () : js =
+      Async.no_await ~who:"Workero.Durable_object.Storage.transaction_sync"
+        (fun () -> result := Some (f ()));
+      undefined
+    in
+    ignore
+      (Binding.invoke t "transactionSync"
+         [| Js.Unsafe.inject (Js.wrap_callback work) |]);
+    Option.get !result
 
   let delete_all t = Binding.call ~decode:Decode.unit t "deleteAll" [||]
   let sync t = Binding.call ~decode:Decode.unit t "sync" [||]
@@ -110,6 +152,30 @@ module State = struct
     Binding.call ~decode:Decode.unit t "blockConcurrencyWhile" [| work |];
     Option.get !result
 
+  let accept_websocket ?(tags = []) t ws =
+    ignore
+      (Binding.invoke t "acceptWebSocket"
+         [|
+           Websocket.to_js ws;
+           Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string tags)));
+         |])
+
+  let websockets ?tag t =
+    let args = match tag with None -> [||] | Some tag -> [| str tag |] in
+    Decode.(list (fun ws -> Websocket.of_js ws))
+      (Binding.invoke t "getWebSockets" args)
+
+  let tags t ws =
+    Decode.(list string) (Binding.invoke t "getTags" [| Websocket.to_js ws |])
+
+  let set_websocket_auto_response t ~request ~response =
+    let pair =
+      Js.Unsafe.new_obj
+        (global "WebSocketRequestResponsePair")
+        [| str request; str response |]
+    in
+    ignore (Binding.invoke t "setWebSocketAutoResponse" [| pair |])
+
   let of_js (v : js) : t = v
   let to_js (t : t) : js = t
 end
@@ -120,9 +186,15 @@ type t = {
   init : (unit -> unit) option;
   fetch : (Request.t -> Response.t) option;
   alarm : (alarm_info -> unit) option;
+  websocket_message : (Websocket.t -> Websocket.message -> unit) option;
+  websocket_close :
+    (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) option;
+  websocket_error : (Websocket.t -> string -> unit) option;
 }
 
-let make ?init ?fetch ?alarm () = { init; fetch; alarm }
+let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
+    ?websocket_error () =
+  { init; fetch; alarm; websocket_message; websocket_close; websocket_error }
 
 let alarm_info_of_js info =
   if typeof info <> "object" || is_nullish info then
@@ -161,6 +233,43 @@ let handlers_js t =
                      alarm (alarm_info_of_js info);
                      undefined)))
            t.alarm);
+      field "webSocketMessage"
+        (Option.map
+           (fun handler ws message : js ->
+             Async.run (fun () ->
+                 flushing (fun () ->
+                     let message =
+                       if typeof message = "string" then
+                         Websocket.Text (Decode.string message)
+                       else Websocket.Binary (Decode.bytes message)
+                     in
+                     handler (Websocket.of_js ws) message;
+                     undefined)))
+           t.websocket_message);
+      field "webSocketClose"
+        (Option.map
+           (fun handler ws code reason was_clean : js ->
+             Async.run (fun () ->
+                 flushing (fun () ->
+                     handler (Websocket.of_js ws) ~code:(int_of_js code)
+                       ~reason:(Decode.string reason)
+                       ~was_clean:(Decode.bool was_clean);
+                     undefined)))
+           t.websocket_close);
+      field "webSocketError"
+        (Option.map
+           (fun handler ws error : js ->
+             Async.run (fun () ->
+                 flushing (fun () ->
+                     let message =
+                       Option.value
+                         (get_string error "message")
+                         ~default:
+                           (Js.to_string (call (global "String") [| error |]))
+                     in
+                     handler (Websocket.of_js ws) message;
+                     undefined)))
+           t.websocket_error);
     ]
   in
   Js.Unsafe.obj (Array.of_list (List.filter_map Fun.id fields))

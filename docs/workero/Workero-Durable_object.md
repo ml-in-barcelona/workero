@@ -11,6 +11,11 @@ Handlers on one object interleave only where they suspend, so a handler that use
 module Id : sig ... end
 ```
 ```ocaml
+module Sql : sig ... end
+```
+The SQLite database of an object. Calls are synchronous: they never suspend. An SQL error raises [`Js_error`](./Workero.md#exception-Js_error). Numbers are JavaScript numbers, so an `Int` is exact only within ±253; see [`Sql_value`](./Workero-Sql_value.md).
+
+```ocaml
 module Storage : sig ... end
 ```
 The storage of one object. The key-value functions are synchronous: they never suspend. Values are JSON, converted with `JSON.stringify` and `JSON.parse`. A `Date` stored by JavaScript code reads as its ISO string and a `Map` as `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. The functions raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws, for example on a class that is not backed by SQLite.
@@ -36,10 +41,14 @@ val make :
   ?init:(unit -> unit) ->
   ?fetch:(Request.t -> Response.t) ->
   ?alarm:(alarm_info -> unit) ->
+  ?websocket_message:(Websocket.t -> Websocket.message -> unit) ->
+  ?websocket_close:
+    (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
+  ?websocket_error:(Websocket.t -> string -> unit) ->
   unit ->
   t
 ```
-`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
+`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. The `websocket_*` handlers get the events of sockets accepted with [`State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket); `websocket_error` gets the error message. Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
 
 ```ocaml
 val register : string -> (State.t -> Env.t -> t) -> unit

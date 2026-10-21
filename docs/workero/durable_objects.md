@@ -1,7 +1,7 @@
 
 # Durable Objects
 
-A [Durable Object](https://developers.cloudflare.com/durable-objects/) is a small stateful server. Every object has an id. Requests for the same id reach the same object, wherever they start, and the object keeps its state in storage. [`Workero.Durable_object`](./Workero-Durable_object.md) supports objects with SQLite storage. It covers storage keys, alarms and requests through a stub.
+A [Durable Object](https://developers.cloudflare.com/durable-objects/) is a small stateful server. Every object has an id. Requests for the same id reach the same object, wherever they start, and the object keeps its state in storage. [`Workero.Durable_object`](./Workero-Durable_object.md) supports objects with SQLite storage. It covers storage keys, SQL, transactions, alarms, hibernatable WebSockets and requests through a stub.
 
 
 ## Declare a class
@@ -72,6 +72,53 @@ The build fails, and prints the error of the program, when the program raises du
 ## Storage
 
 [`Workero.Durable_object.Storage`](./Workero-Durable_object-Storage.md) reads and writes keys without suspending. Values are `Jsonkit.t`. They go through `JSON.stringify` and `JSON.parse` around the runtime's own storage. A value written by JavaScript code reads as its JSON form: a `Date` is its ISO string and a `Map` is `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. [`Workero.Durable_object.Storage.list`](./Workero-Durable_object-Storage.md#val-list) takes `prefix`, `start`, `end_`, `reverse` and `limit`.
+
+
+## SQL
+
+[`Workero.Durable_object.Storage.sql`](./Workero-Durable_object-Storage.md#val-sql) gives the SQLite database of the object. [`Workero.Durable_object.Sql.query`](./Workero-Durable_object-Sql.md#val-query) returns rows as [`Workero.Sql_value.row`](./Workero-Sql_value.md#type-row), [`Workero.Durable_object.Sql.run`](./Workero-Durable_object-Sql.md#val-run) returns the rows written, and parameters bind to the `?` marks:
+
+```ocaml
+let sql = Durable_object.Storage.sql storage in
+ignore
+  (Durable_object.Sql.run sql
+     "CREATE TABLE IF NOT EXISTS visits (at INTEGER, path TEXT)");
+ignore
+  (Durable_object.Sql.run
+     ~params:[ Int (Int64.of_float (Date.now ())); Text "/home" ]
+     sql "INSERT INTO visits VALUES (?, ?)");
+let rows = Durable_object.Sql.query sql "SELECT path FROM visits"
+```
+Calls are synchronous and never suspend. An SQL error raises [`Workero.Js_error`](./Workero.md#exception-Js_error). The runtime returns numbers as JavaScript numbers. A `REAL` that holds `2.0` reads as `Int 2L`, and an `INTEGER` beyond 253 reads as a rounded `Float`; an `Int` you write is exact only within ±253. See [`Workero.Sql_value`](./Workero-Sql_value.md).
+
+[`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) runs a function in a transaction. If the function raises, the runtime rolls back the writes to SQL and to storage keys, and the same exception reaches the caller. The function cannot wait: a call to [`Workero.Promise.await`](./Workero-Promise.md#val-await) in it raises `Invalid_argument` and rolls the transaction back. The asynchronous `transaction` of JavaScript has no equivalent.
+
+
+## Hibernatable WebSockets
+
+A socket accepted with [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket) stays connected while the object is evicted from memory, so an idle chat room costs nothing. The runtime creates the object again when a message arrives and calls its `websocket_message`, `websocket_close` or `websocket_error` handler:
+
+```ocaml
+Durable_object.register "Room" (fun state _env ->
+    Durable_object.make
+      ~fetch:(fun _req ->
+        let { Websocket.client; server } = Websocket.pair () in
+        Durable_object.State.accept_websocket ~tags:[ "room" ] state server;
+        Websocket.response client)
+      ~websocket_message:(fun ws message ->
+        match message with
+        | Websocket.Text text ->
+            List.iter
+              (fun peer -> Websocket.send peer (Text text))
+              (Durable_object.State.websockets ~tag:"room" state)
+        | Binary _ -> ())
+      ~websocket_close:(fun ws ~code ~reason ~was_clean:_ ->
+        Websocket.close ~code ~reason ws)
+      ())
+```
+Per-socket state in memory is lost when the object hibernates. Keep it with [`Workero.Websocket.serialize_attachment`](./Workero-Websocket.md#val-serialize_attachment), which holds at most 2048 bytes, and read it with [`Workero.Websocket.deserialize_attachment`](./Workero-Websocket.md#val-deserialize_attachment). [`Workero.Durable_object.State.set_websocket_auto_response`](./Workero-Durable_object-State.md#val-set_websocket_auto_response) answers a fixed text message, such as a ping, without waking the object. A socket that was accepted with [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate and does not reach these handlers.
+
+A class without a `websocket_message` handler still accepts hibernatable sockets, and the runtime drops their messages without a reply.
 
 
 ## Alarms

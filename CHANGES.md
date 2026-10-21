@@ -6,6 +6,7 @@
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).
 - `Workero.Durable_object`: Durable Objects with SQLite storage. `register` binds a class, `make` builds its handlers (`init`, `fetch`, `alarm`), `Namespace` opens a binding and gives stubs (a `Fetcher.t`), `Id`, `State` and `Storage` (synchronous key-value, alarms, `sync`, `delete_all`).
+- `Durable_object.Sql` (`query`, `run`, `database_size`) with `Storage.sql`, `Storage.transaction_sync` (rolls back and re-raises the original exception; `Promise.await` inside raises `Invalid_argument`), and hibernatable WebSockets: `make ~websocket_message ~websocket_close ~websocket_error`, `State.accept_websocket`, `websockets`, `tags`, `set_websocket_auto_response`, and `Websocket.serialize_attachment` / `deserialize_attachment`.
 - `workero build` and `workero package` run the program once in `workerd` to read the registered Durable Object classes, export them from `index.js` and write `durable-object.js`. They need `workerd` (`WORKERD`, `PATH` or `node_modules/.bin`). A program that raises during initialisation now fails the build with its error.
 - `index.js` accepts a worker that registers only Durable Object classes.
 - `Env.secret` reads a required string variable or secret and raises `Invalid_argument`, without the value, when it is missing or not a string. `Env.json` reads an object or array variable as a `Jsonkit.t`.

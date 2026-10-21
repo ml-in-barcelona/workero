@@ -37,7 +37,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
   printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
   echo '        (name = "BACKEND", service = "backend"),'
-  for class in Counter Alarms NoFetch Awaiting class; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
     echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"
   done
   echo '        (name = "KV", kvNamespace = "kv"),'
@@ -57,7 +57,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "ANALYTICS_BROKEN", wrapped = (moduleName = "workero-test:analytics-broken", innerBindings = [])),'
   echo '      ],'
   echo '      durableObjectNamespaces = ['
-  for class in Counter Alarms NoFetch Awaiting class; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
     echo "        (className = \"$class\", uniqueKey = \"workero-test-$class\", enableSql = true),"
   done
   echo '      ],'
@@ -116,7 +116,16 @@ cp test/worker/cases/*.mjs "$out/cases/"
 } >"$out/config.capnp"
 
 status=0
-$workerd test --experimental "$out/config.capnp" >"$out/workerd.log" 2>&1 || status=$?
+$workerd test --experimental "$out/config.capnp" >"$out/workerd.log" 2>&1 &
+workerd_pid=$!
+(
+  sleep "${WORKERD_TIMEOUT:-180}"
+  echo "FAIL - workerd test did not finish in ${WORKERD_TIMEOUT:-180} seconds" >>"$out/workerd.log"
+  kill -9 "$workerd_pid"
+) >/dev/null 2>&1 &
+watchdog_pid=$!
+wait "$workerd_pid" || status=$?
+kill "$watchdog_pid" 2>/dev/null || true
 cat "$out/workerd.log"
 for marker in log-marker-unflushed log-marker-raise; do
   grep -q "$marker" "$out/workerd.log" || {

@@ -85,7 +85,7 @@ let counter state _env =
           | exception Failure message -> ok ("Failure " ^ message))
       | "wait-until" ->
           D.State.wait_until state (fun () ->
-              Promise.await (Timer.sleep 50);
+              Promise.await (Timer.sleep 600);
               D.Storage.put storage "background" (`String "done"));
           ok "scheduled"
       | "raw-put" ->
@@ -158,7 +158,205 @@ let alarms state _env =
       | other -> Response.text ~status:`Not_Found other)
     ()
 
+let hex s =
+  String.concat ""
+    (List.init (String.length s) (fun i ->
+         Printf.sprintf "%02x" (Char.code s.[i])))
+
+let show_value = function
+  | Sql_value.Null -> "null"
+  | Int n -> "i" ^ Int64.to_string n
+  | Float f -> Printf.sprintf "f%g" f
+  | Text s -> "t" ^ s
+  | Blob b -> "b" ^ hex b
+
+let show_row row =
+  String.concat "," (List.map (fun (name, v) -> name ^ "=" ^ show_value v) row)
+
+let sqlite state _env =
+  let storage = D.State.storage state in
+  let sql = D.Storage.sql storage in
+  let count () =
+    match D.Sql.query sql "SELECT count(*) AS n FROM t" with
+    | [ [ ("n", Int n) ] ] -> Int64.to_int n
+    | _ -> -1
+  in
+  let insert id =
+    D.Sql.run
+      ~params:[ Int id; Text "tx"; Float 0.5; Null ]
+      sql "INSERT INTO t VALUES (?, ?, ?, ?)"
+  in
+  let stored key =
+    match D.Storage.get storage key with
+    | Some v -> Jsonkit.to_string v
+    | None -> "none"
+  in
+  D.make
+    ~fetch:(fun req ->
+      match op req with
+      | "setup" ->
+          ignore
+            (D.Sql.run sql
+               "CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, name \
+                TEXT, score REAL, data BLOB)");
+          let written =
+            D.Sql.run
+              ~params:[ Int 1L; Text "a"; Float 1.5; Blob "\x00\xff" ]
+              sql "INSERT INTO t VALUES (?, ?, ?, ?)"
+          in
+          ignore
+            (D.Sql.run
+               ~params:[ Int 2L; Null; Float 2.25; Null ]
+               sql "INSERT INTO t VALUES (?, ?, ?, ?)");
+          ok (string_of_int written)
+      | "rows" ->
+          ok
+            (String.concat ";"
+               (List.map show_row
+                  (D.Sql.query sql
+                     "SELECT id, name, score, data FROM t ORDER BY id")))
+      | "numbers" ->
+          ok
+            (show_row
+               (List.hd
+                  (D.Sql.query sql
+                     "SELECT 2.0 AS real_whole, 1152921504606846976 AS big, \
+                      1.5 AS frac")))
+      | "update" ->
+          ok
+            (string_of_int
+               (D.Sql.run ~params:[ Text "z" ] sql "UPDATE t SET name = ?"))
+      | "big" ->
+          let safe = 9007199254740991L in
+          ignore (insert safe);
+          let read =
+            D.Sql.query ~params:[ Int safe ] sql "SELECT id FROM t WHERE id = ?"
+          in
+          let beyond =
+            match insert 9007199254740993L with
+            | _ -> "no raise"
+            | exception Invalid_argument _ -> "Invalid_argument"
+          in
+          ok (String.concat ";" (List.map show_row read) ^ "|" ^ beyond)
+      | "syntax" -> (
+          match D.Sql.query sql "SELEKT 1" with
+          | _ -> ok "no raise"
+          | exception Js_error e -> ok (Promise.error_to_string e))
+      | "size" -> ok (string_of_bool (D.Sql.database_size sql > 0))
+      | "tx-commit" ->
+          let v =
+            D.Storage.transaction_sync storage (fun () ->
+                ignore (insert 10L);
+                D.Storage.put storage "k" (`Int 1);
+                42)
+          in
+          ok (Printf.sprintf "%d count=%d k=%s" v (count ()) (stored "k"))
+      | "tx-rollback" ->
+          let outcome =
+            match
+              D.Storage.transaction_sync storage (fun () ->
+                  ignore (insert 11L);
+                  D.Storage.put storage "k2" (`Int 1);
+                  failwith "boom")
+            with
+            | _ -> "no raise"
+            | exception Failure m -> "Failure " ^ m
+          in
+          ok
+            (Printf.sprintf "%s count=%d k2=%s" outcome (count ()) (stored "k2"))
+      | "tx-await" ->
+          let outcome =
+            match
+              D.Storage.transaction_sync storage (fun () ->
+                  ignore (insert 12L);
+                  Promise.await (Promise.resolve ()))
+            with
+            | () -> "no raise"
+            | exception Invalid_argument m -> m
+          in
+          ok (Printf.sprintf "%s count=%d" outcome (count ()))
+      | "tx-sql-error" ->
+          let outcome =
+            match
+              D.Storage.transaction_sync storage (fun () ->
+                  ignore (insert 13L);
+                  ignore (D.Sql.query sql "SELEKT"))
+            with
+            | () -> "no raise"
+            | exception Js_error _ -> "Js_error"
+          in
+          ok (Printf.sprintf "%s count=%d" outcome (count ()))
+      | other -> Response.text ~status:`Not_Found other)
+    ()
+
+let rooms ~hibernating state _env =
+  let storage = D.State.storage state in
+  D.State.set_websocket_auto_response state ~request:"ping" ~response:"pong";
+  let bump key =
+    D.Storage.put storage key (`Int (count_of (D.Storage.get storage key) + 1))
+  in
+  D.make
+    ~fetch:(fun req ->
+      match op req with
+      | "connect" ->
+          let { Websocket.client; server } = Websocket.pair () in
+          let tags =
+            String.split_on_char ','
+              (Option.value (query req "tags") ~default:"")
+            |> List.filter (( <> ) "")
+          in
+          D.State.accept_websocket ~tags state server;
+          Websocket.response client
+      | "handled" ->
+          ok (string_of_int (count_of (D.Storage.get storage "handled")))
+      | "closed" ->
+          ok
+            (match D.Storage.get storage "closed" with
+            | Some (`String s) -> s
+            | _ -> "none")
+      | other -> Response.text ~status:`Not_Found other)
+    ?websocket_message:
+      (if not hibernating then None
+       else
+         Some
+           (fun ws message ->
+             bump "handled";
+             match message with
+             | Websocket.Text "tags" ->
+                 Websocket.send ws
+                   (Text (String.concat "," (D.State.tags state ws)))
+             | Text "peers" ->
+                 Websocket.send ws
+                   (Text
+                      (string_of_int
+                         (List.length (D.State.websockets ~tag:"room" state))))
+             | Text "broadcast" ->
+                 List.iter
+                   (fun w -> Websocket.send w (Text "hello all"))
+                   (D.State.websockets state)
+             | Text s ->
+                 let n =
+                   match Websocket.deserialize_attachment ws with
+                   | Some (`Int n) -> n + 1
+                   | _ -> 1
+                 in
+                 Websocket.serialize_attachment ws (`Int n);
+                 Websocket.send ws (Text (Printf.sprintf "%d:%s" n s))
+             | Binary b -> Websocket.send ws (Binary (hex b))))
+    ?websocket_close:
+      (if not hibernating then None
+       else
+         Some
+           (fun ws ~code ~reason ~was_clean ->
+             D.Storage.put storage "closed"
+               (`String (Printf.sprintf "%d:%s:%b" code reason was_clean));
+             Websocket.close ~code:1000 ws))
+    ()
+
 let () =
+  D.register "Sqlite" sqlite;
+  D.register "Rooms" (rooms ~hibernating:true);
+  D.register "NoWsHandler" (rooms ~hibernating:false);
   D.register "Counter" counter;
   D.register "class" counter;
   D.register "WorkeroDurableObject" counter;
@@ -186,6 +384,15 @@ let handle req env _ctx =
       | res -> Some (Response.text (show res))
       | exception Js_error e ->
           Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
+  | [ ""; "do-ws"; binding; name; op ] ->
+      let namespace = D.Namespace.of_env env binding in
+      let stub = D.Namespace.get_by_name namespace name in
+      let query = Request.query_string req in
+      let url =
+        Printf.sprintf "http://do/%s%s" op
+          (if query = "" then "" else "?" ^ query)
+      in
+      Some (Fetcher.fetch ~headers:[ ("upgrade", "websocket") ] stub url)
   | [ ""; "do-ns"; op ] -> (
       let url = Request.url req in
       let q name = Option.value (URL.query url name) ~default:"" in

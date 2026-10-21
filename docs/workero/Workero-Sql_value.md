@@ -9,7 +9,7 @@ type t =
   | Int of int64
   | Float of float
   | Text of string
-  | Blob of string (* Blob holds raw bytes.SQL APIs on the Workers runtime carry numbers as JavaScript numbers, which are 64-bit floats. An Int is exact only within ±253, and a column holding 1.0 cannot be told apart from 1: both are read as Int 1L. Float is read only for numbers with a fractional part or beyond 253. *)
+  | Blob of string (* Blob holds raw bytes.SQL APIs on the Workers runtime carry numbers as JavaScript numbers, which are 64-bit floats, so a read cannot tell an SQL INTEGER from a REAL. A number with no fractional part within ±253 is read as Int, also from a REAL column: a REAL holding 2.0 reads as Int 2L. Any other number is read as Float. An INTEGER beyond 253 reaches OCaml already rounded by the runtime, and is read as Float (or as Int 9007199254740992L when it rounds to exactly 253), never as its exact Int. A written Int is exact only within ±253. *)
 ```
 ```ocaml
 type row = (string * t) list

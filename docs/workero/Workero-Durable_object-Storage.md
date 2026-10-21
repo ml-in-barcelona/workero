@@ -32,6 +32,14 @@ val list :
 Entries in key order (`reverse` flips it). `start` is inclusive and `end_` is exclusive.
 
 ```ocaml
+val sql : t -> Sql.t
+```
+```ocaml
+val transaction_sync : t -> (unit -> 'a) -> 'a
+```
+`transaction_sync storage f` runs `f` in a transaction and returns its result. If `f` raises, every write of `f` to storage and to SQL is rolled back and the same exception reaches the caller. `f` cannot suspend: a call to [`Promise.await`](./Workero-Promise.md#val-await) in it raises `Invalid_argument`.
+
+```ocaml
 val delete_all : t -> unit
 ```
 Deletes every key-value pair. It does not delete an alarm. Suspends.

@@ -9,7 +9,7 @@ export class WorkeroDurableObject extends DurableObject {
         `workero: class ${name} is exported but the OCaml program did not call Workero.Durable_object.register "${name}"`,
       );
     const handlers = factory(ctx, env);
-    for (const method of ["fetch", "alarm"]) {
+    for (const method of ["fetch", "alarm", "webSocketMessage", "webSocketClose", "webSocketError"]) {
       if (typeof handlers[method] === "function")
         this[method] = (...args) => handlers[method](...args);
     }

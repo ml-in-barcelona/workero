@@ -31,6 +31,28 @@ module Id : sig
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 end
 
+module Sql : sig
+  (** The SQLite database of an object. Calls are synchronous: they never
+      suspend. An SQL error raises {!Js_error}. Numbers are JavaScript numbers,
+      so an [Int] is exact only within ±2{^ 53}; see {!Sql_value}. *)
+
+  type t
+
+  val query : ?params:Sql_value.t list -> t -> string -> Sql_value.row list
+  (** [query sql_db statement] runs [statement], with [params] bound to its [?]
+      marks in order, and returns every row. *)
+
+  val run : ?params:Sql_value.t list -> t -> string -> int
+  (** Runs a statement and returns the number of rows it wrote. It reads the
+      cursor to its end first, because the count is final only then. *)
+
+  val database_size : t -> int
+  (** The size of the database in bytes. *)
+
+  val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+  val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+end
+
 module Storage : sig
   (** The storage of one object. The key-value functions are synchronous: they
       never suspend. Values are JSON, converted with [JSON.stringify] and
@@ -60,6 +82,14 @@ module Storage : sig
     (string * Jsonkit.t) list
   (** Entries in key order ([reverse] flips it). [start] is inclusive and [end_]
       is exclusive. *)
+
+  val sql : t -> Sql.t
+
+  val transaction_sync : t -> (unit -> 'a) -> 'a
+  (** [transaction_sync storage f] runs [f] in a transaction and returns its
+      result. If [f] raises, every write of [f] to storage and to SQL is rolled
+      back and the same exception reaches the caller. [f] cannot suspend: a call
+      to {!Promise.await} in it raises [Invalid_argument]. *)
 
   val delete_all : t -> unit
   (** Deletes every key-value pair. It does not delete an alarm. Suspends. *)
@@ -115,6 +145,29 @@ module State : sig
       next request creates the object again. Suspends. Raises [Invalid_argument]
       when called from the function given to {!register}; use [~init] there. *)
 
+  (** {2 Hibernatable WebSockets}
+
+      Sockets accepted with {!accept_websocket} stay connected while the object
+      is evicted from memory. The runtime creates the object again when a
+      message arrives and calls the [websocket_*] handlers of {!make}. Keep
+      per-socket state in {!Websocket.serialize_attachment}, not in memory. A
+      socket accepted with {!Websocket.accept} does not hibernate; do not mix
+      the two on one socket. *)
+
+  val accept_websocket : ?tags:string list -> t -> Websocket.t -> unit
+  (** Accepts the server end of a {!Websocket.pair}. [tags] are at most 10
+      strings of at most 256 characters; a violation raises {!Js_error}. *)
+
+  val websockets : ?tag:string -> t -> Websocket.t list
+  (** The accepted sockets, or those with [tag]. *)
+
+  val tags : t -> Websocket.t -> string list
+
+  val set_websocket_auto_response :
+    t -> request:string -> response:string -> unit
+  (** Answers a text message equal to [request] with [response], without waking
+      the object. *)
+
   val of_js : Js_of_ocaml.Js.Unsafe.any -> t
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 end
@@ -129,15 +182,21 @@ val make :
   ?init:(unit -> unit) ->
   ?fetch:(Request.t -> Response.t) ->
   ?alarm:(alarm_info -> unit) ->
+  ?websocket_message:(Websocket.t -> Websocket.message -> unit) ->
+  ?websocket_close:
+    (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
+  ?websocket_error:(Websocket.t -> string -> unit) ->
   unit ->
   t
 (** [make ()] gives an object that handles no event. [init] runs under
     [blockConcurrencyWhile] before the first event, each time the object is
     created, and may call {!Promise.await}; if it raises, the runtime resets the
     object. [fetch] answers the requests that a stub sends. [alarm] runs when
-    the alarm is due; an exception makes the runtime retry it. Every handler
-    runs in its own fiber and may call {!Promise.await}. A stub fetch on an
-    object without a [fetch] handler fails. *)
+    the alarm is due; an exception makes the runtime retry it. The [websocket_*]
+    handlers get the events of sockets accepted with {!State.accept_websocket};
+    [websocket_error] gets the error message. Every handler runs in its own
+    fiber and may call {!Promise.await}. A stub fetch on an object without a
+    [fetch] handler fails. *)
 
 val register : string -> (State.t -> Env.t -> t) -> unit
 (** [register class_name create] binds [create] to the class that

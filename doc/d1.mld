@@ -102,10 +102,12 @@ D1 carries numbers as JavaScript numbers, which are 64-bit floats:
 - An [Int] is exact only within ±2{^53}. {!Workero.Sql_value.to_js} raises
   [Invalid_argument] for an [Int] beyond that, so the call fails before any
   SQL runs.
-- A column that holds [1.0] cannot be told apart from [1]. Both read as
-  [Int 1L].
-- A [Float] is read only for a number with a fractional part, or beyond
-  2{^53}.
+- A read cannot tell an [INTEGER] from a [REAL]. A number with no fractional
+  part within ±2{^53} reads as [Int], so a [REAL] column that holds [2.0] reads
+  as [Int 2L].
+- Any other number reads as [Float]. An [INTEGER] beyond 2{^53} reaches OCaml
+  already rounded by the runtime, so it reads as a [Float], never as its exact
+  [Int].
 
 {1 Test locally}
 
