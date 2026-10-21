@@ -17,13 +17,10 @@ What does not work yet, and what behaves differently from what you may expect.
 {1 Limits of streams, forms and WebSockets}
 
 - A client disconnect shows only as a failed {!Workero.Stream.Writer.write}.
-  There is no event, and no [Request.signal].
 - {!Workero.Response.copy} and {!Workero.Response.of_stream} use up the original
   body. Call {!Workero.Response.clone} first to keep it.
 - {!Workero.Request.form_data} holds the whole upload in memory. See
   {{!page-forms}Forms}.
-- There is no outbound WebSocket and no hibernation. See
-  {{!page-websockets}WebSockets}.
 
 {1 Differences from native OCaml}
 
@@ -31,10 +28,6 @@ What does not work yet, and what behaves differently from what you may expect.
 - There is no file system, except files that you embed. See
   {{!page-libraries}Supported libraries}.
 - The program has no threads, sockets or sub-processes.
-
-{1 Not supported yet}
-
-- The [queue] event.
 
 {1 Report a problem}
 

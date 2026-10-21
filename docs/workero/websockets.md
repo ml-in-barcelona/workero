@@ -56,9 +56,3 @@ A callback that JavaScript calls cannot wait. See [Waiting for JavaScript](./asy
 ## Without upgrade
 
 [`Workero.Websocket.upgrade`](./Workero-Websocket.md#val-upgrade) is [`Workero.Websocket.pair`](./Workero-Websocket.md#val-pair), [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) and [`Workero.Websocket.response`](./Workero-Websocket.md#val-response) in one call. Use the parts to keep the `client` end, or to start the loop yourself.
-
-
-## Not supported yet
-
-- A WebSocket that the Worker opens to another server.
-- Hibernation, which lets a Durable Object sleep between messages.

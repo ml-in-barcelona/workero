@@ -72,8 +72,3 @@ two messages.
 {!Workero.Websocket.upgrade} is {!Workero.Websocket.val-pair},
 {!Workero.Websocket.accept} and {!Workero.Websocket.response} in one call. Use
 the parts to keep the [client] end, or to start the loop yourself.
-
-{1 Not supported yet}
-
-- A WebSocket that the Worker opens to another server.
-- Hibernation, which lets a Durable Object sleep between messages.
