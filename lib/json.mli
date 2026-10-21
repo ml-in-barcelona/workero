@@ -1,10 +1,11 @@
-(** JSON requests and responses for workero ([Workero.JSON]), built on
-    {{:https://github.com/melange-community/jsonkit} jsonkit}.
+(** JSON requests and responses for workero ([Workero.JSON]).
 
-    A JSON value is a [Jsonkit.t], which is a [Yojson.Basic.t]. Decode it to
-    your own types with the [Jsonkit.Of_json] combinators, or derive the
-    functions with [jsonkit.ppx]. Add [(preprocess (pps jsonkit.ppx))] to your
-    [dune] file and write:
+    A JSON value is a [Jsonkit.t] from
+    {{:https://github.com/melange-community/jsonkit} jsonkit}. This module does
+    not re-export jsonkit. opam installs jsonkit with workero. To build or
+    decode values, add [jsonkit] to the [libraries] of your [dune] file. To
+    derive decoders with [[@@deriving json]], also add
+    [(preprocess (pps jsonkit.ppx))]. Then write:
 
     {[
     open Jsonkit.Primitives
@@ -25,13 +26,10 @@
         { name = json |> field "name" string; age = json |> field "age" int }
     ]} *)
 
-type t = Jsonkit.t
-(** A JSON value. *)
-
 val response :
   ?status:[< Status.with_body ] ->
   ?headers:(string * string) list ->
-  t ->
+  Jsonkit.t ->
   Response.t
 (** [response json] is a response with status 200 and the compact JSON text as
     body. It adds [content-type: application/json; charset=utf-8] unless
@@ -42,7 +40,7 @@ val error : ?status:[< Status.with_body ] -> string -> Response.t
 (** [error message] is a response with status 400 and the body
     [{"error": message}]. *)
 
-val request : Request.t -> t
+val request : Request.t -> Jsonkit.t
 (** Reads the whole body and parses it as JSON.
 
     Raises [Jsonkit.Of_string_error] when the body is not valid JSON. The
@@ -50,10 +48,10 @@ val request : Request.t -> t
     runtime answer with status 500; use {!parse} or {!decode} to answer with
     400. *)
 
-val parse : Request.t -> (t, string) result
+val parse : Request.t -> (Jsonkit.t, string) result
 (** Like {!request}. [Error message] when the body is not valid JSON. *)
 
-val decode : (t -> 'a) -> Request.t -> ('a, string) result
+val decode : (Jsonkit.t -> 'a) -> Request.t -> ('a, string) result
 (** [decode of_json req] parses the body and applies [of_json]. [of_json] is a
     jsonkit decoder, for example [user_of_json] from [[@@deriving json]], or
     [Jsonkit.Of_json.(list int)]. [Error message] when the body is not valid

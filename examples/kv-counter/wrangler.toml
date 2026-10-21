@@ -1,0 +1,7 @@
+name = "workero-example-kv-counter"
+main = "../../_worker/index.js"
+compatibility_date = "2026-10-01"
+
+[[kv_namespaces]]
+binding = "COUNTER"
+id = "00000000000000000000000000000000"

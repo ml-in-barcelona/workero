@@ -1,5 +1,3 @@
-type t = Jsonkit.t
-
 let content_type = "content-type"
 
 let has_content_type headers =

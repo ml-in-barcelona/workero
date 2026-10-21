@@ -103,7 +103,7 @@ Changes from the earlier parser:
 
 ## JSON
 
-[`Workero.JSON`](./Workero-JSON.md) reads and writes JSON with [jsonkit](https://github.com/melange-community/jsonkit). A JSON value is a `Jsonkit.t`.
+[`Workero.JSON`](./Workero-JSON.md) reads and writes JSON with [jsonkit](https://github.com/melange-community/jsonkit). A JSON value is a `Jsonkit.t`. [`Workero.JSON`](./Workero-JSON.md) does not re-export jsonkit. opam installs jsonkit with workero, but you add `jsonkit` to the `libraries` of your `dune` file to build or decode values.
 
 ```ocaml
 open Jsonkit.Primitives
@@ -117,7 +117,7 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-Add `jsonkit` and `jsonkit.ppx` to the `dune` file:
+Add `jsonkit` to `libraries`, and `jsonkit.ppx` to `preprocess` for `[@@deriving json]`:
 
 ```dune
 (executable
