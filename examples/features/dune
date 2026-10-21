@@ -1,7 +1,9 @@
 (executable
  (name main)
  (modes wasm)
- (libraries workero js_of_ocaml str)
+ (libraries workero js_of_ocaml str html_of_jsx)
+ (preprocess
+  (pps html_of_jsx.ppx -disable-static-opt))
  (link_deps motd.txt)
  (wasm_of_ocaml
   (flags

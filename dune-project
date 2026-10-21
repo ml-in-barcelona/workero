@@ -33,6 +33,10 @@
    (and
     (>= 1.1.0)
     (< 2)))
+  (html_of_jsx
+   (and
+    :with-dev-setup
+    (>= 0.1.0)))
   (alcotest :with-test)
   (odoc
    (and
