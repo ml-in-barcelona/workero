@@ -38,7 +38,7 @@ The Cache API has no binding. [`Workero.Cache`](./Workero-Cache.md) uses the cac
 
 `of_env env name` returns the binding. It raises `Invalid_argument` when `env` has no binding with that name. The message names it. Open the binding inside the handler, where you have `env`.
 
-Every operation suspends like [`Workero.Promise.await`](./Workero-Promise.md#val-await), so you call it in direct style. When the runtime fails, for example on an SQL error or a network error, the operation raises [`Workero.Js_error`](./Workero.md#exception-Js_error). The payload is a [`Workero.Promise.error`](./Workero-Promise.md#type-error), the original JavaScript error. [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) gives `"Name: message"`. That includes errors that JavaScript throws before it returns a Promise.
+Every operation suspends like [`Workero.Promise.await`](./Workero-Promise.md#val-await), so you call it in direct style. When the runtime fails, for example on an SQL error or a network error, the operation raises [`Workero.Js_error`](./Workero.md#exception-Js_error). The payload is a [`Workero.Promise.error`](./Workero-Promise.md#type-error), the original JavaScript error. That includes errors that JavaScript throws before it returns a Promise. [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) gives `"Name: message"`.
 
 
 ## Develop locally
@@ -50,4 +50,4 @@ npx wrangler kv namespace create KV
 npx wrangler r2 bucket create my-bucket
 npx wrangler d1 create my-database
 ```
-Each command prints the values for `wrangler.toml`. See each page for a complete Worker.
+Each command prints the values for `wrangler.toml`. Each binding page has a complete Worker.

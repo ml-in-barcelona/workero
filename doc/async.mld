@@ -1,7 +1,7 @@
 {0 Waiting for JavaScript}
 
-JavaScript APIs return Promises. In workero you do not chain them. You write
-direct style code, and a call waits for the result.
+JavaScript APIs return Promises. In workero you do not chain them. A call
+waits for the result.
 
 {@ocaml[
 open Js_of_ocaml
@@ -46,11 +46,11 @@ the event loop and continue later.
 
 {2 Direct style}
 
-Your handler is plain OCaml. It has no monad and no callbacks. Where it needs a
-Promise result, it calls {!Workero.Promise.await}. The body readers
+Your handler is plain OCaml, with no monad and no callbacks. To get a Promise
+result, call {!Workero.Promise.await}. The body readers
 ({!Workero.Request.text}, {!Workero.Response.body_text}) and {!Workero.fetch}
-wait in the same way. Workero implements the wait with OCaml 5 effects. The
-effects are internal. Your code does not use them.
+wait in the same way. Workero implements the wait with OCaml 5 effects, which
+your code does not use.
 
 {2 The life of one request}
 
@@ -134,9 +134,6 @@ let handler _req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-You do not need them to wait for several things. Starting both Promises, then
-awaiting each, runs them at once.
-
 {1 Errors}
 
 {!Workero.Promise.await} raises {!Workero.Js_error} when a JavaScript Promise
@@ -145,8 +142,8 @@ rejects. A rejection that comes from OCaml code, such as an exception in a
 [await] re-raises the original OCaml exception. {!Workero.Promise.error_of_exn}
 makes such a rejection.
 
-For {!Workero.Js_error}, the payload is a {!Workero.Promise.error}: the original rejection reason, which
-JavaScript allows to be any value, so the type is opaque.
+The payload of {!Workero.Js_error} is a {!Workero.Promise.error}: the original
+rejection reason. JavaScript allows any value, so the type is opaque.
 
 - {!Workero.Promise.error_to_string} shows it as the JavaScript [String]
   function does, for example ["Error: nope"].
@@ -159,8 +156,9 @@ that you do not catch is an error of the handler (see
 {{!page-handlers}Handlers}).
 
 An exception that escapes the top level of the program, during start-up, fails
-the load of the Worker. The error is [workero: OCaml initialisation failed (exit code
-N): ...] followed by the OCaml exception text. Fix the exception and rebuild.
+the load of the Worker. The error is [workero: OCaml initialisation failed (exit
+code N): ...] followed by the OCaml exception text. Fix the exception and
+rebuild.
 
 {1 Work after the response}
 

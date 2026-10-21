@@ -1,7 +1,7 @@
 
 # Waiting for JavaScript
 
-JavaScript APIs return Promises. In workero you do not chain them. You write direct style code, and a call waits for the result.
+JavaScript APIs return Promises. In workero you do not chain them. A call waits for the result.
 
 ```ocaml
 open Js_of_ocaml
@@ -43,7 +43,7 @@ For each request, Cloudflare calls the JavaScript `fetch(request, env, ctx)` exp
 
 ### Direct style
 
-Your handler is plain OCaml. It has no monad and no callbacks. Where it needs a Promise result, it calls [`Workero.Promise.await`](./Workero-Promise.md#val-await). The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way. Workero implements the wait with OCaml 5 effects. The effects are internal. Your code does not use them.
+Your handler is plain OCaml, with no monad and no callbacks. To get a Promise result, call [`Workero.Promise.await`](./Workero-Promise.md#val-await). The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way. Workero implements the wait with OCaml 5 effects, which your code does not use.
 
 
 ### The life of one request
@@ -104,14 +104,12 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-You do not need them to wait for several things. Starting both Promises, then awaiting each, runs them at once.
-
 
 ## Errors
 
 [`Workero.Promise.await`](./Workero-Promise.md#val-await) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when a JavaScript Promise rejects. A rejection that comes from OCaml code, such as an exception in a `map` or `bind` function, in a `make` executor or in a decoder, is different: `await` re-raises the original OCaml exception. [`Workero.Promise.error_of_exn`](./Workero-Promise.md#val-error_of_exn) makes such a rejection.
 
-For [`Workero.Js_error`](./Workero.md#exception-Js_error), the payload is a [`Workero.Promise.error`](./Workero-Promise.md#type-error): the original rejection reason, which JavaScript allows to be any value, so the type is opaque.
+The payload of [`Workero.Js_error`](./Workero.md#exception-Js_error) is a [`Workero.Promise.error`](./Workero-Promise.md#type-error): the original rejection reason. JavaScript allows any value, so the type is opaque.
 
 - [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) shows it as the JavaScript `String` function does, for example `"Error: nope"`.
 - [`Workero.Promise.error_of_string`](./Workero-Promise.md#val-error_of_string) makes a JavaScript `Error` with a message.

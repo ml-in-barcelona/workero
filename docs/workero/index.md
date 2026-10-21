@@ -12,7 +12,7 @@ The entry point is the module [`Workero`](./Workero.md).
 
 ## Guides
 
-Start with [Getting started](./getting_started.md). The other pages follow the same order as a Worker project.
+The pages follow the order of a Worker project.
 
 - [Getting started](./getting_started.md): prerequisites, create a project, develop locally, deploy.
 - [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, and the arguments of a handler.
