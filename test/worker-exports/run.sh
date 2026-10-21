@@ -44,7 +44,7 @@ check() {
   log="$out.log"
   rm -rf "$out"
   mkdir -p "$out"
-  $dune exec workero -- build "test/worker-exports/$name/main" --out "$out" >/dev/null
+  $dune exec workero -- build "test/worker-exports/$name/main.bc.wasm.js" --out "$out" >/dev/null
   cp test/worker-exports/tests.mjs "$out/"
   config "$out" "$expect"
   if [ "$expect" = none ]; then

@@ -1,8 +1,4 @@
 (executable
  (name main)
  (modes wasm)
- (libraries workero js_of_ocaml str)
- (link_deps motd.txt)
- (wasm_of_ocaml
-  (flags
-   (--file motd.txt:/static/motd.txt))))
+ (libraries workero js_of_ocaml))

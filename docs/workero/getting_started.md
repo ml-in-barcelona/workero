@@ -27,7 +27,7 @@ npm install
 - `dune-project`: the dune project. It depends on `workero`.
 - `src/dune`: builds `src/main.ml` as an executable with `(modes wasm)`.
 - `src/main.ml`: the Worker.
-- `wrangler.toml`: the Wrangler configuration. It runs `workero build src/main` as the build command, and sets `GREETING` in `[vars]`.
+- `wrangler.toml`: the Wrangler configuration. It runs `workero build src/main.bc.wasm.js` as the build command, and sets `GREETING` in `[vars]`.
 - `package.json`: `wrangler` and `binaryen`.
 See [the template](./template.md) for details.
 
@@ -39,7 +39,7 @@ Run [`wrangler dev`](https://developers.cloudflare.com/workers/wrangler/commands
 ```sh
 npx wrangler dev
 ```
-Wrangler runs `workero build src/main` and serves the Worker on [http://localhost:8787](http://localhost:8787). A change in `src/` triggers a rebuild. If you have not used Wrangler before, it opens a browser to log in to your Cloudflare account. See [`wrangler login`](https://developers.cloudflare.com/workers/wrangler/commands/general/#login) when you have no browser.
+Wrangler runs `workero build src/main.bc.wasm.js` and serves the Worker on [http://localhost:8787](http://localhost:8787). A change in `src/` triggers a rebuild. If you have not used Wrangler before, it opens a browser to log in to your Cloudflare account. See [`wrangler login`](https://developers.cloudflare.com/workers/wrangler/commands/general/#login) when you have no browser.
 
 ```sh
 curl localhost:8787/

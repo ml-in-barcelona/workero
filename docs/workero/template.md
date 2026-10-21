@@ -9,7 +9,7 @@ The `template/` directory of the repository is a starter project for a Cloudflar
 - `dune-project`: a package that depends on `workero`.
 - `src/dune`: the executable `main`, built with `(modes wasm)`.
 - `src/main.ml`: the worker.
-- `wrangler.toml`: runs `workero build src/main` as the build command (see [the CLI](./cli.md)) and sets `GREETING` in `[vars]`.
+- `wrangler.toml`: runs `workero build src/main.bc.wasm.js` as the build command (see [the CLI](./cli.md)) and sets `GREETING` in `[vars]`.
 - `package.json`: `wrangler` and `binaryen` as development dependencies.
 
 ## Start

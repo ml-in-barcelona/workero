@@ -32,7 +32,7 @@ Workers, and [binaryen]. The project has these files:
 - [dune-project]: the dune project. It depends on [workero].
 - [src/dune]: builds [src/main.ml] as an executable with [(modes wasm)].
 - [src/main.ml]: the Worker.
-- [wrangler.toml]: the Wrangler configuration. It runs [workero build src/main]
+- [wrangler.toml]: the Wrangler configuration. It runs [workero build src/main.bc.wasm.js]
   as the build command, and sets [GREETING] in [[vars]].
 - [package.json]: [wrangler] and [binaryen].
 
@@ -47,7 +47,7 @@ to start a local server:
 npx wrangler dev
 ]}
 
-Wrangler runs [workero build src/main] and serves the Worker on
+Wrangler runs [workero build src/main.bc.wasm.js] and serves the Worker on
 {{:http://localhost:8787}http://localhost:8787}. A change in [src/] triggers a
 rebuild. If you have not used Wrangler before, it opens a browser to log in to
 your Cloudflare account. See

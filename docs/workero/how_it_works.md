@@ -25,7 +25,7 @@ wasm\_of\_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly fo
 
 ## Bundling: workero build
 
-`workero build src/main` is the counterpart of `worker-build` in other languages. It builds the executable in the release profile, checks that it has no missing primitives, and writes the directory that Wrangler bundles and deploys. See [the CLI](./cli.md). The template runs it as the `[build]` command of `wrangler.toml`.
+`workero build src/main.bc.wasm.js` is the counterpart of `worker-build` in other languages. It builds the executable (in the release profile unless you pass another profile), checks that it has no missing primitives, and writes the directory that Wrangler bundles and deploys. See [the CLI](./cli.md). The template runs it as the `[build]` command of `wrangler.toml`.
 
 
 ## Binary size: wasm-opt
