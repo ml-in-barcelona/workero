@@ -11,6 +11,7 @@
   async
   env
   logging
+  globals
   testing
   bindings
   kv

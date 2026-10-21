@@ -1,7 +1,7 @@
 open Workero
 
 let outcome = ref ""
-let pause ms = Promise.await (Util.sleep ms)
+let pause ms = Promise.await (Timer.sleep ms)
 
 let rec echo ws =
   match Websocket.receive ws with

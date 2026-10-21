@@ -9,6 +9,8 @@ wrap.
 {!Workero.js_value} is the type of a raw, unchecked JavaScript value. It is the
 same type as [Js_of_ocaml.Js.Unsafe.any]. Module signatures show the jsoo name.
 Use [Js_of_ocaml.Js] to read fields, call methods and convert strings.
+Workero already wraps timers, [Date], [crypto] and [console]. See
+{{!page-globals}JavaScript globals}.
 
 {@ocaml[
 open Js_of_ocaml

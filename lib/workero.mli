@@ -30,6 +30,10 @@ module Sql_value = Sql_value
 module Stream = Stream
 module Form_data = Form_data
 module Websocket = Websocket
+module Timer = Timer
+module Date = Date
+module Crypto = Crypto
+module Console = Console
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

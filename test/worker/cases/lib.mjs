@@ -33,6 +33,10 @@ export const runCases = async (env, cases, failures) => {
       problems.push(`body ${JSON.stringify(body)} lacks ${JSON.stringify(c.bodyIncludes)}`);
     if (c.bodyBytes !== undefined && !sameBytes(bytes, c.bodyBytes))
       problems.push(`bytes ${[...bytes]}, expected ${c.bodyBytes}`);
+    if (c.check !== undefined) {
+      const problem = c.check(body);
+      if (problem !== undefined) problems.push(problem);
+    }
     for (const [k, v] of Object.entries(c.headers ?? {}))
       if (response.headers.get(k) !== v)
         problems.push(`header ${k} is ${response.headers.get(k)}, expected ${v}`);

@@ -2,7 +2,7 @@ open Js_of_ocaml
 
 exception Failed
 
-let sleep = Util.sleep
+let sleep = Workero.Timer.sleep
 let delayed v ms = Workero.Promise.map (fun () -> v) (sleep ms)
 
 let raw_promise_of v =

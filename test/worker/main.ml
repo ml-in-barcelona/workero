@@ -4,6 +4,7 @@ let handlers =
     Routes_form.handle;
     Routes_ws.handle;
     Routes_context.handle;
+    Routes_globals.handle;
   ]
 
 let handler req env ctx =

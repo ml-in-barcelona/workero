@@ -15,3 +15,17 @@ let () = Workero.serve handler
 Workero flushes standard output and standard error when a [`Workero.serve`](./Workero.md#val-serve) or [`Workero.scheduled`](./Workero.md#val-scheduled) handler ends, also when it raises. `print_string` and `Printf.printf` need no newline and no `%!`.
 
 Output written after the handler ends, for example from a function given to [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until), stays in the buffer until the next handler ends. Flush it with `flush stdout` or `%!`.
+
+
+## Console
+
+[`Workero.Console`](./Workero-Console.md) writes to the global `console`. Each call is one log entry with a level: `log`, `info`, `warn`, `error` or `debug`. It needs no flush.
+
+```ocaml
+let handler _req _env _ctx =
+  Workero.Console.info "request received";
+  Workero.Console.warn "disk is almost full";
+  Workero.Response.text "ok\n"
+
+let () = Workero.serve handler
+```

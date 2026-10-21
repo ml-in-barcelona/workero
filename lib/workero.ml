@@ -25,6 +25,10 @@ module Sql_value = Sql_value
 module Stream = Stream
 module Form_data = Form_data
 module Websocket = Websocket
+module Timer = Timer
+module Date = Date
+module Crypto = Crypto
+module Console = Console
 
 let register name handler =
   let g = Js.Unsafe.global in

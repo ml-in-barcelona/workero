@@ -1,7 +1,7 @@
 open Workero
 module Js = Js_of_ocaml.Js
 
-let sleep ms = Promise.await (Util.sleep ms)
+let sleep ms = Promise.await (Timer.sleep ms)
 let written = ref 0
 let ended = ref "running"
 let outcome = ref "none"

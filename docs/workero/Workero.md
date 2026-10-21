@@ -110,6 +110,26 @@ module Websocket : sig ... end
 WebSockets served by the Worker, read by pulling events with [`receive`](./Workero-Websocket.md#val-receive).
 
 ```ocaml
+module Timer : sig ... end
+```
+JavaScript timers: `setTimeout`, `setInterval` and their `clear` functions. Delays are in milliseconds. Call them only from inside a handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function; the Workers runtime refuses timers at startup.
+
+```ocaml
+module Date : sig ... end
+```
+JavaScript `Date`. Times are milliseconds since the Unix epoch, as a `float`. In Workers, the clock advances only after I/O, so it does not measure CPU time.
+
+```ocaml
+module Crypto : sig ... end
+```
+The Web Crypto random functions of the global `crypto` object.
+
+```ocaml
+module Console : sig ... end
+```
+The global `console`. Each call writes one entry to the Workers logs, with its level. Unlike `print_string`, it needs no flush.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
