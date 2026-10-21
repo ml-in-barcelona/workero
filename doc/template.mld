@@ -8,11 +8,11 @@ Cloudflare Worker written in OCaml. Copy it to start a new worker.
 - [dune-project]: a package that depends on [workero].
 - [src/dune]: the executable [main], built with [(modes wasm)].
 - [src/main.ml]: the worker.
-- [wrangler.toml]: runs [workero build src/main.bc.wasm.js] as the build command (see
-  {{!page-cli}the CLI}) and sets [GREETING] in [[vars]].
+- [wrangler.toml]: runs [workero build src/main.bc.wasm.js] as the build
+  command (see {{!page-cli}the CLI}) and sets [GREETING] in [[vars]].
 - [package.json]: [wrangler] and [binaryen] as development dependencies.
 
-{1 Start}
+{1 Run it}
 
 {@sh[
 opam install workero
@@ -37,5 +37,4 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ]}
 
-Routes: [GET /], [POST /echo], and [GET /env], which reads [GREETING] with
-{!Workero.Env.var}.
+[GET /env] reads [GREETING] with {!Workero.Env.var}.

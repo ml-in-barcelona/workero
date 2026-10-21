@@ -9,7 +9,7 @@ type t =
   | Int of int64
   | Float of float
   | Text of string
-  | Blob of string (* Blob holds raw bytes.SQL APIs on the Workers runtime carry numbers as JavaScript numbers, which are 64-bit floats. An Int is therefore exact only within ±253, and a column holding 1.0 cannot be told apart from 1: both are read as Int 1L. Float is read only for numbers with a fractional part or beyond 253. *)
+  | Blob of string (* Blob holds raw bytes.SQL APIs on the Workers runtime carry numbers as JavaScript numbers, which are 64-bit floats. An Int is exact only within ±253, and a column holding 1.0 cannot be told apart from 1: both are read as Int 1L. Float is read only for numbers with a fractional part or beyond 253. *)
 ```
 ```ocaml
 type row = (string * t) list

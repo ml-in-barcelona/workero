@@ -1,7 +1,7 @@
 
 # Support and known issues
 
-What does not work yet, and what behaves differently from what you may expect.
+Behavior that differs from JavaScript Workers and native OCaml, and features not supported yet.
 
 
 ## Differences from JavaScript Workers

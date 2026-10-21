@@ -1,7 +1,7 @@
 
 # Supported libraries
 
-Learn which OCaml libraries and standard library features run in a Worker. The list is not complete. A library works when it compiles with wasm\_of\_ocaml and needs no operating system feature that a Worker does not have, such as threads or sockets. A new dependency increases the size of your Worker. See [Testing and limits](./testing.md).
+This page lists OCaml libraries and standard library features that run in a Worker. The list is not complete. A library works when it compiles with wasm\_of\_ocaml and needs no operating system feature that a Worker does not have, such as threads or sockets. A new dependency increases the size of your Worker. See [Testing and limits](./testing.md).
 
 
 ## Checked in workerd

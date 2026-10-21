@@ -5,7 +5,7 @@ WebAssembly with wasm_of_ocaml, and its library gives you the
 {{:https://developers.cloudflare.com/workers/runtime-apis/}runtime APIs}:
 requests, responses, [fetch], variables, secrets and cron triggers.
 
-By following this guide you build a Worker, run it locally and deploy it.
+This guide builds a Worker, runs it locally and deploys it.
 
 {1 Prerequisites}
 
@@ -105,6 +105,5 @@ deploy to a new subdomain can answer with
 {{:https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-523/}523}
 errors until DNS propagates, which takes about a minute.
 
-You now have an OCaml Worker deployed. To learn how it works, read
-{{!page-how_it_works}How it works}. To test it, read
-{{!page-testing}Testing and limits}.
+To learn how it works, read {{!page-how_it_works}How it works}. To test it,
+read {{!page-testing}Testing and limits}.

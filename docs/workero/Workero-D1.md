@@ -19,7 +19,7 @@ type value = Sql_value.t =
   | Int of int64
   | Float of float
   | Text of string
-  | Blob of string (* An SQL value, see Sql_value. D1 carries numbers as JavaScript numbers, so an Int is exact within ±253 only and Float 1.0 reads back as Int 1L. *)
+  | Blob of string (* An SQL value. Sql_value describes the number limits: an Int is exact within ±253 only. *)
 ```
 ```ocaml
 type row = Sql_value.row

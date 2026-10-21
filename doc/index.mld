@@ -10,8 +10,7 @@ The entry point is the module {!Workero}.
 
 {1 Guides}
 
-Start with {{!page-getting_started}Getting started}. The other pages follow the
-same order as a Worker project.
+The pages follow the order of a Worker project.
 
 - {{!page-getting_started}Getting started}: prerequisites, create a project,
   develop locally, deploy.

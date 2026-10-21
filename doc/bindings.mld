@@ -45,9 +45,10 @@ handler, where you have [env].
 
 Every operation suspends like {!Workero.Promise.await}, so you call it in direct
 style. When the runtime fails, for example on an SQL error or a network error,
-the operation raises {!Workero.Js_error}. The payload is a {!Workero.Promise.error}, the original
-JavaScript error. {!Workero.Promise.error_to_string} gives ["Name: message"]. That includes errors that JavaScript throws before it
-returns a Promise.
+the operation raises {!Workero.Js_error}. The payload is a
+{!Workero.Promise.error}, the original JavaScript error. That includes errors
+that JavaScript throws before it returns a Promise.
+{!Workero.Promise.error_to_string} gives ["Name: message"].
 
 {1 Develop locally}
 
@@ -61,5 +62,5 @@ npx wrangler r2 bucket create my-bucket
 npx wrangler d1 create my-database
 ]}
 
-Each command prints the values for [wrangler.toml]. See each page for a
+Each command prints the values for [wrangler.toml]. Each binding page has a
 complete Worker.

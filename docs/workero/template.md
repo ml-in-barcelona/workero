@@ -12,7 +12,7 @@ The `template/` directory of the repository is a starter project for a Cloudflar
 - `wrangler.toml`: runs `workero build src/main.bc.wasm.js` as the build command (see [the CLI](./cli.md)) and sets `GREETING` in `[vars]`.
 - `package.json`: `wrangler` and `binaryen` as development dependencies.
 
-## Start
+## Run it
 
 ```sh
 opam install workero
@@ -36,4 +36,4 @@ let handler req env _ctx =
 
 let () = Workero.serve handler
 ```
-Routes: `GET /`, `POST /echo`, and `GET /env`, which reads `GREETING` with [`Workero.Env.var`](./Workero-Env.md#val-var).
+`GET /env` reads `GREETING` with [`Workero.Env.var`](./Workero-Env.md#val-var).

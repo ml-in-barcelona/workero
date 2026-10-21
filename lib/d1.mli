@@ -15,9 +15,8 @@ type value = Sql_value.t =
   | Float of float
   | Text of string
   | Blob of string
-      (** An SQL value, see {!Sql_value}. D1 carries numbers as JavaScript
-          numbers, so an [Int] is exact within ±2{^ 53} only and [Float 1.0]
-          reads back as [Int 1L]. *)
+      (** An SQL value. {!Sql_value} describes the number limits: an [Int] is
+          exact within ±2{^ 53} only. *)
 
 type row = Sql_value.row
 (** The columns of a row in result order, with their names. *)
