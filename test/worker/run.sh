@@ -8,8 +8,8 @@ workerd=${WORKERD:-workerd}
 
 cd "$root"
 $dune exec workero -- build test/worker/main.bc.wasm.js --out "$out"
-rm -rf "$out/d1-data"
-mkdir -p "$out/d1-data"
+rm -rf "$out/d1-data" "$out/do-data"
+mkdir -p "$out/d1-data" "$out/do-data"
 cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$out/"
 rm -rf "$out/cases"
 mkdir -p "$out/cases"
@@ -22,7 +22,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '    (name = "worker", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = ['
-  (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
+  (echo index.js; cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | grep -vx index.js | sort) |
     while read -r f; do
       echo "        (name = \"$f\", esModule = embed \"$f\"),"
     done
@@ -37,6 +37,9 @@ cp test/worker/cases/*.mjs "$out/cases/"
   printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
   printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
   echo '        (name = "BACKEND", service = "backend"),'
+  for class in Counter Alarms NoFetch Awaiting class; do
+    echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"
+  done
   echo '        (name = "KV", kvNamespace = "kv"),'
   echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
@@ -48,6 +51,12 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "STORE_UNDEFINED", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "undefined")])),'
   echo '        (name = "STORE_BROKEN", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "fail")])),'
   echo '      ],'
+  echo '      durableObjectNamespaces = ['
+  for class in Counter Alarms NoFetch Awaiting class; do
+    echo "        (className = \"$class\", uniqueKey = \"workero-test-$class\", enableSql = true),"
+  done
+  echo '      ],'
+  echo '      durableObjectStorage = (localDisk = "do-disk"),'
   echo '      globalOutbound = "upstream",'
   echo '      cacheApiOutbound = "cache",'
   echo '    )),'
@@ -69,6 +78,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      durableObjectStorage = (localDisk = "d1-disk"),'
   echo '    )),'
   echo "    (name = \"d1-disk\", disk = (path = \"$out/d1-data\", writable = true)),"
+  echo "    (name = \"do-disk\", disk = (path = \"$out/do-data\", writable = true)),"
   echo '    (name = "test", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = ['

@@ -19,6 +19,7 @@
   r2
   d1
   fetcher
+  durable_objects
   interop
   how_it_works
   libraries

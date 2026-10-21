@@ -36,6 +36,7 @@ module Crypto = Crypto
 module Console = Console
 module Secret_store = Secret_store
 module Fetcher = Fetcher
+module Durable_object = Durable_object
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

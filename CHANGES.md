@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `Workero.Durable_object`: Durable Objects with SQLite storage. `register` binds a class, `make` builds its handlers (`init`, `fetch`, `alarm`), `Namespace` opens a binding and gives stubs (a `Fetcher.t`), `Id`, `State` and `Storage` (synchronous key-value, alarms, `sync`, `delete_all`).
+- `workero build` and `workero package` run the program once in `workerd` to read the registered Durable Object classes, export them from `index.js` and write `durable-object.js`. They need `workerd` (`WORKERD`, `PATH` or `node_modules/.bin`). A program that raises during initialisation now fails the build with its error.
+- `index.js` accepts a worker that registers only Durable Object classes.
 - `Env.secret` reads a required string variable or secret and raises `Invalid_argument`, without the value, when it is missing or not a string. `Env.json` reads an object or array variable as a `Jsonkit.t`.
 - `JSON.of_js` and `JSON.to_js` convert between JavaScript values and `Jsonkit.t` through `JSON.stringify` and `JSON.parse`.
 - `Workero.Secret_store`: Secrets Store secrets (`of_env`, `get`).

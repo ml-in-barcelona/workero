@@ -20,6 +20,7 @@
   test_secret_store
   test_fetcher
   test_sql_value
+  test_durable_object
   test_decode
   test_globals)
  (modules :standard \ helpers test_json)

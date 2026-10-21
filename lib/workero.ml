@@ -31,6 +31,7 @@ module Crypto = Crypto
 module Console = Console
 module Secret_store = Secret_store
 module Fetcher = Fetcher
+module Durable_object = Durable_object
 
 let register name handler = Registry.set name (Async.promising handler)
 let flushing f = Fun.protect ~finally:flush_all f

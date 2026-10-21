@@ -67,6 +67,29 @@ let handler req env _ctx =
   Response.text ~status:(`Status (Response.status res)) (Response.body_text res)
 ```
 
+Keep state in a Durable Object with SQLite storage. Register the class at the
+top level of the program, and declare it in `wrangler.toml`:
+
+```ocaml
+let () =
+  Workero.Durable_object.register "Counter" (fun state _env ->
+      let open Workero in
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          let n =
+            match Durable_object.Storage.get storage "count" with
+            | Some (`Int n) -> n + 1
+            | _ -> 1
+          in
+          Durable_object.Storage.put storage "count" (`Int n);
+          Response.text (string_of_int n))
+        ())
+```
+
+Reach an object with `Durable_object.Namespace.get_by_name` and `Fetcher.fetch`.
+Alarms use `Storage.set_alarm` and the `~alarm` handler.
+
 ## Build and package a worker
 
 Build an executable with `(modes wasm)` from the dune project:
@@ -82,7 +105,9 @@ executable, package its output without running dune again:
 workero package _build/default/src/main.bc.wasm.js
 ```
 
-Both commands accept `--out <dir>` to choose another output directory. See the
+Both commands accept `--out <dir>` to choose another output directory. They run
+the program once in `workerd` to find its Durable Object classes, so `workerd`
+must be installed (`npm install workerd`, or Wrangler). See the
 [documentation](https://ml-in-barcelona.github.io/workero/workero/),
 [getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html),
 and [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html).

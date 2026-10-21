@@ -23,6 +23,7 @@ The pages follow the order of a Worker project.
 - [Variables and secrets](./env.md): `Env.var`, `Env.secret`, `Env.json` and Secrets Store.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
 - [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md).
+- [Durable Objects](./durable_objects.md): classes, stubs, storage and alarms.
 - [Logging](./logging.md): output and `Workero.Console`.
 - [JavaScript globals](./globals.md): timers, `Date`, `crypto`.
 - [Testing and limits](./testing.md).

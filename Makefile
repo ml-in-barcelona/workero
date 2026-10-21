@@ -30,7 +30,7 @@ test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in 
 	DUNE="$(DUNE)" test/worker/run.sh
 
 .PHONY: test-worker-init
-test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the load
+test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the build
 	DUNE="$(DUNE)" test/worker-init/run.sh
 
 .PHONY: test-worker-exports

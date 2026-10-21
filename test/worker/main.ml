@@ -7,6 +7,7 @@ let handlers =
     Routes_globals.handle;
     Routes_env.handle;
     Routes_fetcher.handle;
+    Routes_do.handle;
   ]
 
 let handler req env ctx =

@@ -52,8 +52,9 @@ With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative 
 2. Removes the `*.wasm.assets` directories that earlier runs left in the output directory, so a second run leaves one set of `.wasm` files.
 3. Copies the wasm\_of\_ocaml loader (`<name>.bc.wasm.js`) and its `<name>.bc.wasm.assets` directory into the output directory.
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
-5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled).
-It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
+5. Runs the program once in `workerd` to read the Durable Object classes that it registered with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register). It needs `workerd` for every build. It looks for it in `WORKERD`, on `PATH`, then in `node_modules/.bin` of the current directory and its parents.
+6. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled), and one class for each registered Durable Object. For those it also writes `durable-object.js`, and it removes a `durable-object.js` that an earlier run left.
+It prints `workero: wrote <dir> (<n> wasm file(s))`, and the Durable Object classes on a second line when there are any. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
 
 
 ## Errors
@@ -64,6 +65,8 @@ It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `work
 - `dune build` fails (`workero build` only),
 - dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
 - the target is outside the dune root (`workero build` only),
+- `workerd` is not installed, or `WORKERD` names a file that does not exist,
+- the program raises while it initialises. `workerd` reports the error of the program, and the build prints it,
 - the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They fail at run time if called. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, drop the library that needs them, or pass `--allow-missing-primitives` if they are never called.
 The check also works for programs built with `--pretty` in `wasm_of_ocaml` `flags`.
 
