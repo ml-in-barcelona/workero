@@ -24,6 +24,23 @@ let test_url_query () =
     "decoded" (Some "a b c") (Workero.URL.query u "q");
   Alcotest.(check (option string)) "missing" None (Workero.URL.query u "z")
 
+let test_url_raw_parts () =
+  let u = url_of "https://a.test:8443/a%2Fb/c?x=1&y=%202#frag" in
+  Alcotest.(check string) "pathname" "/a%2Fb/c" (Workero.URL.pathname u);
+  Alcotest.(check string) "path" "/a/b/c" (Workero.URL.path u);
+  Alcotest.(check string) "search" "?x=1&y=%202" (Workero.URL.search u);
+  Alcotest.(check string) "hash" "#frag" (Workero.URL.hash u);
+  Alcotest.(check string) "origin" "https://a.test:8443" (Workero.URL.origin u)
+
+let test_url_empty_parts () =
+  let u = url_of "http://a.test/p?#" in
+  Alcotest.(check string) "search" "" (Workero.URL.search u);
+  Alcotest.(check string) "hash" "" (Workero.URL.hash u);
+  let u = url_of "http://a.test/p" in
+  Alcotest.(check string) "no search" "" (Workero.URL.search u);
+  Alcotest.(check string) "no hash" "" (Workero.URL.hash u);
+  Alcotest.(check string) "default port" "http://a.test" (Workero.URL.origin u)
+
 let test_url_rejects () =
   Alcotest.(check bool) "not a URL" true (Workero.URL.of_string "nope" = None);
   Alcotest.(check bool) "ftp" true (Workero.URL.of_string "ftp://a.test/" = None)
@@ -94,6 +111,8 @@ let () =
           Alcotest.test_case "parts" `Quick test_url_parts;
           Alcotest.test_case "default port" `Quick test_url_default_port;
           Alcotest.test_case "query" `Quick test_url_query;
+          Alcotest.test_case "raw parts" `Quick test_url_raw_parts;
+          Alcotest.test_case "empty parts" `Quick test_url_empty_parts;
           Alcotest.test_case "rejects" `Quick test_url_rejects;
           Alcotest.test_case "underscore host" `Quick test_url_underscore_host;
           Alcotest.test_case "userinfo" `Quick test_url_userinfo;

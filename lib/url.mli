@@ -21,6 +21,21 @@ val path : t -> string
     part of it. A path with a malformed escape, such as ["%zz"], is returned
     undecoded. *)
 
+val pathname : t -> string
+(** The raw path as the JavaScript [pathname]: percent-encoded, so ["%2F"] stays
+    ["%2F"]. *)
+
+val search : t -> string
+(** The query string with its ["?"], or [""] when there is none. It is not
+    decoded. *)
+
+val hash : t -> string
+(** The fragment with its ["#"], or [""] when there is none. *)
+
+val origin : t -> string
+(** The scheme, host and port, such as ["https://a.test:8443"]. The port is left
+    out when it is the default. *)
+
 val query : t -> string -> string option
 (** [query url name] is the first decoded value of [name]. *)
 

@@ -87,6 +87,9 @@ let () = Workero.serve handler
 [`Workero.URL`](./Workero-URL.md) wraps the JavaScript `URL`. It parses `http` and `https` URLs and follows the WHATWG rules.
 
 - [`Workero.URL.path`](./Workero-URL.md#val-path) is decoded and starts with `"/"`.
+- [`Workero.URL.pathname`](./Workero-URL.md#val-pathname) is the raw path, still percent-encoded: `%2F` stays `%2F`.
+- [`Workero.URL.search`](./Workero-URL.md#val-search) is the raw query string with its `"?"`, and [`Workero.URL.hash`](./Workero-URL.md#val-hash) is the fragment with its `"#"`. Each is `""` when empty.
+- [`Workero.URL.origin`](./Workero-URL.md#val-origin) is the scheme, host and port, such as `"https://a.test:8443"`.
 - [`Workero.URL.query`](./Workero-URL.md#val-query), [`Workero.URL.query_all`](./Workero-URL.md#val-query_all) and [`Workero.URL.query_args`](./Workero-URL.md#val-query_args) give decoded values, and `"+"` in a query is a space.
 - [`Workero.URL.to_string`](./Workero-URL.md#val-to_string) gives the normalised `href`: `"http://a.test"` becomes `"http://a.test/"`, and the fragment stays.
 - [`Workero.URL.of_string`](./Workero-URL.md#val-of_string) gives `None` for any scheme other than `http` and `https`, and for a string that is not a URL.

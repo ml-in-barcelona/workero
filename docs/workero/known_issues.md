@@ -7,7 +7,7 @@ What does not work yet, and what behaves differently from what you may expect.
 ## Differences from JavaScript Workers
 
 - A handler waits only through [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the body readers. A function that JavaScript calls, such as a `setTimeout` callback, cannot wait. See [Waiting for JavaScript](./async.md).
-- [`Workero.URL`](./Workero-URL.md) is not the WHATWG `URL`. See [Requests and responses](./requests.md).
+- [`Workero.URL`](./Workero-URL.md) uses the WHATWG `URL`, but [`Workero.URL.path`](./Workero-URL.md#val-path) is decoded and only `http` and `https` URLs parse. See [Requests and responses](./requests.md).
 - A status that allows no body (101, 204, 205, 304\) needs an empty body.
 
 ## Limits of streams, forms and WebSockets

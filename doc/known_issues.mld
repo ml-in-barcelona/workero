@@ -7,7 +7,8 @@ What does not work yet, and what behaves differently from what you may expect.
 - A handler waits only through {!Workero.Promise.await}, {!Workero.fetch} and the
   body readers. A function that JavaScript calls, such as a [setTimeout]
   callback, cannot wait. See {{!page-async}Waiting for JavaScript}.
-- {!Workero.URL} is not the WHATWG [URL]. See
+- {!Workero.URL} uses the WHATWG [URL], but {!Workero.URL.path} is decoded and
+  only [http] and [https] URLs parse. See
   {{!page-requests}Requests and responses}.
 - A status that allows no body (101, 204, 205, 304) needs an empty body.
 

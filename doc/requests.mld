@@ -119,6 +119,12 @@ Read it with {!Workero.Response.header_all}: it gives one entry for each
 and follows the WHATWG rules.
 
 - {!Workero.URL.path} is decoded and starts with ["/"].
+- {!Workero.URL.pathname} is the raw path, still percent-encoded: [%2F] stays
+  [%2F].
+- {!Workero.URL.search} is the raw query string with its ["?"], and {!Workero.URL.hash}
+  is the fragment with its ["#"]. Each is [""] when empty.
+- {!Workero.URL.origin} is the scheme, host and port, such as
+  ["https://a.test:8443"].
 - {!Workero.URL.query}, {!Workero.URL.query_all} and {!Workero.URL.query_args}
   give decoded values, and ["+"] in a query is a space.
 - {!Workero.URL.to_string} gives the normalised [href]: ["http://a.test"]

@@ -29,6 +29,10 @@ let path t =
       (Js.Unsafe.coerce (call (global "decodeURIComponent") [| str raw |]))
   with Js.Js_error.Exn _ -> raw
 
+let pathname t = field t "pathname"
+let search t = field t "search"
+let hash t = field t "hash"
+let origin t = field t "origin"
 let params t = Js.Unsafe.get t "searchParams"
 
 let strings_of_array a =
