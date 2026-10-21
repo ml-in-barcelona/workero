@@ -1,20 +1,14 @@
-let page score =
+let page =
   <Components.Layout title="workero + React">
-    <Components.Greeting name="Cloudflare" score />
-    <Components.Fruits items=[ "apple"; "banana"; "cherry" ] />
-    <Components.Search />
+    <Components.Hero />
+    <Components.Source file="main.mlx" code=Source.main />
+    <Components.Source file="components.mlx" code=Source.components />
   </Components.Layout>
 
 let handler req _env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" ->
-      let url = Request.url req in
-      let score =
-        Option.bind (URL.query url "score") float_of_string_opt
-        |> Option.value ~default:1.5
-      in
-      Response.html (React_dom.render_to_string (page score))
+  | GET, "/" -> Response.html (React_dom.render_to_string page)
   | _ -> Response.text ~status:404 "not found\n"
 
 let () = Workero.serve handler

@@ -1,37 +1,48 @@
+let css =
+  {|
+body { margin: 0; font-family: ui-rounded, system-ui, sans-serif; color: #5b4b8a;
+  background: linear-gradient(160deg, #ffe4f1 0%, #e8e1ff 50%, #dff6ff 100%); }
+.hero { min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: 0 16px; }
+.hero h1 { margin: 0; font-size: clamp(3rem, 12vw, 7rem);
+  background: linear-gradient(90deg, #ff7eb6, #b18cff, #6ec3ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { margin: 12px 0 0; font-size: 1.25rem; color: #8a78c2; }
+.source { max-width: 760px; margin: 0 auto 64px; padding: 0 16px; }
+.source h2 { font-size: 1rem; color: #ff7eb6; }
+.source pre { background: #fffafc; border: 2px solid #f5d0e6; border-radius: 16px;
+  padding: 16px; overflow-x: auto; font-size: 0.9rem; line-height: 1.5; color: #5b4b8a; }
+|}
+
+let style =
+  object
+    method __html = css
+  end
+
 module Layout = struct
   let[@react.component] make ~title ~children () =
     <html lang="en">
-      <head><meta char_set="utf-8" /> <title>(React.string title)</title></head>
-      <body class_name="page"><h1>(React.string title)</h1> children</body>
+      <head>
+        <meta char_set="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>(React.string title)</title>
+        <style dangerously_set_inner_html=style />
+      </head>
+      <body>children</body>
     </html>
 end
 
-module Greeting = struct
-  let[@react.component] make ~name ~score () =
-    <p class_name="greeting" data_testid="greeting" aria_label="greeting">
-      (React.string ("Hello, " ^ name ^ "! Score: ")) (React.float score)
-    </p>
-end
-
-module Fruits = struct
-  let[@react.component] make ~items () =
-    <ul>
-      (items
-      |> List.map (fun item -> <li key=item>(React.string item)</li>)
-      |> React.list)
-    </ul>
-end
-
-module Search = struct
+module Hero = struct
   let[@react.component] make () =
-    <form>
-      <label html_for="q">(React.string "Search")</label>
-      <input
-        id="q"
-        type_="text"
-        auto_focus=true
-        on_change=(fun _ -> ())
-        aria_valuenow=1.5
-      />
-    </form>
+    <main class_name="hero">
+      <h1>(React.string "Hello world")</h1>
+      <p>(React.string "from Cloudflare Workers with OCaml + WebAssembly")</p>
+    </main>
+end
+
+module Source = struct
+  let[@react.component] make ~file ~code () =
+    <section class_name="source">
+      <h2>(React.string file)</h2> <pre><code>(React.string code)</code></pre>
+    </section>
 end

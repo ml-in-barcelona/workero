@@ -4,3 +4,13 @@
  (libraries workero workero_react js_of_ocaml)
  (preprocess
   (pps workero_react_ppx)))
+
+(rule
+ (with-stdout-to
+  source.ml
+  (progn
+   (echo "let main = {mlx|")
+   (cat main.mlx)
+   (echo "|mlx}\nlet components = {mlx|")
+   (cat components.mlx)
+   (echo "|mlx}\n"))))
