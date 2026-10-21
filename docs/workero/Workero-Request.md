@@ -12,7 +12,8 @@ val url : t -> Workero__.Url.t
 ```
 The request URL.
 
-raises `Invalid_argument` when Js\_of\_ocaml.Url cannot parse it. A host containing "\_" and a URL with userinfo, like http://user:pw@host/, are not parsed.
+Raises `Invalid_argument` when `Js_of_ocaml.Url` cannot parse it. A host containing `"_"` and a URL with userinfo, like `http://user:pw@host/`, are not parsed.
+
 ```ocaml
 val header : t -> string -> string option
 ```

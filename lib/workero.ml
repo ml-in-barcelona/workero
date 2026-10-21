@@ -15,6 +15,11 @@ module Env = Env
 module Context = Context
 module Scheduled = Scheduled
 module JSON = Json
+module KV = Kv
+module Cache = Cache
+module R2 = R2
+module D1 = D1
+module Sql_value = Sql_value
 
 let register name handler =
   let g = Js.Unsafe.global in

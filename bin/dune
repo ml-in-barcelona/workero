@@ -2,7 +2,7 @@
  (name main)
  (public_name workero)
  (package workero)
- (libraries unix))
+ (libraries unix str))
 
 (rule
  (targets embedded.ml)

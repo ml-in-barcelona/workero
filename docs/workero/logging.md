@@ -1,0 +1,19 @@
+
+# Logging
+
+Standard output and standard error of the OCaml program reach the Workers logs. Use `wrangler dev`, `wrangler tail` or the dashboard to read them.
+
+```ocaml
+let handler _req _env _ctx =
+  print_endline "request received";
+  Printf.printf "answering with %d%!" 200;
+  prerr_endline "this goes to the error log";
+  Workero.Response.text "ok\n"
+
+let () = Workero.serve handler
+```
+These forms work (checked in workerd):
+
+- `print_endline` and `prerr_endline`.
+- `Printf.printf` and `Printf.eprintf` when the format ends with `%!`.
+Output that is not flushed stays in the buffer and does not appear. This covers `Printf.printf` without `%!`, and `print_string` without a newline or a flush. Flush it with `%!` or `flush stdout`.

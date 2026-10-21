@@ -7,9 +7,10 @@ dune=${DUNE:-dune}
 workerd=${WORKERD:-workerd}
 
 cd "$root"
-node test/worker/index_export.mjs "$root/bin/index.js"
 $dune exec workero -- build test/worker/main --out "$out"
-cp test/worker/tests.mjs test/worker/upstream.mjs "$out/"
+rm -rf "$out/d1-data"
+mkdir -p "$out/d1-data"
+cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$out/"
 
 {
   echo 'using Workerd = import "/workerd/workerd.capnp";'
@@ -27,18 +28,44 @@ cp test/worker/tests.mjs test/worker/upstream.mjs "$out/"
       echo "        (name = \"$f\", wasm = embed \"$f\"),"
     done
   echo '      ],'
-  echo '      bindings = [(name = "GREETING", text = "from test config")],'
+  echo '      bindings = ['
+  echo '        (name = "GREETING", text = "from test config"),'
+  echo '        (name = "KV", kvNamespace = "kv"),'
+  echo '        (name = "R2", r2Bucket = "r2"),'
+  echo '        (name = "DB", wrapped = ('
+  echo '          moduleName = "workero-test:d1",'
+  echo '          innerBindings = [(name = "DATABASE", service = (name = "d1", entrypoint = "D1"))],'
+  echo '        )),'
+  echo '      ],'
   echo '      globalOutbound = "upstream",'
+  echo '      cacheApiOutbound = "cache",'
   echo '    )),'
   echo '    (name = "upstream", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
+  for svc in kv r2 cache; do
+    echo "    (name = \"$svc\", worker = ("
+    echo '      compatibilityDate = "2026-10-01",'
+    echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
+    echo '    )),'
+  done
+  echo '    (name = "d1", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "d1.mjs", esModule = embed "d1.mjs")],'
+  echo '      bindings = [(name = "DATABASE", durableObjectNamespace = "Database")],'
+  echo '      durableObjectNamespaces = [(className = "Database", uniqueKey = "d1-test", enableSql = true)],'
+  echo '      durableObjectStorage = (localDisk = "d1-disk"),'
+  echo '    )),'
+  echo "    (name = \"d1-disk\", disk = (path = \"$out/d1-data\", writable = true)),"
   echo '    (name = "test", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "tests.mjs", esModule = embed "tests.mjs")],'
   echo '      bindings = [(name = "WORKER", service = "worker")],'
   echo '    )),'
+  echo '  ],'
+  echo '  extensions = ['
+  echo '    (modules = [(name = "workero-test:d1", internal = true, esModule = embed "d1-binding.mjs")]),'
   echo '  ],'
   echo ');'
 } >"$out/config.capnp"

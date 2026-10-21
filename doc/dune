@@ -1,3 +1,22 @@
 (documentation
  (package workero)
- (mld_files index cli template))
+ (mld_files
+  index
+  getting_started
+  handlers
+  requests
+  async
+  env
+  logging
+  testing
+  bindings
+  kv
+  cache
+  r2
+  d1
+  interop
+  how_it_works
+  libraries
+  known_issues
+  cli
+  template))

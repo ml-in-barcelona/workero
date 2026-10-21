@@ -1,8 +1,8 @@
 (** JSON requests and responses for workero ([Workero.JSON]), built on
     {{:https://github.com/melange-community/jsonkit} jsonkit}.
 
-    A JSON value is a {!Jsonkit.t}, which is a [Yojson.Basic.t]. Decode it to
-    your own types with the {!Jsonkit.Of_json} combinators, or derive the
+    A JSON value is a [Jsonkit.t], which is a [Yojson.Basic.t]. Decode it to
+    your own types with the [Jsonkit.Of_json] combinators, or derive the
     functions with [jsonkit.ppx]. Add [(preprocess (pps jsonkit.ppx))] to your
     [dune] file and write:
 
@@ -41,10 +41,10 @@ val error : ?status:int -> string -> Response.t
 val request : Request.t -> t
 (** Reads the whole body and parses it as JSON.
 
-    @raise Jsonkit.Of_string_error
-      when the body is not valid JSON. The payload describes the syntax error. A
-      handler that lets it escape makes the runtime answer with status 500; use
-      {!parse} or {!decode} to answer with 400. *)
+    Raises [Jsonkit.Of_string_error] when the body is not valid JSON. The
+    payload describes the syntax error. A handler that lets it escape makes the
+    runtime answer with status 500; use {!parse} or {!decode} to answer with
+    400. *)
 
 val parse : Request.t -> (t, string) result
 (** Like {!request}. [Error message] when the body is not valid JSON. *)

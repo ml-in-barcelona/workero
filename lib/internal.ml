@@ -19,3 +19,9 @@ let int_of_js v = int_of_float (Js.float_of_number (Js.Unsafe.coerce v))
 let get_int o name =
   let v = Js.Unsafe.get o name in
   if typeof v = "number" then Some (int_of_js v) else None
+
+external instance_of : js -> js -> bool = "caml_js_instanceof"
+external js_equals : js -> js -> bool = "caml_js_equals"
+
+let null : js = Js.Unsafe.inject Js.null
+let is_nullish (v : js) = js_equals v null

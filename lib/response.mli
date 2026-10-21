@@ -20,8 +20,8 @@ val redirect : ?status:int -> string -> t
     such as ["https://example.com/login"]; the runtime rejects a relative one
     like ["/login"]. [status] is 302 by default.
 
-    @raise Invalid_argument
-      when [status] is not one of 301, 302, 303, 307 and 308. *)
+    Raises [Invalid_argument] when [status] is not one of 301, 302, 303, 307 and
+    308. *)
 
 val status : t -> int
 

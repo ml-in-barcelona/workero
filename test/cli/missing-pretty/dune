@@ -1,0 +1,9 @@
+(executable
+ (name main)
+ (modes wasm)
+ (wasm_of_ocaml
+  (flags --pretty)))
+
+(rule
+ (alias default)
+ (action (progn)))

@@ -9,3 +9,6 @@
   - `Response`: `text`, `html`, `make`, `redirect`, and `status`, `header`, `headers`, `body_text`, `body_bytes`.
   - `to_js` and `of_js` on each type.
 - `Workero.JSON`: JSON requests and responses with jsonkit.
+- Storage bindings: `Workero.KV` (`list` follows the cursor), `Workero.Cache`, `Workero.R2`, `Workero.D1` with `Workero.Sql_value` (`Int of int64`, exact up to 2^53). JS errors in bindings, thrown or rejected, raise `Js_error "Name: message"`.
+- An exception during program initialisation fails the worker load with its message, instead of "registered no handler".
+- `workero build` fails when the program uses functions with no wasm implementation, instead of failing on each request.

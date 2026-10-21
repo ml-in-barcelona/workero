@@ -1,4 +1,5 @@
-let usage = "usage: workero build <dir>/<name> [--out <dir>]"
+let usage =
+  "usage: workero build <dir>/<name> [--out <dir>] [--allow-missing-primitives]"
 
 let fail fmt =
   Printf.ksprintf
@@ -43,6 +44,17 @@ let dune_build target =
   | _, WEXITED 0 -> ()
   | _, _ -> fail "dune build %s failed" target
 
+let missing_primitives loader =
+  let stub =
+    Str.regexp "Error([ \n\t]*[\"']\\([A-Za-z0-9_]+\\) not implemented[\"']"
+  in
+  let rec scan pos acc =
+    match Str.search_forward stub loader pos with
+    | exception Not_found -> List.sort_uniq compare acc
+    | _ -> scan (Str.match_end ()) (Str.matched_group 1 loader :: acc)
+  in
+  scan 0 []
+
 let index_js ~name wasm =
   let buf = Buffer.create 1024 in
   let modules =
@@ -61,7 +73,7 @@ let index_js ~name wasm =
     name Embedded.index;
   Buffer.contents buf
 
-let build target out =
+let build ~allow_missing target out =
   let dir = Filename.dirname target and name = Filename.basename target in
   let loader = Printf.sprintf "%s.bc.wasm.js" name in
   let built = Filename.concat "_build/default" dir in
@@ -73,6 +85,20 @@ let build target out =
   let assets_src = Filename.concat built assets in
   if not (Sys.file_exists assets_src) then
     fail "assets not found: %s" assets_src;
+  (match missing_primitives (read_file loader_src) with
+  | [] -> ()
+  | missing ->
+      let message =
+        Printf.sprintf
+          "%s uses functions with no wasm implementation: %s\n\
+           They fail at run time if called. Provide a wasm implementation with \
+           (wasm_of_ocaml (wasm_files ...)), drop the library that needs them, \
+           or pass --allow-missing-primitives if they are never called."
+          name
+          (String.concat ", " missing)
+      in
+      if allow_missing then prerr_endline ("workero: warning: " ^ message)
+      else fail "%s" message);
   mkdir_p out;
   Array.iter
     (fun f ->
@@ -92,8 +118,15 @@ let build target out =
   Printf.printf "workero: wrote %s (%d wasm file(s))\n" out (List.length wasm)
 
 let () =
+  let rec parse out allow targets = function
+    | [] -> (out, allow, targets)
+    | "--out" :: dir :: rest -> parse dir allow targets rest
+    | "--allow-missing-primitives" :: rest -> parse out true targets rest
+    | arg :: rest -> parse out allow (arg :: targets) rest
+  in
   match List.tl (Array.to_list Sys.argv) with
-  | [ "build"; target ] -> build target "_worker"
-  | [ "build"; target; "--out"; out ] | [ "build"; "--out"; out; target ] ->
-      build target out
+  | "build" :: args -> (
+      match parse "_worker" false [] args with
+      | out, allow_missing, [ target ] -> build ~allow_missing target out
+      | _ -> fail "%s" usage)
   | _ -> fail "%s" usage

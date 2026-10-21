@@ -42,6 +42,8 @@ module Response : sig ... end
 ```ocaml
 module Env : sig ... end
 ```
+The `env` argument of a Worker handler: its variables, secrets and bindings.
+
 ```ocaml
 module Context : sig ... end
 ```
@@ -56,6 +58,31 @@ The `controller` argument of a Worker `scheduled` handler.
 module JSON : sig ... end
 ```
 JSON requests and responses for workero (`Workero.JSON`), built on [jsonkit](https://github.com/melange-community/jsonkit).
+
+```ocaml
+module KV : sig ... end
+```
+A Workers KV namespace, bound in `wrangler.toml` with `[[kv_namespaces]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects.
+
+```ocaml
+module Cache : sig ... end
+```
+The Cache API of the data center that runs the Worker (`caches.default`). Entries are keyed by URL, and each data center has its own cache. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects.
+
+```ocaml
+module R2 : sig ... end
+```
+A Cloudflare R2 bucket, bound in `wrangler.toml` with `[[r2_buckets]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
+
+```ocaml
+module D1 : sig ... end
+```
+A Cloudflare D1 database, bound in `wrangler.toml` with `[[d1_databases]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects, for example on an SQL error.
+
+```ocaml
+module Sql_value : sig ... end
+```
+A value of an SQL column, as sent to and received from a JavaScript SQL API such as D1.
 
 ```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
@@ -77,5 +104,6 @@ val fetch :
 ```
 `fetch url` sends an HTTP request and waits for the response headers, like JavaScript `fetch`. `method_` is `GET` by default. `body` is sent as raw bytes and sets no `content-type`. Read the response body with [`Response.body_text`](./Workero-Response.md#val-body_text) or [`Response.body_bytes`](./Workero-Response.md#val-body_bytes). Call it only from inside a handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function.
 
-raises `Invalid_argument` when body is given with GET or HEAD.
+Raises `Invalid_argument` when `body` is given with `GET` or `HEAD`.
+
 raises [`Js_error`](./#exception-Js_error) when the request fails, for example on a network error.

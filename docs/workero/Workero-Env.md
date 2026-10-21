@@ -1,6 +1,8 @@
 
 # Module `Workero.Env`
 
+The `env` argument of a Worker handler: its variables, secrets and bindings.
+
 ```ocaml
 type t
 ```

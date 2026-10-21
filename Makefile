@@ -19,7 +19,7 @@ dev: ## Build in watch mode
 	$(DUNE) build -w
 
 .PHONY: test
-test: test-unit test-worker ## Run the unit tests and the worker tests
+test: test-unit test-worker test-init test-exports test-cli ## Run the unit, worker and CLI tests
 
 .PHONY: test-unit
 test-unit: ## Run the alcotest unit tests (node)
@@ -28,6 +28,18 @@ test-unit: ## Run the alcotest unit tests (node)
 .PHONY: test-worker
 test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in workerd
 	DUNE="$(DUNE)" test/worker/run.sh
+
+.PHONY: test-init
+test-init: ## Build test/worker-init and check that an OCaml exception at init fails the load
+	DUNE="$(DUNE)" test/worker-init/run.sh
+
+.PHONY: test-exports
+test-exports: ## Build test/worker-exports and check which handlers each worker exports
+	DUNE="$(DUNE)" test/worker-exports/run.sh
+
+.PHONY: test-cli
+test-cli: ## Run workero build on test/cli fixtures and check its errors
+	DUNE="$(DUNE)" test/cli/run.sh
 
 .PHONY: fmt
 fmt: ## Format the code
@@ -49,4 +61,4 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 .PHONY: clean
 clean: ## Clean artifacts
 	$(DUNE) clean
-	rm -rf _worker _worker-test
+	rm -rf _worker _worker-test _worker-cli-test _worker-init-test _worker-exports-test

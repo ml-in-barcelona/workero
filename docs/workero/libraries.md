@@ -1,0 +1,46 @@
+
+# Supported libraries
+
+Learn which OCaml libraries and standard library features run in a Worker. The list is not complete. A library works when it compiles with wasm\_of\_ocaml and needs no operating system feature that a Worker does not have, such as threads or sockets. A new dependency increases the size of your Worker. See [Testing and limits](./testing.md).
+
+
+## Checked in workerd
+
+The route list of `examples/features` runs each of these in a deployed Worker:
+
+- Effects: OCaml 5 effect handlers, with and without awaiting Promises.
+- `Hashtbl`, `Lazy`, `Seq`, `Printexc` and `Random.State`.
+- `Int32`, `Int64`, `Float` and `Bigarray`.
+- `Marshal`.
+- `Str` regular expressions.
+- `Digest`: MD5 and BLAKE2b.
+- JavaScript interop with `Js_of_ocaml`, for example `crypto.randomUUID`, `JSON` and `Date`.
+
+## `jsonkit`
+
+[jsonkit](https://github.com/melange-community/jsonkit) reads and writes JSON, with a ppx that derives the functions. [`Workero.JSON`](./Workero-JSON.md) builds on it. See [Requests and responses](./requests.md).
+
+
+## Server-side React
+
+`examples/react` renders a page from `.mlx` components with a trimmed copy of server-reason-react. It uses the synchronous render path only.
+
+
+## Embedded files
+
+A Worker has no file system. To read a file at run time, embed it with the wasm\_of\_ocaml `--file` flag. The program reads it with `open_in`:
+
+```dune
+(executable
+ (name main)
+ (modes wasm)
+ (libraries workero)
+ (link_deps motd.txt)
+ (wasm_of_ocaml
+  (flags
+   (--file motd.txt:/static/motd.txt))))
+```
+
+## Libraries that need native code
+
+A library with C stubs that have no wasm implementation fails the build. `workero build` lists the missing functions. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, or drop the library. See [the CLI](./cli.md).

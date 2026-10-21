@@ -1,0 +1,33 @@
+
+# How it works
+
+A workero Worker is a WebAssembly module that a small JavaScript entry point loads and calls. You write only OCaml. This page names the parts.
+
+
+## Compilation: wasm\_of\_ocaml
+
+`(modes wasm)` in your `dune` file makes dune compile the OCaml bytecode with [wasm\_of\_ocaml](https://ocsigen.org/js_of_ocaml/). It gives a loader (`<name>.bc.wasm.js`) and a directory of `.wasm` files (`<name>.bc.wasm.assets`). OCaml 5 effects work in this backend.
+
+
+## JavaScript plumbing
+
+A Worker has to import its `.wasm` files, because the runtime gives a precompiled `WebAssembly.Module` and does not allow compiling wasm from bytes. `workero build` writes two files for this into `_worker/`:
+
+- `load-wasm.js` gives the wasm\_of\_ocaml loader the precompiled modules and waits for OCaml initialisation.
+- `index.js` imports every `.wasm` file, calls the loader, and exports the handlers that your program registered. See [Handlers](./handlers.md).
+The OCaml library reaches the runtime APIs (`Request`, `Response`, `fetch`, bindings) through `Js_of_ocaml`. You rarely see it. For anything workero does not wrap, see [JavaScript interop](./interop.md).
+
+
+## Async: JSPI
+
+wasm\_of\_ocaml uses the JavaScript Promise Integration (JSPI) of WebAssembly for effects. [`Workero.Promise.await`](./Workero-Promise.md#val-await) performs an effect. The handler is suspended, the JavaScript event loop continues, and the handler resumes when the Promise settles. This is why a handler is plain OCaml with no promise chains. See [Waiting for JavaScript](./async.md).
+
+
+## Bundling: workero build
+
+`workero build src/main` is the counterpart of `worker-build` in other languages. It builds the executable in the release profile, checks that it has no missing primitives, and writes the directory that Wrangler bundles and deploys. See [the CLI](./cli.md). The template runs it as the `[build]` command of `wrangler.toml`.
+
+
+## Binary size: wasm-opt
+
+wasm\_of\_ocaml runs `wasm-opt` from binaryen on the output, which is why binaryen must be on `PATH`. A release build of the example workers uploads 96 to 159 KiB (31 to 55 KiB gzip). Cloudflare limits a worker to 64 MiB uncompressed. Every library that you add grows the module. See [Testing and limits](./testing.md).

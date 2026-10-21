@@ -4,6 +4,21 @@ export async function loadWasmOCaml(modules, importLoader) {
     fetch: globalThis.fetch,
     instantiateStreaming: WebAssembly.instantiateStreaming,
     promising: WebAssembly.promising,
+    consoleError: console.error,
+  };
+  const errors = [];
+  const format = (value) => {
+    if (typeof value === "string") return value;
+    if (value instanceof Error) return value.stack ?? String(value);
+    try {
+      return JSON.stringify(value) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  };
+  console.error = (...args) => {
+    errors.push(args.map(format).join(" ").replace(/\n$/, ""));
+    saved.consoleError.apply(console, args);
   };
   let init;
   let callback;
@@ -19,6 +34,18 @@ export async function loadWasmOCaml(modules, importLoader) {
   WebAssembly.instantiateStreaming = async (response, imports) => {
     try {
       const { module } = await response;
+      const sys = imports.bindings;
+      const exit = sys.exit;
+      sys.exit = (code) => {
+        const what =
+          code === 0
+            ? "OCaml program exited during initialisation"
+            : "OCaml initialisation failed";
+        settle.reject(
+          new Error(`${what} (exit code ${code}):\n${errors.join("\n").trim()}`),
+        );
+        return exit(code);
+      };
       const instance = await WebAssembly.instantiate(module, imports);
       init = instance.exports._initialize ?? init;
       callback = instance.exports.caml_callback ?? callback;
@@ -52,5 +79,6 @@ export async function loadWasmOCaml(modules, importLoader) {
     globalThis.fetch = saved.fetch;
     WebAssembly.instantiateStreaming = saved.instantiateStreaming;
     if (saved.promising) WebAssembly.promising = saved.promising;
+    console.error = saved.consoleError;
   }
 }

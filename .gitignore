@@ -20,3 +20,6 @@ node_modules
 /examples/hello/probe/
 /examples/jspi/w-*/
 _worker-test/
+_worker-init-test/
+_worker-cli-test/
+_worker-exports-test/

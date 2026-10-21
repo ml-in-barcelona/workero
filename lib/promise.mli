@@ -14,8 +14,9 @@ val reject : string -> 'a t
 
 val await : 'a t -> 'a
 (** [await p] suspends the current request until [p] settles. It returns the
-    resolved value or raises {!Js_error}. Call it only from inside a handler
-    given to {!Workero.serve}. *)
+    resolved value or raises {!Workero.Js_error}. It works inside the handlers
+    given to {!Workero.serve} and {!Workero.scheduled}, and inside the function
+    given to {!Context.wait_until}. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> 'a t
 (** Views a raw JavaScript Promise. The caller states the type of the resolved

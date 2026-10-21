@@ -5,9 +5,9 @@ val method_ : t -> Method.t
 val url : t -> Url.t
 (** The request URL.
 
-    @raise Invalid_argument
-      when [Js_of_ocaml.Url] cannot parse it. A host containing ["_"] and a URL
-      with userinfo, like [http://user:pw@host/], are not parsed. *)
+    Raises [Invalid_argument] when [Js_of_ocaml.Url] cannot parse it. A host
+    containing ["_"] and a URL with userinfo, like [http://user:pw@host/], are
+    not parsed. *)
 
 val header : t -> string -> string option
 (** [header req name] is the value of header [name], matched without regard to

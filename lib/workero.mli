@@ -17,6 +17,11 @@ module Env = Env
 module Context = Context
 module Scheduled = Scheduled
 module JSON = Json
+module KV = Kv
+module Cache = Cache
+module R2 = R2
+module D1 = D1
+module Sql_value = Sql_value
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like
@@ -45,5 +50,5 @@ val fetch :
     {!Response.body_text} or {!Response.body_bytes}. Call it only from inside a
     handler or a {!Context.wait_until} function.
 
-    @raise Invalid_argument when [body] is given with [GET] or [HEAD].
+    Raises [Invalid_argument] when [body] is given with [GET] or [HEAD].
     @raise Js_error when the request fails, for example on a network error. *)

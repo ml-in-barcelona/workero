@@ -1,0 +1,165 @@
+{0 Requests and responses}
+
+This page covers the types of one HTTP exchange: the {!Workero.Request}, the
+{!Workero.Response}, the {!Workero.URL} and the {!Workero.Method}. It also
+covers JSON and the outgoing {!Workero.fetch}.
+
+{@ocaml[
+let handler req _env _ctx =
+  let open Workero in
+  let url = Request.url req in
+  match (Request.method_ req, URL.path url) with
+  | GET, "/hello" ->
+      let name = Option.value (URL.query url "name") ~default:"world" in
+      Response.text (Printf.sprintf "hello, %s\n" name)
+  | GET, "/agent" ->
+      let agent = Option.value (Request.header req "user-agent") ~default:"?" in
+      Response.text ~headers:[ ("x-agent", agent) ] "ok\n"
+  | GET, "/where" ->
+      let country = Option.value (Cf.country (Request.cf req)) ~default:"??" in
+      Response.text (country ^ "\n")
+  | POST, "/upload" -> Response.make ~status:201 (Request.bytes req)
+  | GET, "/page" -> Response.html "<h1>hello</h1>"
+  | GET, "/old" -> Response.redirect ~status:301 "https://example.com/new"
+  | GET, "/done" -> Response.text ~status:204 ""
+  | _ -> Response.text ~status:404 "not found\n"
+
+let () = Workero.serve handler
+]}
+
+{1 Method}
+
+{!Workero.Method.t} is a variant: [GET], [HEAD], [POST], [PUT], [DELETE],
+[PATCH], [OPTIONS] or [Other of string]. Match on {!Workero.Request.method_}.
+{!Workero.Method.of_string} is case-sensitive, as HTTP is. A name that is not
+one of the seven becomes [Other name].
+
+{1 Request}
+
+- {!Workero.Request.url} is the {!Workero.URL.t}.
+- {!Workero.Request.header} reads one header. The name is not case-sensitive.
+  Repeated headers are joined with [", "].
+- {!Workero.Request.headers} lists all headers with lower case names, sorted by
+  name.
+- {!Workero.Request.text} reads the body as UTF-8 text. Invalid UTF-8 is
+  replaced.
+- {!Workero.Request.bytes} reads the body as raw bytes, in a [string].
+- {!Workero.Request.cf} gives the {!Workero.Cf.t}, the Cloudflare properties of
+  the request.
+
+{!Workero.Cf} has [country], [region], [city], [colo], [timezone] and [asn].
+Each one is an option. It is [None] when the runtime gives no value, for
+example in a local test.
+
+{1 Response}
+
+- {!Workero.Response.text} sends a UTF-8 text body. [status] is 200 by default.
+- {!Workero.Response.html} is the same with [content-type: text/html;
+  charset=utf-8].
+- {!Workero.Response.make} sends the bytes as they are, with no [content-type].
+- {!Workero.Response.redirect} sends a [location] header. The URL must be
+  absolute, and the status 301, 302, 303, 307 or 308 (302 by default). It
+  raises [Invalid_argument] for another status.
+
+Pass [~headers] as a list of pairs. A [content-type] in [headers] replaces the
+default one.
+
+A status that allows no body (101, 204, 205 and 304) works only with an empty
+body. The runtime rejects a response with one of these statuses and a body.
+
+A response that you got from {!Workero.fetch} has readers:
+{!Workero.Response.status}, {!Workero.Response.header},
+{!Workero.Response.headers}, {!Workero.Response.body_text} and
+{!Workero.Response.body_bytes}.
+
+{1 URL}
+
+{!Workero.URL} wraps [Js_of_ocaml.Url]. It parses [http] and [https] URLs.
+{!Workero.URL.path} is decoded and starts with ["/"].
+{!Workero.URL.query}, {!Workero.URL.query_all} and {!Workero.URL.query_args}
+give decoded values, and ["+"] in a query is a space.
+
+It differs from the WHATWG [URL] of JavaScript:
+
+- A query key without [=], such as [?a], is dropped.
+- The path is decoded, so [%2F] and ["/"] look the same.
+- {!Workero.URL.to_string} encodes again: [%zz] becomes [%25zz], and a space in
+  the query becomes [%20].
+- There is no [search], [hash] or [origin].
+- {!Workero.URL.of_string} gives [None] for any scheme other than [http] and
+  [https].
+- {!Workero.Request.url} raises [Invalid_argument] when the URL has a host with
+  ["_"], or userinfo as in [http://user:pw@host/].
+
+{1 JSON}
+
+{!Workero.JSON} reads and writes JSON with
+{{:https://github.com/melange-community/jsonkit}jsonkit}. A JSON value is a
+[Jsonkit.t].
+
+{@ocaml[
+open Jsonkit.Primitives
+
+type user = { name : string; age : int } [@@deriving json]
+
+let handler req _env _ctx =
+  match Workero.JSON.decode user_of_json req with
+  | Ok user -> Workero.JSON.response (user_to_json user)
+  | Error message -> Workero.JSON.error message
+
+let () = Workero.serve handler
+]}
+
+Add [jsonkit] and [jsonkit.ppx] to the [dune] file:
+
+{@dune[
+(executable
+ (name main)
+ (modes wasm)
+ (preprocess
+  (pps jsonkit.ppx))
+ (libraries workero jsonkit))
+]}
+
+- {!Workero.JSON.decode} reads the body and applies a decoder. It gives
+  [Error message] for invalid JSON or when the decoder raises.
+- {!Workero.JSON.parse} reads the body and gives the [Jsonkit.t].
+- {!Workero.JSON.request} is [parse] that raises [Jsonkit.Of_string_error]. An
+  escaping exception makes the response a 500.
+- {!Workero.JSON.response} sends JSON with status 200 and
+  [content-type: application/json; charset=utf-8].
+- {!Workero.JSON.error} sends [{"error": message}] with status 400.
+
+Without the ppx, write the decoder with the combinators of
+[Jsonkit.Of_json]. See {!Workero.JSON} for an example.
+
+{1 Calling other servers}
+
+{!Workero.fetch} sends an HTTP request and waits for the response headers.
+
+{@ocaml[
+let handler _req _env _ctx =
+  let open Workero in
+  let res =
+    fetch ~method_:POST
+      ~headers:[ ("content-type", "application/json") ]
+      ~body:{|{"ping":true}|} "https://example.com/api"
+  in
+  match Response.status res with
+  | 200 -> Response.text (Response.body_text res)
+  | status -> Response.text ~status:502 (Printf.sprintf "upstream %d\n" status)
+
+let () = Workero.serve handler
+]}
+
+- [method_] is [GET] by default.
+- [body] is a [string] of raw bytes. It sets no [content-type]: add one in
+  [headers].
+- [Invalid_argument] is raised when [body] is given with [GET] or [HEAD].
+- {!Workero.Js_error} is raised when the request fails, for example on a
+  network error.
+- Read the body with {!Workero.Response.body_text} or
+  {!Workero.Response.body_bytes}.
+
+Call {!Workero.fetch} only from a handler or from a function given to
+{!Workero.Context.wait_until}.

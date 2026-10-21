@@ -24,7 +24,8 @@ val redirect : ?status:int -> string -> t
 ```
 `redirect url` answers with a `location` header. `url` must be absolute, such as `"https://example.com/login"`; the runtime rejects a relative one like `"/login"`. `status` is 302 by default.
 
-raises `Invalid_argument` when status is not one of 301, 302, 303, 307 and 308.
+Raises `Invalid_argument` when `status` is not one of 301, 302, 303, 307 and 308\.
+
 ```ocaml
 val status : t -> int
 ```

@@ -22,6 +22,17 @@ Run it from the root of the dune project. `<dir>/<name>` names the executable: `
 It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
 
 
+## Errors
+
+`workero build` exits with code 1 and prints `workero: <reason>` to stderr when:
+
+- the arguments do not match the usage,
+- `dune build` fails,
+- dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
+- the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They would fail at run time. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, or drop the library that needs them.
+The check also works for programs built with `--pretty` in `wasm_of_ocaml` `flags`.
+
+
 ## With Wrangler
 
 Point `main` at the generated `index.js` and run `workero build` as the build command, so `wrangler dev` and `wrangler deploy` rebuild the worker:

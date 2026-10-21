@@ -24,7 +24,7 @@ val reject : string -> 'a t
 ```ocaml
 val await : 'a t -> 'a
 ```
-`await p` suspends the current request until `p` settles. It returns the resolved value or raises [`Js_error`](./Workero.md#exception-Js_error). Call it only from inside a handler given to [`Workero.serve`](./Workero.md#val-serve).
+`await p` suspends the current request until `p` settles. It returns the resolved value or raises [`Workero.Js_error`](./Workero.md#exception-Js_error). It works inside the handlers given to [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled), and inside the function given to [`Context.wait_until`](./Workero-Context.md#val-wait_until).
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> 'a t

@@ -10,5 +10,26 @@ The entry point is the module {!Workero}.
 
 {1 Guides}
 
-- {{!page-cli}CLI}: the [workero] command that turns an OCaml executable into a worker.
-- {{!page-template}Template}: a starter project to copy.
+Start with {{!page-getting_started}Getting started}. The other pages follow the
+same order as a Worker project.
+
+- {{!page-getting_started}Getting started}: prerequisites, create a project,
+  develop locally, deploy.
+- {{!page-handlers}Handlers}: [Workero.serve], [Workero.scheduled], and the
+  arguments of a handler.
+- {{!page-requests}Requests and responses}: requests, responses, URLs, JSON and
+  [Workero.fetch].
+- {{!page-env}Variables and secrets}.
+- {{!page-async}Waiting for JavaScript}: direct style, [Promise.await] and
+  background work.
+- {{!page-bindings}Bindings}: {{!page-kv}KV}, {{!page-cache}Cache}, {{!page-r2}R2} and
+  {{!page-d1}D1}.
+- {{!page-logging}Logging}.
+- {{!page-testing}Testing and limits}.
+- {{!page-interop}JavaScript interop}.
+- {{!page-how_it_works}How it works}: wasm_of_ocaml, JSPI, [workero build] and
+  binary size.
+- {{!page-libraries}Supported libraries}.
+- {{!page-known_issues}Support and known issues}.
+- {{!page-cli}CLI}: the [workero] command.
+- {{!page-template}Template}: the starter project.

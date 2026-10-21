@@ -1,3 +1,6 @@
+(** The [env] argument of a Worker handler: its variables, secrets and bindings.
+*)
+
 type t
 
 val var : t -> string -> string option
