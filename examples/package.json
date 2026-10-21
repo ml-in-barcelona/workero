@@ -1,0 +1,7 @@
+{
+  "name": "workero-examples",
+  "private": true,
+  "devDependencies": {
+    "binaryen": "132.0.0"
+  }
+}
