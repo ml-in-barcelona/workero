@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
+- `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
+- `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).
 - `Env.secret` reads a required string variable or secret and raises `Invalid_argument`, without the value, when it is missing or not a string. `Env.json` reads an object or array variable as a `Jsonkit.t`.
 - `JSON.of_js` and `JSON.to_js` convert between JavaScript values and `Jsonkit.t` through `JSON.stringify` and `JSON.parse`.
 - `Workero.Secret_store`: Secrets Store secrets (`of_env`, `get`).

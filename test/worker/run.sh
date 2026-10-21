@@ -10,7 +10,7 @@ cd "$root"
 $dune exec workero -- build test/worker/main.bc.wasm.js --out "$out"
 rm -rf "$out/d1-data"
 mkdir -p "$out/d1-data"
-cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$out/"
+cp test/worker/tests.mjs test/worker/tests_queue.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$out/"
 rm -rf "$out/cases"
 mkdir -p "$out/cases"
 cp test/worker/cases/*.mjs "$out/cases/"
@@ -47,6 +47,11 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "STORE_NULL", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "null")])),'
   echo '        (name = "STORE_UNDEFINED", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "undefined")])),'
   echo '        (name = "STORE_BROKEN", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "fail")])),'
+  echo '        (name = "JOBS", queue = "queue-sink"),'
+  echo '        (name = "LIMITER", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "limit"), (name = "TARGET", service = (name = "limiter", entrypoint = "Limiter"))])),'
+  echo '        (name = "AI", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "run"), (name = "TARGET", service = (name = "ai", entrypoint = "Ai"))])),'
+  echo '        (name = "ANALYTICS", wrapped = (moduleName = "workero-test:analytics", innerBindings = [])),'
+  echo '        (name = "ANALYTICS_BROKEN", wrapped = (moduleName = "workero-test:analytics-broken", innerBindings = [])),'
   echo '      ],'
   echo '      globalOutbound = "upstream",'
   echo '      cacheApiOutbound = "cache",'
@@ -55,7 +60,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache backend; do
+  for svc in kv r2 cache backend queue-sink limiter ai; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
@@ -79,16 +84,29 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      ],'
   echo '      bindings = [(name = "WORKER", service = "worker")],'
   echo '    )),'
+  echo '    (name = "test-queue", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      compatibilityFlags = ["service_binding_extra_handlers"],'
+  echo '      modules = ['
+  echo '        (name = "tests_queue.mjs", esModule = embed "tests_queue.mjs"),'
+  echo '        (name = "cases/queue.mjs", esModule = embed "cases/queue.mjs"),'
+  echo '        (name = "cases/lib.mjs", esModule = embed "cases/lib.mjs"),'
+  echo '      ],'
+  echo '      bindings = [(name = "WORKER", service = "worker"), (name = "SINK", service = "queue-sink")],'
+  echo '    )),'
   echo '  ],'
   echo '  extensions = ['
   echo '    (modules = [(name = "workero-test:d1", internal = true, esModule = embed "d1-binding.mjs")]),'
   echo '    (modules = [(name = "workero-test:secret-store", internal = true, esModule = embed "secret-store-binding.mjs")]),'
+  echo '    (modules = [(name = "workero-test:forward", internal = true, esModule = embed "forward-binding.mjs")]),'
+  echo '    (modules = [(name = "workero-test:analytics", internal = true, esModule = embed "analytics-binding.mjs")]),'
+  echo '    (modules = [(name = "workero-test:analytics-broken", internal = true, esModule = embed "analytics-broken-binding.mjs")]),'
   echo '  ],'
   echo ');'
 } >"$out/config.capnp"
 
 status=0
-$workerd test "$out/config.capnp" >"$out/workerd.log" 2>&1 || status=$?
+$workerd test --experimental "$out/config.capnp" >"$out/workerd.log" 2>&1 || status=$?
 cat "$out/workerd.log"
 for marker in log-marker-unflushed log-marker-raise; do
   grep -q "$marker" "$out/workerd.log" || {

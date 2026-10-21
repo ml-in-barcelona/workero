@@ -6,11 +6,14 @@ import context from "./cases/context.mjs";
 import globals from "./cases/globals.mjs";
 import envSuite from "./cases/env.mjs";
 import fetcher from "./cases/fetcher.mjs";
+import rateLimiter from "./cases/rate_limiter.mjs";
+import ai from "./cases/ai.mjs";
+import analytics from "./cases/analytics.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher, rateLimiter, ai, analytics]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };

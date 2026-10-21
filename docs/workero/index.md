@@ -15,14 +15,14 @@ The entry point is the module [`Workero`](./Workero.md).
 The pages follow the order of a Worker project.
 
 - [Getting started](./getting_started.md): prerequisites, create a project, develop locally, deploy.
-- [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, and the arguments of a handler.
+- [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, `Workero.queue`, and the arguments of a handler.
 - [Requests and responses](./requests.md): requests, responses, URLs, JSON and `Workero.fetch`.
 - [Streams](./streams.md): read a body in chunks, send a body in steps.
 - [Forms](./forms.md): forms and file uploads.
 - [WebSockets](./websockets.md): accept a connection and read its messages.
 - [Variables and secrets](./env.md): `Env.var`, `Env.secret`, `Env.json` and Secrets Store.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
-- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md).
+- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md), [Queue](./queue.md), [Rate limiting](./rate_limiter.md), [Workers AI](./ai.md) and [Analytics Engine](./analytics_engine.md).
 - [Logging](./logging.md): output and `Workero.Console`.
 - [JavaScript globals](./globals.md): timers, `Date`, `crypto`.
 - [Testing and limits](./testing.md).

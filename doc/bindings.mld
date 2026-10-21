@@ -12,6 +12,11 @@ name in [env], and you open it with [of_env].
 - {{!page-d1}D1}: {!Workero.D1} and {!Workero.Sql_value}, SQL databases.
 - {{!page-fetcher}Fetcher}: {!Workero.Fetcher}, service bindings and static
   assets.
+- {{!page-queue}Queue}: {!Workero.Queue}, producers and consumers of Cloudflare
+  Queues.
+- {{!page-rate_limiter}Rate limiting}: {!Workero.Rate_limiter}.
+- {{!page-ai}Workers AI}: {!Workero.Ai}.
+- {{!page-analytics_engine}Analytics Engine}: {!Workero.Analytics_engine}.
 - {{!page-env}Secrets Store}: {!Workero.Secret_store}, secrets that Workers
   share.
 
@@ -40,6 +45,10 @@ database_id = "<database id>"
 [[services]]
 binding = "BACKEND"
 service = "backend-worker"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "jobs"
 ]}
 
 The Cache API has no binding. {!Workero.Cache} uses the cache of the data

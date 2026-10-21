@@ -52,7 +52,7 @@ With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative 
 2. Removes the `*.wasm.assets` directories that earlier runs left in the output directory, so a second run leaves one set of `.wasm` files.
 3. Copies the wasm\_of\_ocaml loader (`<name>.bc.wasm.js`) and its `<name>.bc.wasm.assets` directory into the output directory.
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
-5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled).
+5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue).
 It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
 
 

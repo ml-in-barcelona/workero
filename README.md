@@ -67,6 +67,44 @@ let handler req env _ctx =
   Response.text ~status:(`Status (Response.status res)) (Response.body_text res)
 ```
 
+Send messages to a Cloudflare Queue with `Queue`, and receive them with
+`Workero.queue`. `Queue` hides `Stdlib.Queue` under `open Workero`:
+
+```ocaml
+let handler _req env _ctx =
+  let jobs = Workero.Queue.of_env env "JOBS" in
+  Workero.Queue.send jobs (Workero.Queue.Json (`Assoc [ ("id", `Int 7) ]));
+  Workero.Response.text "queued\n"
+
+let () =
+  Workero.serve handler;
+  Workero.queue (fun batch _env _ctx ->
+      List.iter
+        (fun message ->
+          ignore (Workero.Queue.Message.body_json message);
+          Workero.Queue.Message.ack message)
+        (Workero.Queue.Batch.messages batch))
+```
+
+`Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
+model with JSON input and output, and `Analytics_engine.write` records a data
+point:
+
+```ocaml
+let handler req env _ctx =
+  let open Workero in
+  let key = Option.value (Request.header req "cf-connecting-ip") ~default:"anon" in
+  if not (Rate_limiter.limit (Rate_limiter.of_env env "LIMITER") key) then
+    Response.text ~status:`Too_Many_Requests "slow down\n"
+  else begin
+    Analytics_engine.write ~index:key ~doubles:[ 1. ]
+      (Analytics_engine.of_env env "EVENTS");
+    JSON.response
+      (Ai.run (Ai.of_env env "AI") "@cf/meta/llama-3.1-8b-instruct"
+         (`Assoc [ ("prompt", `String "Say hi") ]))
+  end
+```
+
 ## Build and package a worker
 
 Build an executable with `(modes wasm)` from the dune project:

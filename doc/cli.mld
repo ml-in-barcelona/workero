@@ -81,7 +81,7 @@ without [.bc.wasm.js].
 + Writes [load-wasm.js], which loads the precompiled wasm modules in workerd.
 + Writes [index.js], the worker entry point. It imports every [.wasm] file and
   exports the handlers that the program registered with {!Workero.serve} and
-  {!Workero.scheduled}.
+  {!Workero.scheduled} and {!Workero.queue}.
 
 It prints [workero: wrote <dir> (<n> wasm file(s))]. On an error it prints
 [workero: <reason>] to stderr and exits with code 1.
