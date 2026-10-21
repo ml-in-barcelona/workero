@@ -3,23 +3,15 @@
 
 JavaScript APIs return Promises. In workero you do not chain them. You write direct style code, and a call waits for the result.
 
+[`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) returns a Promise that resolves after a delay in milliseconds.
+
 ```ocaml
-open Js_of_ocaml
-
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      let wake () = resolve () in
-      ignore
-        (Js.Unsafe.fun_call
-           (Js.Unsafe.get Js.Unsafe.global (Js.string "setTimeout"))
-           [| Js.Unsafe.inject (Js.wrap_callback wake); Js.Unsafe.inject ms |]))
-
 let handler _req _env ctx =
   let open Workero in
   Context.wait_until ctx (fun () ->
-      Promise.await (sleep 100);
+      Promise.await (Timer.sleep 100);
       print_endline "background work done");
-  let a = sleep 100 and b = sleep 100 in
+  let a = Timer.sleep 100 and b = Timer.sleep 100 in
   Promise.await a;
   Promise.await b;
   let failed = Promise.reject (Promise.error_of_string "boom") in

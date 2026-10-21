@@ -1,17 +1,4 @@
-open Js_of_ocaml
-
 type _ Effect.t += Ask : int -> int Effect.t
-
-let global name = Js.Unsafe.get Js.Unsafe.global (Js.string name)
-
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      ignore
-        (Js.Unsafe.fun_call (global "setTimeout")
-           [|
-             Js.Unsafe.inject (Js.wrap_callback (fun () -> resolve ()));
-             Js.Unsafe.inject (ms : int);
-           |]))
 
 let ask_twice () =
   Effect.Deep.try_with
@@ -40,13 +27,13 @@ let handler req _env _ctx =
   | GET, "/effects" ->
       Response.text (Printf.sprintf "effects ok: %d\n" (ask_twice ()))
   | GET, "/await" ->
-      Promise.await (sleep 50);
+      Promise.await (Timer.sleep 50);
       let r = ask_twice () in
-      Promise.await (sleep 50);
+      Promise.await (Timer.sleep 50);
       Response.text
         (Printf.sprintf "effects across awaited promises ok: %d\n" r)
   | GET, "/fail" ->
-      Promise.await (sleep 20);
+      Promise.await (Timer.sleep 20);
       raise (Failed (ask_twice ()))
   | _ -> Response.text ~status:404 "not found\n"
 

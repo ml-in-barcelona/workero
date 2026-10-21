@@ -1,0 +1,45 @@
+{0 JavaScript globals}
+
+Workero has typed bindings for four JavaScript globals. You do not need
+[Js_of_ocaml] to use them.
+
+{1 Timer}
+
+{!Workero.Timer} wraps [setTimeout] and [setInterval]. Delays are in
+milliseconds.
+
+{@ocaml[
+let handler _req _env _ctx =
+  let open Workero in
+  Promise.await (Timer.sleep 100);
+  let ticks = ref 0 in
+  let interval = Timer.set_interval (fun () -> incr ticks) 20 in
+  Promise.await (Timer.sleep 110);
+  Timer.clear_interval interval;
+  Response.text (Printf.sprintf "ticks: %d\n" !ticks)
+
+let () = Workero.serve handler
+]}
+
+Call timers only from a handler or from {!Workero.Context.wait_until}. The
+Workers runtime refuses timers at startup. A callback runs outside the
+handler, so it cannot call {!Workero.Promise.await}.
+
+{1 Date}
+
+{!Workero.Date.now} is [Date.now()]. {!Workero.Date.to_iso_string} is
+[new Date(t).toISOString()]. Times are milliseconds since the Unix epoch, as a
+[float]. In Workers the clock moves only after I/O. It does not measure CPU
+time.
+
+{1 Crypto}
+
+{!Workero.Crypto.random_uuid} returns a random version 4 UUID.
+{!Workero.Crypto.random_bytes} returns cryptographically random bytes. It
+accepts at most 65536 bytes per call.
+
+{1 Console}
+
+{!Workero.Console} writes log entries. See {{!page-logging}Logging}.
+
+For other globals, use raw interop. See {{!page-interop}JavaScript interop}.

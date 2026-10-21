@@ -2,17 +2,7 @@ open Js_of_ocaml
 
 exception Failed
 
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      ignore
-        (Js.Unsafe.fun_call
-           (Js.Unsafe.get Js.Unsafe.global "setTimeout")
-           [|
-             Js.Unsafe.inject (Js.wrap_callback (fun () -> resolve ()));
-             Js.Unsafe.inject (ms : int);
-           |]))
-
-let delayed v ms = Workero.Promise.map (fun () -> v) (sleep ms)
+let delayed v ms = Workero.Promise.map (fun () -> v) (Workero.Timer.sleep ms)
 
 let raw_promise_of v =
   Js.Unsafe.meth_call
@@ -63,6 +53,74 @@ let show_value (v : Workero.D1.value) =
 
 let show_row row =
   String.concat "," (List.map (fun (k, v) -> k ^ "=" ^ show_value v) row)
+
+let timer_route path =
+  let open Workero in
+  let count = ref 0 in
+  let bump () = incr count in
+  match path with
+  | "/timer/sleep" ->
+      let t0 = Date.now () in
+      Promise.await (Timer.sleep 80);
+      Response.text (Printf.sprintf "%.0f" (Date.now () -. t0))
+  | "/timer/set-timeout" ->
+      ignore (Timer.set_timeout bump 20);
+      Promise.await (Timer.sleep 150);
+      Response.text (string_of_int !count)
+  | "/timer/clear-timeout" ->
+      let t = Timer.set_timeout bump 20 in
+      Timer.clear_timeout t;
+      Promise.await (Timer.sleep 150);
+      Response.text (string_of_int !count)
+  | "/timer/interval" ->
+      let i = Timer.set_interval bump 20 in
+      Promise.await (Timer.sleep 200);
+      Timer.clear_interval i;
+      let stopped_at = !count in
+      Promise.await (Timer.sleep 150);
+      Response.text (Printf.sprintf "%d,%d" stopped_at !count)
+  | _ -> Response.text ~status:404 "not found\n"
+
+let globals_route path =
+  let open Workero in
+  match path with
+  | "/date/now" -> Response.text (Printf.sprintf "%.0f" (Date.now ()))
+  | "/date/iso" ->
+      let invalid =
+        match Date.to_iso_string Float.nan with
+        | _ -> "no error"
+        | exception Invalid_argument _ -> "invalid"
+      in
+      Response.text
+        (String.concat ";"
+           [ Date.to_iso_string 0.; Date.to_iso_string 1700000000123.; invalid ])
+  | "/crypto/uuid" ->
+      Response.text (Crypto.random_uuid () ^ "," ^ Crypto.random_uuid ())
+  | "/crypto/bytes" ->
+      let len n = string_of_int (String.length (Crypto.random_bytes n)) in
+      let rejected n =
+        match Crypto.random_bytes n with
+        | _ -> "no error"
+        | exception Invalid_argument _ -> "invalid"
+      in
+      let a = Crypto.random_bytes 32 and b = Crypto.random_bytes 32 in
+      Response.text
+        (String.concat ";"
+           [
+             String.concat "," (List.map len [ 0; 1; 16; 65536 ]);
+             Printf.sprintf "differ=%b" (a <> b);
+             Printf.sprintf "nonzero=%b" (a <> String.make 32 '\000');
+             rejected (-1);
+             rejected 65537;
+           ])
+  | "/console/log" ->
+      Console.log "console log";
+      Console.info "console info";
+      Console.warn "console warn";
+      Console.error "console error";
+      Console.debug "console debug";
+      Response.text "logged"
+  | _ -> Response.text ~status:404 "not found\n"
 
 let missing_binding () =
   let open Workero in
@@ -323,12 +381,12 @@ let handler req env ctx =
   | _, "/background/start" ->
       let v = Option.value (URL.query url "v") ~default:"" in
       Context.wait_until ctx (fun () ->
-          ignore (Promise.await (sleep 30));
+          ignore (Promise.await (Timer.sleep 30));
           background := "done:" ^ v);
       Response.text "started"
   | _, "/background/fail" ->
       Context.wait_until ctx (fun () ->
-          ignore (Promise.await (sleep 10));
+          ignore (Promise.await (Timer.sleep 10));
           raise Failed);
       Response.text "started"
   | _, "/scheduled/read" -> Response.text !last_scheduled
@@ -358,7 +416,7 @@ let handler req env ctx =
       | exception Invalid_argument m -> Response.text ~status:502 ("caught " ^ m)
       )
   | _, "/promise/raise-after-await" ->
-      Promise.await (sleep 10);
+      Promise.await (Timer.sleep 10);
       raise Failed
   | _, "/promise/rethrow" -> (
       match
@@ -366,7 +424,7 @@ let handler req env ctx =
       with
       | () -> Response.text "unreachable"
       | exception (Js_error _ as e) ->
-          Promise.await (sleep 5);
+          Promise.await (Timer.sleep 5);
           raise e)
   | _, "/promise/error-payload" -> (
       match
@@ -458,8 +516,14 @@ let handler req env ctx =
   | _, "/reject" ->
       ignore (Promise.await (Promise.reject (Promise.error_of_string "nope")));
       Response.text "unreachable\n"
+  | _, p when String.starts_with ~prefix:"/timer/" p -> timer_route p
+  | _, p
+    when List.exists
+           (fun prefix -> String.starts_with ~prefix p)
+           [ "/date/"; "/crypto/"; "/console/" ] ->
+      globals_route p
   | _, "/sleep" ->
-      ignore (Promise.await (sleep 50));
+      ignore (Promise.await (Timer.sleep 50));
       Response.text "slept\n"
   | _, p
     when List.exists
@@ -477,7 +541,7 @@ let () =
       match cron with
       | "fail" -> raise Failed
       | _ ->
-          ignore (Promise.await (sleep 20));
+          ignore (Promise.await (Timer.sleep 20));
           let upstream_status = Response.status (fetch (upstream ^ "/echo")) in
           Context.wait_until ctx (fun () -> ());
           last_scheduled :=

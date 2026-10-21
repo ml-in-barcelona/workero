@@ -6,15 +6,6 @@ let global name = Js.Unsafe.get Js.Unsafe.global (Js.string name)
 let call obj name args = Js.Unsafe.meth_call obj name args
 let str_of v = Js.to_string (Js.Unsafe.coerce v)
 
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      ignore
-        (Js.Unsafe.fun_call (global "setTimeout")
-           [|
-             Js.Unsafe.inject (Js.wrap_callback (fun () -> resolve ()));
-             Js.Unsafe.inject (ms : int);
-           |]))
-
 let effects () =
   let seen = ref [] in
   Effect.Deep.try_with
@@ -38,21 +29,16 @@ let effects () =
     (String.concat ", " (List.rev_map string_of_int !seen))
 
 let await () =
-  Workero.Promise.await (sleep 50);
+  Workero.Promise.await (Workero.Timer.sleep 50);
   "awaited a setTimeout Promise in direct style\n"
 
 let js () =
-  let uuid = str_of (call (global "crypto") "randomUUID" [||]) in
+  let uuid = Workero.Crypto.random_uuid () in
   let json =
     str_of
       (call (global "JSON") "stringify" [| Js.Unsafe.inject (Js.float 1.5) |])
   in
-  let epoch =
-    let date =
-      Js.Unsafe.new_obj (global "Date") [| Js.Unsafe.inject (Js.float 0.) |]
-    in
-    str_of (call date "toISOString" [||])
-  in
+  let epoch = Workero.Date.to_iso_string 0. in
   Printf.sprintf
     "crypto.randomUUID: %s\nJSON.stringify 1.5: %s\nnew Date(0): %s\n" uuid json
     epoch
@@ -152,7 +138,7 @@ let routes =
   [
     ("/effects", "OCaml 5 effect handlers: a generator", effects);
     ("/await", "Workero.Promise.await on a setTimeout Promise (JSPI)", await);
-    ("/js", "JS interop: crypto, JSON, Date; floats via Js.float", js);
+    ("/js", "JS globals: Crypto, Date; raw JSON interop via Js.float", js);
     ("/numbers", "31-bit int, Int32, Int64, floats, Bigarray", numbers);
     ("/marshal", "Marshal round trip", marshal);
     ("/hashtbl", "Hashtbl", hashtbl);

@@ -26,6 +26,10 @@ module Cache = Cache
 module R2 = R2
 module D1 = D1
 module Sql_value = Sql_value
+module Timer = Timer
+module Date = Date
+module Crypto = Crypto
+module Console = Console
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

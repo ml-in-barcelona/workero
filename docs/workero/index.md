@@ -20,7 +20,8 @@ Start with [Getting started](./getting_started.md). The other pages follow the s
 - [Variables and secrets](./env.md).
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
 - [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md).
-- [Logging](./logging.md).
+- [Logging](./logging.md): output and `Workero.Console`.
+- [JavaScript globals](./globals.md): timers, `Date`, `crypto`.
 - [Testing and limits](./testing.md).
 - [JavaScript interop](./interop.md).
 - [How it works](./how_it_works.md): wasm\_of\_ocaml, JSPI, `workero build` and binary size.

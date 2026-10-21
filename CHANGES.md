@@ -13,4 +13,5 @@
 - `Workero.Promise` is backed by `Js_of_ocaml.Promise`, so `'a t t` is sound. `of_js` and binding calls take a decoder (`Workero.Decode`). `Promise.error` is opaque and `Js_error` carries the original JS reason. New `map`, `bind`, `all`, `race`, `any`, `all_settled`.
 - An exception during program initialisation fails the worker load with its message, instead of "registered no handler".
 - `workero build` fails when the program uses functions with no wasm implementation, instead of failing on each request.
+- Typed bindings for JavaScript globals: `Workero.Timer` (`sleep`, `set_timeout`, `set_interval`, `clear_timeout`, `clear_interval`), `Workero.Date`, `Workero.Crypto` and `Workero.Console`. Examples and tests no longer call `setTimeout` through `Js.Unsafe`.
 - Naming: `Sql_value.row`, one `__workero` JS global, `Decode.unit`, `Makefile` targets `test-worker-init` and `test-worker-exports`.

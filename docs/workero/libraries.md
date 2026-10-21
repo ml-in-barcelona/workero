@@ -14,7 +14,8 @@ The route list of `examples/features` runs each of these in a deployed Worker:
 - `Marshal`.
 - `Str` regular expressions.
 - `Digest`: MD5 and BLAKE2b.
-- JavaScript interop with `Js_of_ocaml`, for example `crypto.randomUUID`, `JSON` and `Date`.
+- [`Workero.Timer`](./Workero-Timer.md), [`Workero.Date`](./Workero-Date.md), [`Workero.Crypto`](./Workero-Crypto.md) and [`Workero.Console`](./Workero-Console.md).
+- JavaScript interop with `Js_of_ocaml`, for example `JSON`.
 
 ## `jsonkit`
 

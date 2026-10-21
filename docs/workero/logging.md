@@ -17,3 +17,17 @@ These forms work (checked in workerd):
 - `print_endline` and `prerr_endline`.
 - `Printf.printf` and `Printf.eprintf` when the format ends with `%!`.
 Output that is not flushed stays in the buffer and does not appear. This covers `Printf.printf` without `%!`, and `print_string` without a newline or a flush. Flush it with `%!` or `flush stdout`.
+
+
+## Console
+
+[`Workero.Console`](./Workero-Console.md) writes to the global `console`. Each call is one log entry with a level: `log`, `info`, `warn`, `error` or `debug`. It needs no flush.
+
+```ocaml
+let handler _req _env _ctx =
+  Workero.Console.info "request received";
+  Workero.Console.warn "disk is almost full";
+  Workero.Response.text "ok\n"
+
+let () = Workero.serve handler
+```

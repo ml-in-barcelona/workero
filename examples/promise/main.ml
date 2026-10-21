@@ -1,23 +1,7 @@
-open Js_of_ocaml
-
-let global name = Js.Unsafe.get Js.Unsafe.global (Js.string name)
-
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      ignore
-        (Js.Unsafe.fun_call (global "setTimeout")
-           [|
-             Js.Unsafe.inject (Js.wrap_callback (fun () -> resolve ()));
-             Js.Unsafe.inject (ms : int);
-           |]))
-
-let now () =
-  Js.to_float (Js.Unsafe.meth_call (global "Date") "now" [||] : Js.number Js.t)
-
 let elapsed f =
-  let t0 = now () in
+  let t0 = Workero.Date.now () in
   f ();
-  now () -. t0
+  Workero.Date.now () -. t0
 
 let handler req _env _ctx =
   let open Workero in
@@ -29,14 +13,14 @@ let handler req _env _ctx =
   | GET, "/sequential" ->
       let ms =
         elapsed (fun () ->
-            Promise.await (sleep 100);
-            Promise.await (sleep 100))
+            Promise.await (Timer.sleep 100);
+            Promise.await (Timer.sleep 100))
       in
       Response.text (Printf.sprintf "two awaits of 100 ms: ~%.0f ms\n" ms)
   | GET, "/concurrent" ->
       let ms =
         elapsed (fun () ->
-            let a = sleep 100 and b = sleep 100 in
+            let a = Timer.sleep 100 and b = Timer.sleep 100 in
             Promise.await a;
             Promise.await b)
       in
