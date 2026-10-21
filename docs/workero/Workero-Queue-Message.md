@@ -24,7 +24,7 @@ val body_json : t -> Jsonkit.t
 ```
 The body as JSON, for a message sent as `Json`. A `Text` body gives a JSON string.
 
-Raises `Invalid_argument` when the body has no JSON form, as in [`JSON.of_js`](./Workero-JSON.md#val-of_js).
+The consumer receives no content-type field. Raises `Invalid_argument` when the body has no JSON form, as in [`JSON.of_js`](./Workero-JSON.md#val-of_js).
 
 ```ocaml
 val body_text : t -> string
@@ -48,7 +48,7 @@ The body as the runtime delivered it. Use it for a message that another producer
 ```ocaml
 val ack : t -> unit
 ```
-Marks the message as delivered, so the runtime does not retry it, even when the handler raises later.
+Mark the message as delivered after processing succeeds. The runtime does not retry it even if the handler raises later.
 
 ```ocaml
 val retry : ?delay_seconds:int -> t -> unit

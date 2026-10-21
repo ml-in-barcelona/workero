@@ -1,5 +1,6 @@
-(** The [env] argument of a Worker handler: its variables, secrets and bindings.
-*)
+(** The [env] argument of a Worker handler: string and JSON-shaped variables,
+    Worker secrets, and resource bindings. See
+    {{!page-env}Variables and secrets}. *)
 
 type t
 
@@ -16,9 +17,9 @@ val secret : t -> string -> string
     the value. *)
 
 val json : t -> string -> Jsonkit.t option
-(** An object or array variable, such as [X = { foo = 42 }] in [[vars]], or a
-    [json] binding. [None] when the name does not exist or holds a string, a
-    number, a boolean or [null]. {!var} returns [None] for these values.
+(** An object or array variable, such as [X = { foo = 42 }] in [[vars]]. [None]
+    when the name does not exist or holds a string, a number, a boolean or
+    [null]. {!var} returns [None] for these values.
 
     Raises [Invalid_argument] when the value has no JSON form, as in
     {!JSON.of_js}. *)

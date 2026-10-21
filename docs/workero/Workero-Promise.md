@@ -57,7 +57,7 @@ val reject : error -> 'a t
 ```ocaml
 val await : 'a t -> 'a
 ```
-`await p` suspends the current request until `p` settles. It returns the resolved value. For a rejection made by [`error_of_exn`](./#val-error_of_exn), `map`, `bind`, `make` or `of_js`, it re-raises the original OCaml exception. For any other rejection it raises [`Js_error`](./#exception-Js_error). It works inside the handlers given to [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled), and inside the function given to [`Context.wait_until`](./Workero-Context.md#val-wait_until).
+`await p` suspends the current request until `p` settles. It returns the resolved value. For a rejection made by [`error_of_exn`](./#val-error_of_exn), `map`, `bind`, `make` or `of_js`, it re-raises the original OCaml exception. For any other rejection it raises [`Js_error`](./#exception-Js_error). It works inside the handlers given to [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue), inside the `init`, `fetch`, `alarm`, `websocket_message`, `websocket_close` and `websocket_error` handlers of [`Durable_object.make`](./Workero-Durable_object.md#val-make), and inside functions passed to [`Context.wait_until`](./Workero-Context.md#val-wait_until), [`Durable_object.State.wait_until`](./Workero-Durable_object-State.md#val-wait_until) and [`Durable_object.State.block_concurrency_while`](./Workero-Durable_object-State.md#val-block_concurrency_while). It cannot suspend inside the function passed to [`Durable_object.register`](./Workero-Durable_object.md#val-register) or [`Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync); the latter raises `Invalid_argument` and rolls back.
 
 ```ocaml
 val map : ('a -> 'b) -> 'a t -> 'b t
@@ -95,7 +95,7 @@ val of_js :
   Js_of_ocaml.Js.Unsafe.any ->
   'a t
 ```
-`of_js ~decode p` reads a raw JavaScript Promise and applies `decode` to its resolved value. If `decode` raises, the promise rejects with an `Error` that names the exception, so [`await`](./#val-await) raises [`Js_error`](./#exception-Js_error). See [`Decode`](./Workero-Decode.md).
+`of_js ~decode p` reads a raw JavaScript Promise and applies `decode` to its resolved value. If `decode` raises, [`await`](./#val-await) re-raises the original OCaml exception. See [`Decode`](./Workero-Decode.md).
 
 ```ocaml
 val to_js : 'a t -> Js_of_ocaml.Js.Unsafe.any

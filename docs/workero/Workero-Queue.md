@@ -1,7 +1,7 @@
 
 # Module `Workero.Queue`
 
-Cloudflare Queues. A [`t`](./#type-t) sends messages to a queue, bound in `wrangler.toml` with `[[queues.producers]]`. A Worker reads messages with the handler that [`Workero.queue`](./Workero.md#val-queue) registers.
+Cloudflare Queues. A [`t`](./#type-t) sends messages through a producer binding in `wrangler.toml` (`[[queues.producers]]`). A [`Workero.queue`](./Workero.md#val-queue) handler consumes batches from a queue configured under `[[queues.consumers]]`, not through a producer binding. See [Queue](./queue.md) for a complete Worker.
 
 Under `open Workero`, this module hides `Stdlib.Queue`. Write `Stdlib.Queue` to reach the standard one.
 
@@ -38,7 +38,7 @@ Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, or when `b
 ```ocaml
 val send : ?delay_seconds:int -> t -> body -> unit
 ```
-`send queue body` adds one message to the queue. It suspends until the queue accepts it. `delay_seconds` delays delivery, from 0 to 86400\.
+`send queue body` adds one message to the queue. It suspends until the queue accepts it. Call it inside an event handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function. `delay_seconds` delays delivery, from 0 to 86400\.
 
 Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400\.
 
@@ -46,7 +46,7 @@ raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects th
 ```ocaml
 val send_batch : ?delay_seconds:int -> t -> message list -> unit
 ```
-`send_batch queue messages` adds the messages in one call. `delay_seconds` applies to the messages that set no delay with [`message`](./#val-message).
+`send_batch queue messages` adds the messages in one call. `delay_seconds` applies to the messages that set no delay with [`message`](./#val-message). It suspends until the queue accepts the batch.
 
 Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400\.
 

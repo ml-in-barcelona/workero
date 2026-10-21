@@ -1,6 +1,6 @@
 (** A Workers Rate Limiting binding, declared in [wrangler.toml] with
-    [[[ratelimits]]]. The limit and its period come from the binding, not from
-    the code. *)
+    [[[ratelimits]]]. The binding's [name] is passed to {!of_env}; the limit and
+    its period come from the binding, not from the code. *)
 
 type t
 

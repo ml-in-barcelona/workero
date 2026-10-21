@@ -1,7 +1,7 @@
 
 # Module `Workero.Fetcher`
 
-A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Bind it in `wrangler.toml` with `[[services]]` or `[assets]`. The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
+A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Configure service and assets bindings in `wrangler.toml` with `[[services]]` or `[assets]`. A Durable Object stub comes from [`Durable_object.Namespace.get`](./Workero-Durable_object-Namespace.md#val-get). The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
 
 ```ocaml
 type t

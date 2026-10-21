@@ -11,13 +11,13 @@ type t =
 
           SQL APIs on the Workers runtime carry numbers as JavaScript numbers,
           which are 64-bit floats, so a read cannot tell an SQL [INTEGER] from a
-          [REAL]. A number with no fractional part within ±2{^ 53} is read as
+          [REAL]. A number with no fractional part within ±[2^53] is read as
           [Int], also from a [REAL] column: a [REAL] holding [2.0] reads as
           [Int 2L]. Any other number is read as [Float]. An [INTEGER] beyond
-          2{^ 53} reaches OCaml already rounded by the runtime, and is read as
+          [2^53] reaches OCaml already rounded by the runtime, and is read as
           [Float] (or as [Int 9007199254740992L] when it rounds to exactly
-          2{^ 53}), never as its exact [Int]. A written [Int] is exact only
-          within ±2{^ 53}. *)
+          [2^53]), never as its exact [Int]. A written [Int] is exact only
+          within ±[2^53]. *)
 
 type row = (string * t) list
 (** The columns of a row in result order, with their names. *)
@@ -25,12 +25,12 @@ type row = (string * t) list
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 (** The JavaScript value to bind: [null], a number, a string or a [Uint8Array].
 
-    Raises [Invalid_argument] for an [Int] beyond ±2{^ 53}, which a JavaScript
+    Raises [Invalid_argument] for an [Int] beyond ±[2^53], which a JavaScript
     number cannot hold exactly. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 (** Reads a JavaScript value: [null] or [undefined] is [Null]; a number with no
-    fractional part within ±2{^ 53} is [Int]; any other number is [Float]; a
+    fractional part within ±[2^53] is [Int]; any other number is [Float]; a
     [bigint] is [Int], exact in 64 bits; a string is [Text]; an [ArrayBuffer], a
     typed array or an array of byte numbers is [Blob].
 

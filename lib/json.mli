@@ -45,11 +45,12 @@ val request : Request.t -> Jsonkit.t
 
     Raises [Jsonkit.Of_string_error] when the body is not valid JSON. The
     payload describes the syntax error. A handler that lets it escape makes the
-    runtime answer with status 500; use {!parse} or {!decode} to answer with
-    400. *)
+    runtime answer with status 500; use {!parse} or {!decode} to handle the
+    error and choose a response status in the handler. *)
 
 val parse : Request.t -> (Jsonkit.t, string) result
-(** Like {!request}. [Error message] when the body is not valid JSON. *)
+(** Like {!request}. [Error message] when the body is not valid JSON. It does
+    not send a response; the handler chooses the status. *)
 
 val decode : (Jsonkit.t -> 'a) -> Request.t -> ('a, string) result
 (** [decode of_json req] parses the body and applies [of_json]. [of_json] is a

@@ -14,12 +14,11 @@ val of_env : Env.t -> string -> t
 
 val write :
   ?index:string -> ?doubles:float list -> ?blobs:blob list -> t -> unit
-(** [write dataset] records one data point. [index] is the sampling key. The
-    runtime accepts one index, up to 20 [doubles] and up to 20 [blobs]. It does
-    not wait: the runtime writes the point after the handler continues, and
-    [write] returns at once, without a result.
+(** [write dataset] submits one data point. [index] is the sampling key. The
+    runtime accepts one index, up to 20 [doubles] and up to 20 [blobs]. This
+    call does not wait for persistence and returns [unit] immediately.
 
-    @raise Js_error when the runtime rejects the data point. *)
+    @raise Js_error when the runtime throws during the call. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any

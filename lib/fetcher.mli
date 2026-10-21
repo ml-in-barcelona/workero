@@ -1,8 +1,9 @@
 (** A [Fetcher] sends requests to another Worker, to static assets or to a
-    Durable Object. Bind it in [wrangler.toml] with [[[services]]] or
-    [[assets]]. The calls suspend like {!Promise.await}. They raise {!Js_error}
-    when the runtime throws or rejects, for example when the target Worker
-    raises. *)
+    Durable Object. Configure service and assets bindings in [wrangler.toml]
+    with [[[services]]] or [[assets]]. A Durable Object stub comes from
+    {!Durable_object.Namespace.get}. The calls suspend like {!Promise.await}.
+    They raise {!Js_error} when the runtime throws or rejects, for example when
+    the target Worker raises. *)
 
 type t
 

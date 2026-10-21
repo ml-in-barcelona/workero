@@ -1,7 +1,7 @@
 
 # Module `Durable_object.Storage`
 
-The storage of one object. The key-value functions are synchronous: they never suspend. Values are JSON, converted with `JSON.stringify` and `JSON.parse`. A `Date` stored by JavaScript code reads as its ISO string and a `Map` as `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. The functions raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws, for example on a class that is not backed by SQLite.
+The storage of one object. `get`, `put`, `delete`, and `list` do not suspend; `delete_all`, `sync`, and the alarm methods do. Values are JSON, converted with `JSON.stringify` and `JSON.parse`. A `Date` stored by JavaScript code reads as its ISO string and a `Map` as `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. The functions raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws, for example on a class that is not backed by SQLite.
 
 ```ocaml
 type t

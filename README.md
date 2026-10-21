@@ -1,179 +1,59 @@
 # workero
 
-Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
+Write Cloudflare Workers in OCaml. workero compiles OCaml to WebAssembly with
+wasm_of_ocaml and packages the result for Wrangler. Handlers run in direct style:
+`Workero.fetch` waits for a response while other requests can run.
 
-```ocaml
-let handler req env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "hello\n"
-  | POST, "/echo" -> Response.make (Request.bytes req)
-  | GET, "/upstream" ->
-      let r = Workero.fetch "https://example.com/" in
-      Response.text ~status:(`Status (Response.status r)) (Response.body_text r)
-  | GET, "/env" ->
-      Response.text (Option.value (Env.var env "GREETING") ~default:"unset")
-  | _ -> Response.text ~status:`Not_Found "not found\n"
+## Start a Worker
 
-let () = Workero.serve handler
+You need an active opam switch with OCaml 5.4 or later, Git, and Node.js 22 or
+later with npm. The `workero` package is not yet available from the opam package
+index. Run these commands from a directory outside any Dune project:
+
+```sh
+eval "$(opam env)"
+git clone https://github.com/ml-in-barcelona/workero.git workero-source
+opam pin add workero ./workero-source -y
+cp -R workero-source/template my-worker
+cd my-worker
+npm install
+npx wrangler dev
 ```
 
-Handlers run in direct style, with no monad and no callbacks. A wait such as
-`Request.text`, `Workero.fetch` or `Promise.await` suspends the handler with
-OCaml 5 effects over JSPI, so other requests run meanwhile
-([how it works](docs/workero/async.md)). Use `Context.wait_until ctx f` for
-work that continues after the response.
+The source pin installs the library and CLI. `npm install` installs Wrangler,
+workerd, and binaryen's `wasm-opt`. The CLI uses workerd to check initialization
+and discover Durable Object classes. Wrangler prints the local URL, usually
+`http://127.0.0.1:8787`. In another terminal, run:
 
-`Workero.JSON` reads and writes JSON with
-[jsonkit](https://github.com/melange-community/jsonkit). Values are
-`Jsonkit.t`. Add `jsonkit` to your dune `libraries` to build or decode them:
+```sh
+curl http://127.0.0.1:8787/
+```
+
+Expected response: `Hello from OCaml on Cloudflare Workers`.
+
+The handler in `my-worker/src/main.ml` reads a request and returns a response:
 
 ```ocaml
 let handler req _env _ctx =
-  match Workero.JSON.parse req with
-  | Ok json -> Workero.JSON.response json
-  | Error msg -> Workero.JSON.error msg
+  match Workero.URL.path (Workero.Request.url req) with
+  | "/" -> Workero.Response.text "Hello from OCaml on Cloudflare Workers\n"
+  | _ -> Workero.Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ```
 
-`Workero.Router` matches methods and paths with parameters, as in
-`/users/:id<int>` and `/files/:rest<string...>`. It answers 404, 405 and 400
-itself:
-
-```ocaml
-let router =
-  Workero.Router.make
-    [
-      Workero.Router.get "/users/:id<int>" (fun params _req _env _ctx ->
-          Workero.Response.text (Workero.Router.param_exn params "id"));
-    ]
-
-let () = Workero.serve (Workero.Router.to_handler router)
-```
-
-Register a Cron Trigger handler with `Workero.scheduled`. It can run alongside
-`Workero.serve`, or on its own. Add the schedule to `wrangler.toml`:
-
-```toml
-[triggers]
-crons = ["*/5 * * * *"]
-```
-
-```ocaml
-let () =
-  Workero.scheduled (fun controller _env _ctx ->
-      ignore (Workero.Scheduled.cron controller))
-```
-
-Read required secrets with `Env.secret`, object variables with `Env.json`, and
-Secrets Store secrets with `Secret_store`. Call another Worker through a service
-binding with `Fetcher`:
-
-```ocaml
-let handler req env _ctx =
-  let open Workero in
-  let token = Env.secret env "API_TOKEN" in
-  let backend = Fetcher.of_env env "BACKEND" in
-  let res =
-    Fetcher.fetch ~headers:[ ("authorization", "Bearer " ^ token) ] backend
-      "http://backend/users"
-  in
-  Response.text ~status:(`Status (Response.status res)) (Response.body_text res)
-```
-
-Send messages to a Cloudflare Queue with `Queue`, and receive them with
-`Workero.queue`. `Queue` hides `Stdlib.Queue` under `open Workero`:
-
-```ocaml
-let handler _req env _ctx =
-  let jobs = Workero.Queue.of_env env "JOBS" in
-  Workero.Queue.send jobs (Workero.Queue.Json (`Assoc [ ("id", `Int 7) ]));
-  Workero.Response.text "queued\n"
-
-let () =
-  Workero.serve handler;
-  Workero.queue (fun batch _env _ctx ->
-      List.iter
-        (fun message ->
-          ignore (Workero.Queue.Message.body_json message);
-          Workero.Queue.Message.ack message)
-        (Workero.Queue.Batch.messages batch))
-```
-
-`Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
-model with JSON input and output, and `Analytics_engine.write` records a data
-point:
-
-```ocaml
-let handler req env _ctx =
-  let open Workero in
-  let key = Option.value (Request.header req "cf-connecting-ip") ~default:"anon" in
-  if not (Rate_limiter.limit (Rate_limiter.of_env env "LIMITER") key) then
-    Response.text ~status:`Too_Many_Requests "slow down\n"
-  else begin
-    Analytics_engine.write ~index:key ~doubles:[ 1. ]
-      (Analytics_engine.of_env env "EVENTS");
-    JSON.response
-      (Ai.run (Ai.of_env env "AI") "@cf/meta/llama-3.1-8b-instruct"
-         (`Assoc [ ("prompt", `String "Say hi") ]))
-  end
-```
-
-Keep state in a Durable Object with SQLite storage. Register the class at the
-top level of the program, and declare it in `wrangler.toml`:
-
-```ocaml
-let () =
-  Workero.Durable_object.register "Counter" (fun state _env ->
-      let open Workero in
-      let storage = Durable_object.State.storage state in
-      Durable_object.make
-        ~fetch:(fun _req ->
-          let n =
-            match Durable_object.Storage.get storage "count" with
-            | Some (`Int n) -> n + 1
-            | _ -> 1
-          in
-          Durable_object.Storage.put storage "count" (`Int n);
-          Response.text (string_of_int n))
-        ())
-```
-
-Reach an object with `Durable_object.Namespace.get_by_name` and `Fetcher.fetch`.
-Alarms use `Storage.set_alarm` and the `~alarm` handler. `Storage.sql` and
-`Storage.transaction_sync` give SQL and transactions. `State.accept_websocket`
-and the `~websocket_message` handler serve hibernatable WebSockets.
-
-## Build and package a worker
-
-Build an executable with `(modes wasm)` from the dune project:
-
-```sh
-workero build src/main.bc.wasm.js
-```
-
-`build` runs dune and writes the worker to `_worker/`. If dune already built the
-executable, package its output without running dune again:
-
-```sh
-workero package _build/default/src/main.bc.wasm.js
-```
-
-Both commands accept `--out <dir>` to choose another output directory. They run
-the program once in `workerd` to find its Durable Object classes, so `workerd`
-must be installed (`npm install workerd`, or Wrangler). See the
-[documentation](https://ml-in-barcelona.github.io/workero/workero/),
-[getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html),
-and [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html).
+Follow [Getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html)
+to edit the template and run it locally. The [Runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html)
+and [Bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html)
+guides cover requests, JSON, routing, scheduled handlers, Queues, Durable
+Objects, SQL, and hibernating WebSockets. See the [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html)
+for packaging and [CONTRIBUTING.md](CONTRIBUTING.md) for repository work.
 
 ## Demos
 
-- [https://workero-example-basic.davesnx.workers.dev](https://workero-example-basic.davesnx.workers.dev) ([source](examples/basic/)): reports the OCaml version, the backend and the requests served by the isolate.
-- [https://workero-example-limits.davesnx.workers.dev](https://workero-example-limits.davesnx.workers.dev) ([source](examples/limits/)): runs a CPU task or allocates memory.
-- [https://workero-example-features.davesnx.workers.dev](https://workero-example-features.davesnx.workers.dev) ([source](examples/features/)): serves routes for wasm_of_ocaml features.
-- [https://workero-example-hello.davesnx.workers.dev](https://workero-example-hello.davesnx.workers.dev) ([source](examples/hello/)): runs effect handlers and awaits promises.
-- [https://workero-example-promise.davesnx.workers.dev](https://workero-example-promise.davesnx.workers.dev) ([source](examples/promise/)): compares sequential and concurrent waits.
-- [https://workero-example-react.davesnx.workers.dev](https://workero-example-react.davesnx.workers.dev) ([source](examples/react/)): runs a lightweight version of [server-reason-react](https://github.com/ml-in-barcelona/server-reason-react) for React SSR in OCaml.
-
-To work on the repository, see [CONTRIBUTING.md](CONTRIBUTING.md).
+- [Basic Worker](examples/basic/) ([demo](https://workero-example-basic.davesnx.workers.dev)): runtime and isolate information.
+- [Runtime limits](examples/limits/) ([demo](https://workero-example-limits.davesnx.workers.dev)): CPU and memory experiments.
+- [OCaml features](examples/features/) ([demo](https://workero-example-features.davesnx.workers.dev)): standard library and runtime features.
+- [Effects](examples/hello/) ([demo](https://workero-example-hello.davesnx.workers.dev)): effect handlers and Promise waits.
+- [Promises](examples/promise/) ([demo](https://workero-example-promise.davesnx.workers.dev)): sequential and concurrent waits.
+- [React rendering](examples/react/) ([demo](https://workero-example-react.davesnx.workers.dev)): server-side rendering in OCaml.
