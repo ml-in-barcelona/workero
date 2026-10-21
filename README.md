@@ -4,7 +4,7 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 
 - `lib/`: the `workero` library (`Workero.serve`, `Workero.scheduled`, `Workero.fetch`, `Request`, `Method`, `Context`, `Response`, `Env`, `Scheduled`, `URL`, `JSON`), and the storage bindings `KV`, `Cache`, `R2`, `D1` (with `Sql_value`).
 - `test/`: unit tests (`test/unit/`) and the worker tests (`test/worker/`). See Development.
-- `bin/`: the `workero` CLI. `workero build <dir>/<name>` writes a worker to `_worker/`.
+- `bin/`: the `workero` CLI. `workero build <dir>/<name> [-- <dune args>...]` runs dune and writes a worker to `_worker/`. `workero package <path>/<name>` writes the worker from output that dune already built.
 - `examples/basic/`: a hello world worker that reports the OCaml version and backend, plus the feature routes of `examples/features/` (`/effects`, `/regex`, `/file`, ...).
 - `examples/react/`: server-side React with `.mlx` components.
 - `examples/limits/`: pushes the Workers limits with a CPU route and a memory route.

@@ -36,7 +36,8 @@ chains. See {{!page-async}Waiting for JavaScript}.
 {1 Bundling: workero build}
 
 [workero build src/main] is the counterpart of [worker-build] in other
-languages. It builds the executable in the release profile, checks that it
+languages. It builds the executable (in the release profile unless you pass another
+profile), checks that it
 has no missing primitives, and writes the directory that Wrangler bundles and
 deploys. See {{!page-cli}the CLI}. The template runs it as the [[build]]
 command of [wrangler.toml].

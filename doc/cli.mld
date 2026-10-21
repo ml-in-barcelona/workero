@@ -1,21 +1,64 @@
 {0 The workero CLI}
 
-[workero build] turns an OCaml executable with [(modes wasm)] into a
-directory that Wrangler can serve and deploy.
+[workero] turns an OCaml executable with [(modes wasm)] into a directory that
+Wrangler can serve and deploy. [workero build] runs dune first.
+[workero package] works on output that dune already built.
 
 {1 Usage}
 
 {@sh[
-workero build <dir>/<name> [--out <dir>]
+workero build <dir>/<name> [--out <dir>] [-- <dune args>...]
+workero package <path>/<name> [--out <dir>]
 ]}
 
-Run it from the root of the dune project. [<dir>/<name>] names the executable:
-[workero build src/main] builds [src/main.ml]. [--out] sets the output
-directory. The default is [_worker].
+[--out] sets the output directory. The default is [_worker]. It can come before
+or after the target. Both commands also take [--allow-missing-primitives].
+
+{2 build}
+
+[workero build src/main] builds [src/main.ml]. Run it from any directory inside
+the dune project. [<dir>/<name>] is relative to the current directory, as it is
+for [dune build].
+
+Arguments after [--] go to [dune build]:
+
+{@sh[
+workero build src/main -- --profile dev --display short
+]}
+
+It runs [dune build <dune args> <dir>/<name>.bc.wasm.js]. It adds
+[--profile release] unless the dune arguments select a profile with
+[--profile], [--release] or [-p], or [DUNE_PROFILE] is set.
+
+{2 package}
+
+[workero package _build/default/src/main] reads
+[_build/default/src/main.bc.wasm.js] and
+[_build/default/src/main.bc.wasm.assets] and never runs dune. Use it when
+another step builds the executable, such as a Makefile or CI job.
+
+{1 Where it finds the build output}
+
+[workero build] finds the output the way dune does, so it works when the
+project is inside another dune project, when you run it from a subdirectory,
+and when you move the build directory.
+
++ The dune root is the [--root] directory in the dune arguments, or
+  [DUNE_ROOT]. With [--release] or [-p] it is the current directory. Otherwise
+  it is the outermost parent directory of the current directory that has a
+  [dune-workspace] file. If there is none, it is the outermost parent that has
+  a [dune-project] file. If there is none, it is the current directory.
++ The build directory is [--build-dir] from the dune arguments, or
+  [DUNE_BUILD_DIR], or [_build]. A relative path is relative to the dune root.
++ The output is in [<build directory>/default/<path of the target from the
+  root>].
+
+With an explicit root ([--root] or [DUNE_ROOT]), dune reads the target relative
+to that root, not to the current directory, and so does [workero build].
 
 {1 What it does}
 
-+ Runs [dune build --profile release <dir>/<name>.bc.wasm.js].
++ [workero build] only: builds the loader with dune.
 + Removes the [*.wasm.assets] directories that earlier runs left in the output
   directory, so a second run leaves one set of [.wasm] files.
 + Copies the wasm_of_ocaml loader ([<name>.bc.wasm.js]) and its
@@ -30,12 +73,14 @@ It prints [workero: wrote <dir> (<n> wasm file(s))]. On an error it prints
 
 {1 Errors}
 
-[workero build] exits with code 1 and prints [workero: <reason>] to stderr when:
+[workero build] and [workero package] exit with code 1 and print
+[workero: <reason>] to stderr when:
 
 - the arguments do not match the usage,
-- [dune build] fails,
+- [dune build] fails ([workero build] only),
 - dune does not produce the loader or the [.wasm.assets] directory (the
   executable lacks [(modes wasm)], or the path is wrong),
+- the target is outside the dune root ([workero build] only),
 - the program uses OCaml functions that have no wasm implementation. The
   message is [workero: <name> uses functions with no wasm implementation:
   <list>]. They would fail at run time. Provide a wasm implementation with
