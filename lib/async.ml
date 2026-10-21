@@ -1,30 +1,52 @@
 module Js = Js_of_ocaml.Js
+module Jp = Js_of_ocaml.Promise
 open Effect
 open Effect.Deep
 open Internal
 
-type _ Effect.t += Await : js -> 'a Effect.t
+exception Js_error of Jp.error
+
+type _ Effect.t += Await : 'a Jp.t -> 'a Effect.t
 
 let await p = perform (Await p)
 
 let promising (f : 'a) : js =
   call (global "__promisify") [| Js.Unsafe.inject f |]
 
-let reason_to_string (v : js) = Js.to_string (call (global "String") [| v |])
-let resume f = ignore (call (promising f) [||])
+let carried = "workero_exn"
+
+let error_of_exn e =
+  let err =
+    Js.Unsafe.new_obj (global "Error") [| str (Printexc.to_string e) |]
+  in
+  Js.Unsafe.set err carried (Js.Unsafe.inject e);
+  Jp.error_of_any err
+
+let exn_of_error err =
+  let v = Jp.error_to_any err in
+  if
+    typeof v = "object"
+    && (not (is_nullish v))
+    && typeof (Js.Unsafe.get v carried) <> "undefined"
+  then (Js.Unsafe.get v carried : exn)
+  else Js_error err
+
+let error_to_js = function
+  | Js_error e -> Jp.error_to_any e
+  | e -> Jp.error_to_any (error_of_exn e)
+
+let resume ~reject f =
+  ignore (meth (call (promising f) [||]) "catch" [| reject |])
 
 let run (f : unit -> js) : js =
   let r = meth (global "Promise") "withResolvers" [||] in
   let settle name v = ignore (call (Js.Unsafe.get r name) [| v |]) in
+  let reject = Js.Unsafe.get r "reject" in
   try_with
     (fun () ->
       match f () with
       | v -> settle "resolve" v
-      | exception e ->
-          let err =
-            Js.Unsafe.new_obj (global "Error") [| str (Printexc.to_string e) |]
-          in
-          settle "reject" err)
+      | exception e -> settle "reject" (error_to_js e))
     ()
     {
       effc =
@@ -33,18 +55,16 @@ let run (f : unit -> js) : js =
           | Await p ->
               Some
                 (fun (k : (a, _) continuation) ->
-                  let on_ok =
-                    Js.wrap_callback (fun (v : a) ->
-                        resume (fun () -> continue k v))
-                  in
-                  let on_err =
-                    Js.wrap_callback (fun (v : js) ->
-                        let msg = reason_to_string v in
-                        resume (fun () -> discontinue k (Js_error msg)))
-                  in
+                  let resume = resume ~reject in
                   ignore
-                    (meth p "then"
-                       [| Js.Unsafe.inject on_ok; Js.Unsafe.inject on_err |]))
+                    (Jp.then_
+                       ~on_error:(fun e ->
+                         resume (fun () -> discontinue k (exn_of_error e));
+                         Jp.resolve ())
+                       (fun v ->
+                         resume (fun () -> continue k v);
+                         Jp.resolve ())
+                       p))
           | _ -> None);
     };
   Js.Unsafe.get r "promise"

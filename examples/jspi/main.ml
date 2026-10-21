@@ -43,10 +43,12 @@ let handler req _env _ctx =
       Response.text
         (Printf.sprintf "two timers of 100 ms, awaited: ~%.0f ms\n" ms)
   | GET, "/rejected" -> (
-      match Promise.await (Promise.reject "boom") with
+      match Promise.await (Promise.reject (Promise.error_of_string "boom")) with
       | () -> Response.text "unreachable\n"
-      | exception Js_error msg ->
-          Response.text (Printf.sprintf "caught Js_error: %s\n" msg))
+      | exception Js_error e ->
+          Response.text
+            (Printf.sprintf "caught Js_error: %s\n" (Promise.error_to_string e))
+      )
   | _ -> Response.text ~status:404 "not found\n"
 
 let () = Workero.serve handler

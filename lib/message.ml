@@ -21,15 +21,11 @@ let headers msg =
       let pair : js = Js.Unsafe.get all i in
       (Js.to_string (Js.Unsafe.get pair 0), Js.to_string (Js.Unsafe.get pair 1)))
 
-let text msg =
-  let p : Js.js_string Js.t Promise.t = Promise.of_js (meth msg "text" [||]) in
-  Js.to_string (Promise.await p)
+let read ~decode msg name =
+  Promise.await (Promise.of_js ~decode (meth msg name [||]))
 
-let bytes msg =
-  let p : Typed_array.arrayBuffer Js.t Promise.t =
-    Promise.of_js (meth msg "arrayBuffer" [||])
-  in
-  Typed_array.String.of_arrayBuffer (Promise.await p)
+let text msg = read ~decode:Decode.string msg "text"
+let bytes msg = read ~decode:Decode.bytes msg "arrayBuffer"
 
 let body_of_string s =
   Js.Unsafe.inject (Typed_array.Bytes.to_uint8Array (Bytes.of_string s))

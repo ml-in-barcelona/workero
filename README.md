@@ -52,7 +52,8 @@ let () = Workero.serve handler
 
 Handlers run in direct style: `Request.text`, `Workero.fetch` and
 `Promise.await` wait for the JavaScript Promise without blocking other
-requests. A rejected Promise raises `Workero.Js_error`. Use
+requests. A rejected Promise raises `Workero.Js_error`, which carries the JavaScript
+reason (`Promise.error_to_string` shows it). Use
 `Context.wait_until ctx f` for work that continues after the response.
 
 `Workero.JSON` reads and writes JSON with

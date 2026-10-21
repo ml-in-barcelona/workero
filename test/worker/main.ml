@@ -12,6 +12,13 @@ let sleep ms =
              Js.Unsafe.inject (ms : int);
            |]))
 
+let delayed v ms = Workero.Promise.map (fun () -> v) (sleep ms)
+
+let raw_promise_of v =
+  Js.Unsafe.meth_call
+    (Js.Unsafe.get Js.Unsafe.global "Promise")
+    "resolve" [| v |]
+
 let background = ref "unset"
 let last_scheduled = ref "none"
 let upstream = "http://upstream.test"
@@ -174,12 +181,14 @@ let storage req env url =
       match D1.query (D1.of_env env "DB") "SELEKT nothing" with
       | _ -> Response.text "unreachable"
       | exception Js_error message ->
-          Response.text ~status:502 ("sql error: " ^ message))
+          Response.text ~status:502
+            ("sql error: " ^ Promise.error_to_string message))
   | "/d1/sync-throw" -> (
       match D1.query (D1.of_env env "DB") "" with
       | _ -> Response.text "unreachable"
       | exception Js_error message ->
-          Response.text ~status:502 ("caught " ^ message))
+          Response.text ~status:502 ("caught " ^ Promise.error_to_string message)
+      )
   | "/d1/columns" ->
       let db = D1.of_env env "DB" in
       Response.text
@@ -189,7 +198,8 @@ let storage req env url =
   | "/kv/list-broken" -> (
       match KV.list ~prefix:"kv-broken-" (KV.of_env env "KV") with
       | _ -> Response.text "unreachable"
-      | exception Js_error message -> Response.text ~status:502 message)
+      | exception Js_error message ->
+          Response.text ~status:502 (Promise.error_to_string message))
   | "/binding/shape" ->
       let name = arg "name" in
       let kv () = ignore (KV.of_env env name) in
@@ -308,7 +318,8 @@ let handler req env ctx =
   | _, "/fetch-caught" -> (
       match fetch (upstream ^ "/boom") with
       | _ -> Response.text "unreachable"
-      | exception Js_error msg -> Response.text ~status:502 ("caught " ^ msg))
+      | exception Js_error msg ->
+          Response.text ~status:502 ("caught " ^ Promise.error_to_string msg))
   | _, "/fetch-reject" -> fetch (upstream ^ "/boom")
   | _, "/background/start" ->
       let v = Option.value (URL.query url "v") ~default:"" in
@@ -323,9 +334,130 @@ let handler req env ctx =
       Response.text "started"
   | _, "/scheduled/read" -> Response.text !last_scheduled
   | _, "/background/read" -> Response.text !background
+  | _, "/promise/nested" ->
+      let inner = Promise.await (Promise.resolve (Promise.resolve 1)) in
+      Response.text (string_of_int (Promise.await inner))
+  | _, "/promise/make-thenable" ->
+      let outer =
+        Promise.make (fun ~resolve ~reject:_ -> resolve (Promise.resolve 7))
+      in
+      Response.text (string_of_int (Promise.await (Promise.await outer)))
+  | _, "/promise/of-js" ->
+      let p =
+        Promise.of_js
+          ~decode:Decode.(field "a" int)
+          (raw_promise_of (Js.Unsafe.obj [| ("a", Js.Unsafe.inject 5) |]))
+      in
+      Response.text (string_of_int (Promise.await p))
+  | _, "/promise/of-js-wrong-decoder" -> (
+      let p =
+        Promise.of_js ~decode:Decode.string
+          (raw_promise_of (Js.Unsafe.inject 5))
+      in
+      match Promise.await p with
+      | s -> Response.text s
+      | exception Invalid_argument m -> Response.text ~status:502 ("caught " ^ m)
+      )
+  | _, "/promise/raise-after-await" ->
+      Promise.await (sleep 10);
+      raise Failed
+  | _, "/promise/rethrow" -> (
+      match
+        Promise.await (Promise.reject (Promise.error_of_string "again"))
+      with
+      | () -> Response.text "unreachable"
+      | exception (Js_error _ as e) ->
+          Promise.await (sleep 5);
+          raise e)
+  | _, "/promise/error-payload" -> (
+      match
+        Promise.await
+          (Promise.reject (Promise.error_of_js (Js.Unsafe.inject 42)))
+      with
+      | () -> Response.text "unreachable"
+      | exception Js_error e ->
+          Response.text (string_of_int (Decode.int (Promise.error_to_js e))))
+  | _, "/promise/map-bind" ->
+      let p =
+        Promise.bind
+          (fun x -> delayed (x + 1) 5)
+          (Promise.map (fun x -> x * 2) (Promise.resolve 4))
+      in
+      Response.text (string_of_int (Promise.await p))
+  | _, "/promise/all" ->
+      let p = Promise.all [ delayed 1 30; delayed 2 10; Promise.resolve 3 ] in
+      Response.text
+        (String.concat "," (List.map string_of_int (Promise.await p)))
+  | _, "/promise/race" ->
+      Response.text
+        (Promise.await (Promise.race [ delayed "slow" 60; delayed "fast" 5 ]))
+  | _, "/promise/any" ->
+      let boom = Promise.reject (Promise.error_of_string "boom") in
+      Response.text (Promise.await (Promise.any [ boom; delayed "ok" 5 ]))
+  | _, "/promise/any-rejected" -> (
+      let boom = Promise.reject (Promise.error_of_string "boom") in
+      match Promise.await (Promise.any [ boom; boom ]) with
+      | () -> Response.text "unreachable"
+      | exception Js_error e ->
+          Response.text ~status:502 (Promise.error_to_string e))
+  | _, "/promise/all-settled" ->
+      let results =
+        Promise.await
+          (Promise.all_settled
+             [
+               Promise.resolve 1; Promise.reject (Promise.error_of_string "no");
+             ])
+      in
+      Response.text
+        (String.concat ","
+           (List.map
+              (function
+                | Ok n -> "ok:" ^ string_of_int n
+                | Error e -> "error:" ^ Promise.error_to_string e)
+              results))
+  | _, "/promise/callback-exceptions" ->
+      let caught name p =
+        match Promise.await p with
+        | _ -> name ^ ": none"
+        | exception Failure m -> name ^ ": Failure " ^ m
+        | exception Not_found -> name ^ ": Not_found"
+        | exception Invalid_argument m -> name ^ ": Invalid_argument " ^ m
+      in
+      Response.text
+        (String.concat ";"
+           [
+             caught "map"
+               (Promise.map (fun () -> failwith "x") (Promise.resolve ()));
+             caught "bind"
+               (Promise.bind (fun () -> invalid_arg "y") (Promise.resolve ()));
+             caught "make"
+               (Promise.make (fun ~resolve:_ ~reject:_ -> raise Not_found));
+           ])
+  | _, "/promise/map-escapes" ->
+      let p : unit Promise.t =
+        Promise.map (fun () -> failwith "boom") (Promise.resolve ())
+      in
+      Promise.await p;
+      Response.text "unreachable"
+  | _, "/promise/unprintable" -> (
+      let bare =
+        Js.Unsafe.meth_call
+          (Js.Unsafe.get Js.Unsafe.global "Object")
+          "create"
+          [| Js.Unsafe.inject Js.null |]
+      in
+      match
+        Promise.await
+          (Promise.of_js ~decode:Decode.js
+             (Js.Unsafe.meth_call
+                (Js.Unsafe.get Js.Unsafe.global "Promise")
+                "reject" [| bare |]))
+      with
+      | _ -> Response.text "unreachable"
+      | exception Js_error e -> Response.text (Promise.error_to_string e))
   | _, "/fail" -> raise Failed
   | _, "/reject" ->
-      ignore (Promise.await (Promise.reject "nope"));
+      ignore (Promise.await (Promise.reject (Promise.error_of_string "nope")));
       Response.text "unreachable\n"
   | _, "/sleep" ->
       ignore (Promise.await (sleep 50));

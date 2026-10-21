@@ -31,20 +31,16 @@ let guard f =
   match f () with
   | v -> v
   | exception Js.Js_error.Exn e ->
-      raise (Js_error (Js.Js_error.name e ^ ": " ^ Js.Js_error.message e))
+      raise
+        (Promise.Js_error
+           (Promise.error_of_js (Js.Unsafe.inject (Js.Js_error.to_error e))))
 
 let invoke obj name args : 'a = guard (fun () -> meth obj name args)
 
-let call obj name args : 'a =
-  Promise.await (Promise.of_js (invoke obj name args))
+let call ~decode obj name args =
+  Promise.await (Promise.of_js ~decode (invoke obj name args))
 
-let call_opt obj name args : 'a option =
-  let v : 'a Js.opt = call obj name args in
-  Js.Opt.to_option v
-
-let array_to_list (f : js -> 'a) (arr : js) =
-  List.init
-    (int_of_js (Js.Unsafe.get arr "length"))
-    (fun i -> f (Js.Unsafe.get arr i))
+let call_opt ~decode obj name args =
+  call ~decode:(Decode.option decode) obj name args
 
 let options fields = Js.Unsafe.obj (Array.of_list fields)

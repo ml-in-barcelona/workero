@@ -45,8 +45,8 @@ handler, where you have [env].
 
 Every operation suspends like {!Workero.Promise.await}, so you call it in direct
 style. When the runtime fails, for example on an SQL error or a network error,
-the operation raises {!Workero.Js_error}. The payload is ["Name: message"] of
-the JavaScript error. That includes errors that JavaScript throws before it
+the operation raises {!Workero.Js_error}. The payload is a {!Workero.Promise.error}, the original
+JavaScript error. {!Workero.Promise.error_to_string} gives ["Name: message"]. That includes errors that JavaScript throws before it
 returns a Promise.
 
 {1 Develop locally}

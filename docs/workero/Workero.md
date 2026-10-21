@@ -9,14 +9,19 @@ type js = Js_of_ocaml.Js.Unsafe.any
 A raw JavaScript value.
 
 ```ocaml
-exception Js_error of string
+exception Js_error of Promise.error
 ```
-Raised by [`Promise.await`](./Workero-Promise.md#val-await) when the awaited JavaScript Promise rejects. The payload is the rejection reason converted with JavaScript `String`.
+Raised by [`Promise.await`](./Workero-Promise.md#val-await) when the awaited JavaScript Promise rejects, and by the bindings when the runtime throws. The payload is the original rejection reason; [`Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) shows it as JavaScript `String` does, for example `"TypeError: bad argument"`.
 
 ```ocaml
 module Promise : sig ... end
 ```
-A JavaScript `Promise`, bound directly.
+A JavaScript `Promise` of an OCaml value.
+
+```ocaml
+module Decode : sig ... end
+```
+Decoders for raw JavaScript values, for [`Promise.of_js`](./Workero-Promise.md#val-of_js). A decoder raises `Invalid_argument` naming the expected and the actual JavaScript type.
 
 ```ocaml
 module URL : sig ... end

@@ -25,7 +25,9 @@ type row = (string * value) list
 val query : ?params:value list -> t -> string -> row list
 (** [query db sql ~params] runs [sql] with [params] bound to its [?] marks, in
     order, and returns the rows. Columns keep the order of the [SELECT], and
-    repeated or numeric-looking names are kept as they are. *)
+    repeated or numeric-looking names are kept as they are. Raises
+    [Invalid_argument] when the platform answers with a malformed result: a
+    column name that is not text, or a row of another length. *)
 
 val run : ?params:value list -> t -> string -> int
 (** [run db sql ~params] runs a statement that returns no rows, such as [INSERT]

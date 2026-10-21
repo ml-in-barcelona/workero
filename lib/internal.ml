@@ -2,8 +2,6 @@ module Js = Js_of_ocaml.Js
 
 type js = Js.Unsafe.any
 
-exception Js_error of string
-
 let global name = Js.Unsafe.get Js.Unsafe.global name
 let call f args = Js.Unsafe.fun_call f args
 let meth o name args = Js.Unsafe.meth_call o name args

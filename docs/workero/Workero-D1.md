@@ -29,7 +29,7 @@ The columns of a row in result order, with their names.
 ```ocaml
 val query : ?params:value list -> t -> string -> row list
 ```
-`query db sql ~params` runs `sql` with `params` bound to its `?` marks, in order, and returns the rows. Columns keep the order of the `SELECT`, and repeated or numeric-looking names are kept as they are.
+`query db sql ~params` runs `sql` with `params` bound to its `?` marks, in order, and returns the rows. Columns keep the order of the `SELECT`, and repeated or numeric-looking names are kept as they are. Raises `Invalid_argument` when the platform answers with a malformed result: a column name that is not text, or a row of another length.
 
 ```ocaml
 val run : ?params:value list -> t -> string -> int

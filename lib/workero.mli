@@ -3,11 +3,14 @@
 type js = Js_of_ocaml.Js.Unsafe.any
 (** A raw JavaScript value. *)
 
-exception Js_error of string
-(** Raised by {!Promise.await} when the awaited JavaScript Promise rejects. The
-    payload is the rejection reason converted with JavaScript [String]. *)
+exception Js_error of Promise.error
+(** Raised by {!Promise.await} when the awaited JavaScript Promise rejects, and
+    by the bindings when the runtime throws. The payload is the original
+    rejection reason; {!Promise.error_to_string} shows it as JavaScript [String]
+    does, for example ["TypeError: bad argument"]. *)
 
 module Promise = Promise
+module Decode = Decode
 module URL = Url
 module Method = Method
 module Cf = Cf

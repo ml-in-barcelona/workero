@@ -1,5 +1,4 @@
 module Js = Js_of_ocaml.Js
-module Typed_array = Js_of_ocaml.Typed_array
 open Internal
 
 type t = js
@@ -12,12 +11,8 @@ let of_env env name =
 
 let get bucket key =
   Option.map
-    (fun obj ->
-      let buffer : Typed_array.arrayBuffer Js.t =
-        Binding.call obj "arrayBuffer" [||]
-      in
-      Typed_array.String.of_arrayBuffer buffer)
-    (Binding.call_opt bucket "get" [| str key |])
+    (fun obj -> Binding.call ~decode:Decode.bytes obj "arrayBuffer" [||])
+    (Binding.call_opt ~decode:Decode.js bucket "get" [| str key |])
 
 let put ?content_type bucket key bytes =
   let options =
@@ -29,25 +24,24 @@ let put ?content_type bucket key bytes =
         ]
     | None -> []
   in
-  let _ : js =
-    Binding.call bucket "put"
-      (Array.of_list (str key :: Message.body_of_string bytes :: options))
-  in
-  ()
+  Binding.call ~decode:Decode.unit bucket "put"
+    (Array.of_list (str key :: Message.body_of_string bytes :: options))
 
 let delete bucket key =
-  let _ : js = Binding.call bucket "delete" [| str key |] in
-  ()
+  Binding.call ~decode:Decode.unit bucket "delete" [| str key |]
 
 let head bucket key =
-  Option.map
-    (fun obj ->
-      let metadata : js Js.opt = Js.Unsafe.get obj "httpMetadata" in
+  let decode =
+    let open Decode in
+    fun obj ->
       {
-        size = int_of_js (Js.Unsafe.get obj "size");
-        etag = Js.to_string (Js.Unsafe.get obj "etag");
+        size = field "size" int obj;
+        etag = field "etag" string obj;
         content_type =
-          Option.bind (Js.Opt.to_option metadata) (fun m ->
-              get_string m "contentType");
-      })
-    (Binding.call_opt bucket "head" [| str key |])
+          field "httpMetadata"
+            (option (field "contentType" (option string)))
+            obj
+          |> Option.join;
+      }
+  in
+  Binding.call_opt ~decode bucket "head" [| str key |]

@@ -64,8 +64,8 @@ let () = Workero.serve handler
 - [~params] are values for the [?] marks of the SQL, in order. Always pass user
   input as parameters. Never build SQL by joining strings.
 
-An SQL error raises {!Workero.Js_error}, for example
-[Js_error "Error: ..."], with the message of the database.
+An SQL error raises {!Workero.Js_error}. Read the message of the database with
+{!Workero.Promise.error_to_string}.
 
 {1 SQL values}
 

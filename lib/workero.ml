@@ -3,9 +3,10 @@ open Internal
 
 type js = Internal.js
 
-exception Js_error = Internal.Js_error
+exception Js_error = Promise.Js_error
 
 module Promise = Promise
+module Decode = Decode
 module URL = Url
 module Method = Method
 module Cf = Cf
@@ -57,7 +58,8 @@ let fetch ?(method_ = Method.GET) ?(headers = []) ?body url =
     | None -> []
   in
   let init = Js.Unsafe.obj (Array.of_list fields) in
-  let p : js Promise.t =
-    Promise.of_js (meth Js.Unsafe.global "fetch" [| str url; init |])
+  let p =
+    Promise.of_js ~decode:Decode.js
+      (meth Js.Unsafe.global "fetch" [| str url; init |])
   in
   Response.of_js (Promise.await p)

@@ -8,9 +8,7 @@ let of_env env name =
     ~methods:[ "get"; "put"; "delete"; "list" ]
     env name
 
-let get kv key =
-  let v : Js.js_string Js.t option = Binding.call_opt kv "get" [| str key |] in
-  Option.map Js.to_string v
+let get kv key = Binding.call_opt ~decode:Decode.string kv "get" [| str key |]
 
 let put ?expiration_ttl kv key value =
   let options =
@@ -19,14 +17,10 @@ let put ?expiration_ttl kv key value =
         [ Binding.options [ ("expirationTtl", Js.Unsafe.inject (ttl : int)) ] ]
     | None -> []
   in
-  let _ : js =
-    Binding.call kv "put" (Array.of_list (str key :: str value :: options))
-  in
-  ()
+  Binding.call ~decode:Decode.unit kv "put"
+    (Array.of_list (str key :: str value :: options))
 
-let delete kv key =
-  let _ : js = Binding.call kv "delete" [| str key |] in
-  ()
+let delete kv key = Binding.call ~decode:Decode.unit kv "delete" [| str key |]
 
 let list ?prefix kv =
   let rec pages cursor acc =
@@ -34,19 +28,24 @@ let list ?prefix kv =
       Option.fold prefix ~none:[] ~some:(fun p -> [ ("prefix", str p) ])
       @ Option.fold cursor ~none:[] ~some:(fun c -> [ ("cursor", str c) ])
     in
-    let page : js = Binding.call kv "list" [| Binding.options options |] in
-    let names =
-      Binding.array_to_list
-        (fun key -> Js.to_string (Js.Unsafe.get key "name"))
-        (Js.Unsafe.get page "keys")
+    let decode =
+      let open Decode in
+      fun page ->
+        ( field "keys" (list (field "name" string)) page,
+          field "list_complete" bool page,
+          field "cursor" (option string) page )
+    in
+    let names, complete, cursor =
+      Binding.call ~decode kv "list" [| Binding.options options |]
     in
     let acc = List.rev_append names acc in
-    if Js.to_bool (Js.Unsafe.get page "list_complete") then List.rev acc
-    else
-      match get_string page "cursor" with
-      | Some _ as cursor -> pages cursor acc
-      | None ->
-          raise
-            (Js_error "Workero.KV.list: incomplete listing without a cursor")
+    match (complete, cursor) with
+    | true, _ -> List.rev acc
+    | false, Some _ -> pages cursor acc
+    | false, None ->
+        raise
+          (Promise.Js_error
+             (Promise.error_of_string
+                "Workero.KV.list: incomplete listing without a cursor"))
   in
   pages None []
