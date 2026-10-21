@@ -153,14 +153,23 @@ let routes =
 
 let index () =
   String.concat ""
-    (List.map
-       (fun (path, doc, _) -> Printf.sprintf "%-11s %s\n" path doc)
-       routes)
+    [
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">";
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
+      "<title>Workero features</title></head>";
+      "<body><h1>Workero features</h1><ul>";
+      String.concat ""
+        (List.map
+           (fun (path, doc, _) ->
+             Printf.sprintf "<li><a href=\"%s\">%s</a> — %s</li>" path path doc)
+           routes);
+      "</ul></body></html>";
+    ]
 
 let handler req _env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text (index ())
+  | GET, "/" -> Response.html (index ())
   | GET, path -> (
       match List.find_opt (fun (p, _, _) -> p = path) routes with
       | Some (_, _, run) -> Response.text (run ())
