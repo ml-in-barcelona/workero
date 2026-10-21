@@ -22,11 +22,16 @@ let handler req env _ctx =
   | GET, "/env" ->
       Response.text
         (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ```
 The handler runs in direct style. It can wait for a body, for [`Workero.fetch`](./Workero.md#val-fetch) or for [`Workero.Promise.await`](./Workero-Promise.md#val-await). Other requests keep running while it waits.
+
+
+## Falling back to the origin
+
+[`Workero.Context.pass_through_on_exception`](./Workero-Context.md#val-pass_through_on_exception) makes the runtime send the request to the origin server when the handler raises. It needs a route with an origin. It has no effect on `workers.dev`.
 
 
 ## Cron triggers

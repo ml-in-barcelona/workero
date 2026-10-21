@@ -24,17 +24,84 @@ let test_url_query () =
     "decoded" (Some "a b c") (Workero.URL.query u "q");
   Alcotest.(check (option string)) "missing" None (Workero.URL.query u "z")
 
+let test_url_raw_parts () =
+  let u = url_of "https://a.test:8443/a%2Fb/c?x=1&y=%202#frag" in
+  Alcotest.(check string) "pathname" "/a%2Fb/c" (Workero.URL.pathname u);
+  Alcotest.(check string) "path" "/a/b/c" (Workero.URL.path u);
+  Alcotest.(check string) "search" "?x=1&y=%202" (Workero.URL.search u);
+  Alcotest.(check string) "hash" "#frag" (Workero.URL.hash u);
+  Alcotest.(check string) "origin" "https://a.test:8443" (Workero.URL.origin u)
+
+let test_url_empty_parts () =
+  let u = url_of "http://a.test/p?#" in
+  Alcotest.(check string) "search" "" (Workero.URL.search u);
+  Alcotest.(check string) "hash" "" (Workero.URL.hash u);
+  let u = url_of "http://a.test/p" in
+  Alcotest.(check string) "no search" "" (Workero.URL.search u);
+  Alcotest.(check string) "no hash" "" (Workero.URL.hash u);
+  Alcotest.(check string) "default port" "http://a.test" (Workero.URL.origin u)
+
 let test_url_rejects () =
   Alcotest.(check bool) "not a URL" true (Workero.URL.of_string "nope" = None);
   Alcotest.(check bool) "ftp" true (Workero.URL.of_string "ftp://a.test/" = None)
 
-let test_url_unsupported () =
-  Alcotest.(check bool)
-    "underscore host" true
-    (Workero.URL.of_string "http://a_b.test/" = None);
-  Alcotest.(check bool)
-    "userinfo" true
-    (Workero.URL.of_string "http://user:pw@a.test/" = None)
+let test_url_underscore_host () =
+  let u = url_of "http://my_host:8080/p/x" in
+  Alcotest.(check string) "host" "my_host" (Workero.URL.host u);
+  Alcotest.(check int) "port" 8080 (Workero.URL.port u);
+  Alcotest.(check string) "path" "/p/x" (Workero.URL.path u)
+
+let test_url_userinfo () =
+  let u = url_of "http://user:pw@a.test/x" in
+  Alcotest.(check string) "host" "a.test" (Workero.URL.host u);
+  Alcotest.(check string) "path" "/x" (Workero.URL.path u)
+
+let path_table =
+  [
+    ("http://a.test", "/");
+    ("http://a.test/", "/");
+    ("http://a.test/a%20b", "/a b");
+    ("http://a.test/a+b", "/a+b");
+    ("http://a.test/%C3%A9", "/\xc3\xa9");
+    ("http://a.test/a?x=1#f", "/a");
+    ("http://a.test/%zz", "/%zz");
+  ]
+
+let test_url_path_table () =
+  List.iter
+    (fun (input, expected) ->
+      Alcotest.(check string) input expected (Workero.URL.path (url_of input)))
+    path_table
+
+let args_table =
+  [
+    ("http://a.test/", []);
+    ("http://a.test/?", []);
+    ("http://a.test/?a=1", [ ("a", "1") ]);
+    ("http://a.test/?a=1&a=2&b=3", [ ("a", "1"); ("a", "2"); ("b", "3") ]);
+    ("http://a.test/?q=a+b%20c", [ ("q", "a b c") ]);
+    ("http://a.test/?k=%C3%A9", [ ("k", "\xc3\xa9") ]);
+    ("http://a.test/?a=1#f", [ ("a", "1") ]);
+    ("http://a.test/?a=%zz", [ ("a", "%zz") ]);
+  ]
+
+let test_url_args_table () =
+  List.iter
+    (fun (input, expected) ->
+      Alcotest.(check (list (pair string string)))
+        input expected
+        (Workero.URL.query_args (url_of input)))
+    args_table
+
+let test_url_key_without_value () =
+  let u = url_of "http://a.test/?a&b=2" in
+  Alcotest.(check (option string)) "a" (Some "") (Workero.URL.query u "a");
+  Alcotest.(check (option string)) "b" (Some "2") (Workero.URL.query u "b")
+
+let test_url_to_string () =
+  Alcotest.(check string)
+    "round trip" "http://a.test/p?x=1"
+    (Workero.URL.to_string (url_of "http://a.test/p?x=1"))
 
 let () =
   Alcotest.run "workero.url"
@@ -44,7 +111,15 @@ let () =
           Alcotest.test_case "parts" `Quick test_url_parts;
           Alcotest.test_case "default port" `Quick test_url_default_port;
           Alcotest.test_case "query" `Quick test_url_query;
+          Alcotest.test_case "raw parts" `Quick test_url_raw_parts;
+          Alcotest.test_case "empty parts" `Quick test_url_empty_parts;
           Alcotest.test_case "rejects" `Quick test_url_rejects;
-          Alcotest.test_case "unsupported" `Quick test_url_unsupported;
+          Alcotest.test_case "underscore host" `Quick test_url_underscore_host;
+          Alcotest.test_case "userinfo" `Quick test_url_userinfo;
+          Alcotest.test_case "path table" `Quick test_url_path_table;
+          Alcotest.test_case "args table" `Quick test_url_args_table;
+          Alcotest.test_case "key without value" `Quick
+            test_url_key_without_value;
+          Alcotest.test_case "to_string" `Quick test_url_to_string;
         ] );
     ]

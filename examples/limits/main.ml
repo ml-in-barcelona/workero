@@ -51,6 +51,6 @@ let handler req _env _ctx =
       let check = allocate mb in
       Response.text
         (Printf.sprintf "allocated and touched %d MB (check %d)\n" mb check)
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler

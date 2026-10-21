@@ -27,7 +27,7 @@ let handler req env _ctx =
   | PUT ->
       let content_type = Request.header req "content-type" in
       R2.put ?content_type bucket key (Request.bytes req);
-      Response.text ~status:201 "stored\n"
+      Response.text ~status:`Created "stored\n"
   | GET -> (
       match (R2.head bucket key, R2.get bucket key) with
       | Some { content_type; _ }, Some bytes ->
@@ -37,11 +37,11 @@ let handler req env _ctx =
             | None -> []
           in
           Response.make ~headers bytes
-      | _ -> Response.text ~status:404 "not found\n")
+      | _ -> Response.text ~status:`Not_Found "not found\n")
   | DELETE ->
       R2.delete bucket key;
       Response.text "deleted\n"
-  | _ -> Response.text ~status:405 "method not allowed\n"
+  | _ -> Response.text ~status:`Method_Not_Allowed "method not allowed\n"
 
 let () = Workero.serve handler
 ]}

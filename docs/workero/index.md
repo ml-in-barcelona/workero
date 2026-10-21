@@ -17,6 +17,9 @@ Start with [Getting started](./getting_started.md). The other pages follow the s
 - [Getting started](./getting_started.md): prerequisites, create a project, develop locally, deploy.
 - [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, and the arguments of a handler.
 - [Requests and responses](./requests.md): requests, responses, URLs, JSON and `Workero.fetch`.
+- [Streams](./streams.md): read a body in chunks, send a body in steps.
+- [Forms](./forms.md): forms and file uploads.
+- [WebSockets](./websockets.md): accept a connection and read its messages.
 - [Variables and secrets](./env.md).
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
 - [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md).

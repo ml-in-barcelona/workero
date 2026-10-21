@@ -7,27 +7,27 @@ What does not work yet, and what behaves differently from what you may expect.
 - A handler waits only through {!Workero.Promise.await}, {!Workero.fetch} and the
   body readers. A function that JavaScript calls, such as a [setTimeout]
   callback, cannot wait. See {{!page-async}Waiting for JavaScript}.
-- {!Workero.URL} is not the WHATWG [URL]. See
+- {!Workero.URL} uses the WHATWG [URL], but {!Workero.URL.path} is decoded and
+  only [http] and [https] URLs parse. See
   {{!page-requests}Requests and responses}.
-- {!Workero.Response.redirect} needs an absolute URL.
-- A status that allows no body (101, 204, 205, 304) needs an empty body.
-- Request and response bodies are whole strings. There is no streaming.
-- {!Workero.Request.url} raises [Invalid_argument] for a host with ["_"] and for
-  a URL with userinfo.
+- A response cannot have a status below 200 or above 599. The runtime rejects
+  them, so {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to
+  read codes; use {!Workero.Websocket} for 101.
+
+{1 Limits of streams, forms and WebSockets}
+
+- A client disconnect shows only as a failed {!Workero.Stream.Writer.write}.
+- {!Workero.Response.copy} and {!Workero.Response.of_stream} use up the original
+  body. Call {!Workero.Response.clone} first to keep it.
+- {!Workero.Request.form_data} holds the whole upload in memory. See
+  {{!page-forms}Forms}.
 
 {1 Differences from native OCaml}
 
 - [Sys.word_size] is 32, and [int] has 31 bits.
 - There is no file system, except files that you embed. See
   {{!page-libraries}Supported libraries}.
-- Output must be flushed to reach the logs. See {{!page-logging}Logging}.
 - The program has no threads, sockets or sub-processes.
-
-{1 Not supported yet}
-
-- Streaming bodies.
-- [passThroughOnException].
-- The [start] and [queue] events.
 
 {1 Report a problem}
 

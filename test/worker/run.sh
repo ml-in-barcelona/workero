@@ -11,6 +11,9 @@ $dune exec workero -- build test/worker/main.bc.wasm.js --out "$out"
 rm -rf "$out/d1-data"
 mkdir -p "$out/d1-data"
 cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$out/"
+rm -rf "$out/cases"
+mkdir -p "$out/cases"
+cp test/worker/cases/*.mjs "$out/cases/"
 
 {
   echo 'using Workerd = import "/workerd/workerd.capnp";'
@@ -60,7 +63,12 @@ cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$o
   echo "    (name = \"d1-disk\", disk = (path = \"$out/d1-data\", writable = true)),"
   echo '    (name = "test", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
-  echo '      modules = [(name = "tests.mjs", esModule = embed "tests.mjs")],'
+  echo '      modules = ['
+  echo '        (name = "tests.mjs", esModule = embed "tests.mjs"),'
+  for f in $(cd "$out" && ls cases/*.mjs); do
+    echo "        (name = \"$f\", esModule = embed \"$f\"),"
+  done
+  echo '      ],'
   echo '      bindings = [(name = "WORKER", service = "worker")],'
   echo '    )),'
   echo '  ],'
@@ -70,4 +78,13 @@ cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$o
   echo ');'
 } >"$out/config.capnp"
 
-exec $workerd test "$out/config.capnp"
+status=0
+$workerd test "$out/config.capnp" >"$out/workerd.log" 2>&1 || status=$?
+cat "$out/workerd.log"
+for marker in log-marker-unflushed log-marker-raise; do
+  grep -q "$marker" "$out/workerd.log" || {
+    echo "FAIL - $marker is not in the workerd log"
+    status=1
+  }
+done
+exit $status

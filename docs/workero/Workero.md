@@ -26,7 +26,7 @@ Decoders for raw JavaScript values, for [`Promise.of_js`](./Workero-Promise.md#v
 ```ocaml
 module URL : sig ... end
 ```
-An absolute `http` or `https` URL, parsed by `Js_of_ocaml.Url`. Paths and query arguments are percent-decoded. In a query, `+` decodes to a space, as in WHATWG `URLSearchParams`.
+An absolute `http` or `https` URL, parsed by the JavaScript `URL`. Paths and query arguments are percent-decoded. In a query, `+` decodes to a space, as in WHATWG `URLSearchParams`.
 
 ```ocaml
 module Method : sig ... end
@@ -44,6 +44,11 @@ module Request : sig ... end
 ```ocaml
 module Response : sig ... end
 ```
+```ocaml
+module Status : sig ... end
+```
+HTTP status codes as polymorphic variants, with the names and groups of Dream. ``Status n` stands for any other code.
+
 ```ocaml
 module Env : sig ... end
 ```
@@ -88,6 +93,21 @@ A Cloudflare D1 database, bound in `wrangler.toml` with `[[d1_databases]]`. Each
 module Sql_value : sig ... end
 ```
 A value of an SQL column, as sent to and received from a JavaScript SQL API such as D1.
+
+```ocaml
+module Stream : sig ... end
+```
+Byte streams: a JavaScript `ReadableStream` and its readers and writers.
+
+```ocaml
+module Form_data : sig ... end
+```
+Parsed `multipart/form-data` and `application/x-www-form-urlencoded` bodies: a JavaScript `FormData`. Get one from [`Request.form_data`](./Workero-Request.md#val-form_data).
+
+```ocaml
+module Websocket : sig ... end
+```
+WebSockets served by the Worker, read by pulling events with [`receive`](./Workero-Websocket.md#val-receive).
 
 ```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit

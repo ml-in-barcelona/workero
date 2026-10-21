@@ -32,7 +32,7 @@ let handler req env _ctx =
   | GET, "/env" ->
       Response.text
         (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ]}

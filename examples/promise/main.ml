@@ -49,6 +49,6 @@ let handler req _env _ctx =
           Response.text
             (Printf.sprintf "caught Js_error: %s\n" (Promise.error_to_string e))
       )
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler

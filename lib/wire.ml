@@ -21,6 +21,12 @@ let headers msg =
       let pair : js = Js.Unsafe.get all i in
       (Js.to_string (Js.Unsafe.get pair 0), Js.to_string (Js.Unsafe.get pair 1)))
 
+let header_all msg name =
+  let name = String.lowercase_ascii name in
+  List.filter_map
+    (fun (k, v) -> if k = name then Some v else None)
+    (headers msg)
+
 let read ~decode msg name =
   Promise.await (Promise.of_js ~decode (meth msg name [||]))
 

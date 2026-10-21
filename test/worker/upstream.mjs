@@ -13,6 +13,12 @@ export default {
       return new Response(new Uint8Array([0, 255, 128, 10]), {
         headers: { "x-one": "1", "x-two": "2" },
       });
+    if (pathname === "/cookies") {
+      const headers = new Headers();
+      headers.append("set-cookie", "a=1; Path=/");
+      headers.append("set-cookie", "b=2; Expires=Wed, 21 Oct 2026 07:28:00 GMT");
+      return new Response("ok", { headers });
+    }
     throw new Error("upstream down");
   },
 };

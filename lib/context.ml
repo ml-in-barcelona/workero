@@ -11,5 +11,8 @@ let wait_until ctx f =
   in
   ignore (meth ctx "waitUntil" [| work |])
 
+let pass_through_on_exception ctx =
+  ignore (meth ctx "passThroughOnException" [||])
+
 let of_js (v : js) : t = v
 let to_js (t : t) : js = t

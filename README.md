@@ -10,10 +10,10 @@ let handler req env _ctx =
   | POST, "/echo" -> Response.make (Request.bytes req)
   | GET, "/upstream" ->
       let r = Workero.fetch "https://example.com/" in
-      Response.text ~status:(Response.status r) (Response.body_text r)
+      Response.text ~status:(`Status (Response.status r)) (Response.body_text r)
   | GET, "/env" ->
       Response.text (Option.value (Env.var env "GREETING") ~default:"unset")
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ```

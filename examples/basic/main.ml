@@ -24,6 +24,6 @@ let handler req _env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
   | GET, "/" -> Response.text (info ())
-  | _ -> Response.text ~status:404 "not found\n"
+  | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler

@@ -1,25 +1,57 @@
-module Raw = Js_of_ocaml.Url
+module Js = Js_of_ocaml.Js
+open Internal
 
-type t = { secure : bool; url : Raw.http_url }
+type t = js
 
 let of_string s =
-  match Raw.url_of_string s with
-  | Some (Raw.Http url) -> Some { secure = false; url }
-  | Some (Raw.Https url) -> Some { secure = true; url }
-  | Some (Raw.File _) | None -> None
+  match Js.Unsafe.new_obj (global "URL") [| str s |] with
+  | u -> (
+      match get_string u "protocol" with
+      | Some ("http:" | "https:") -> Some u
+      | _ -> None)
+  | exception Js.Js_error.Exn _ -> None
 
-let to_string t =
-  Raw.string_of_url (if t.secure then Raw.Https t.url else Raw.Http t.url)
+let field t name = Option.value (get_string t name) ~default:""
+let to_string t = field t "href"
+let is_secure t = String.equal (field t "protocol") "https:"
+let scheme t = if is_secure t then "https" else "http"
+let host t = field t "hostname"
 
-let scheme t = if t.secure then "https" else "http"
-let host t = t.url.hu_host
-let port t = t.url.hu_port
-let path t = "/" ^ t.url.hu_path_string
-let query_args t = t.url.hu_arguments
+let port t =
+  match int_of_string_opt (field t "port") with
+  | Some p -> p
+  | None -> if is_secure t then 443 else 80
+
+let path t =
+  let raw = field t "pathname" in
+  try
+    Js.to_string
+      (Js.Unsafe.coerce (call (global "decodeURIComponent") [| str raw |]))
+  with Js.Js_error.Exn _ -> raw
+
+let pathname t = field t "pathname"
+let search t = field t "search"
+let hash t = field t "hash"
+let origin t = field t "origin"
+let params t = Js.Unsafe.get t "searchParams"
+
+let strings_of_array a =
+  Array.to_list (Js.to_array (Js.Unsafe.coerce a))
+  |> List.map (fun v -> Js.to_string (Js.Unsafe.coerce v))
+
+let query t name =
+  let v = meth (params t) "get" [| str name |] in
+  if is_nullish v then None else Some (Js.to_string (Js.Unsafe.coerce v))
 
 let query_all t name =
-  List.filter_map
-    (fun (k, v) -> if String.equal k name then Some v else None)
-    (query_args t)
+  strings_of_array (meth (params t) "getAll" [| str name |])
 
-let query t name = List.assoc_opt name (query_args t)
+let query_args t =
+  let pairs =
+    call
+      (Js.Unsafe.get (global "Array") "from")
+      [| meth (params t) "entries" [||] |]
+  in
+  Array.to_list (Js.to_array (Js.Unsafe.coerce pairs))
+  |> List.map (fun p ->
+      match strings_of_array p with [ k; v ] -> (k, v) | _ -> assert false)

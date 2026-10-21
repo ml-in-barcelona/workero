@@ -10,7 +10,9 @@ let test_defaults () =
     (header r "content-type")
 
 let test_status_and_headers () =
-  let r = Workero.JSON.response ~status:201 ~headers:[ ("x-a", "b") ] json in
+  let r =
+    Workero.JSON.response ~status:`Created ~headers:[ ("x-a", "b") ] json
+  in
   Alcotest.(check int) "status" 201 (status r);
   Alcotest.(check (option string)) "x-a" (Some "b") (header r "x-a");
   Alcotest.(check (option string))
@@ -34,7 +36,7 @@ let test_error () =
     (header r "content-type");
   Alcotest.(check int)
     "custom status" 422
-    (status (Workero.JSON.error ~status:422 "x"))
+    (status (Workero.JSON.error ~status:(`Status 422) "x"))
 
 let () =
   Alcotest.run "workero.json"

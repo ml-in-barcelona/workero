@@ -17,6 +17,7 @@ module Method = Method
 module Cf = Cf
 module Request = Request
 module Response = Response
+module Status = Status
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
@@ -26,6 +27,9 @@ module Cache = Cache
 module R2 = R2
 module D1 = D1
 module Sql_value = Sql_value
+module Stream = Stream
+module Form_data = Form_data
+module Websocket = Websocket
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

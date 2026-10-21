@@ -29,7 +29,7 @@ A JSON value.
 
 ```ocaml
 val response : 
-  ?status:int ->
+  ?status:[< Status.with_body ] ->
   ?headers:(string * string) list ->
   t ->
   Response.t
@@ -37,7 +37,7 @@ val response :
 `response json` is a response with status 200 and the compact JSON text as body. It adds `content-type: application/json; charset=utf-8` unless `headers` already has a `content-type` (any letter case). Non-ASCII characters are sent as UTF-8.
 
 ```ocaml
-val error : ?status:int -> string -> Response.t
+val error : ?status:[< Status.with_body ] -> string -> Response.t
 ```
 `error message` is a response with status 400 and the body `{"error": message}`.
 
