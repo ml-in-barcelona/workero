@@ -1,7 +1,7 @@
 let usage =
-  "usage: workero build <dir>/<name> [--out <dir>] \
-   [--allow-missing-primitives] [-- <dune args>...]\n\
-  \       workero package <dir>/<name> [--out <dir>] \
+  "usage: workero build [dune build args...] <dir>/<name>.bc.wasm.js [--out \
+   <dir>] [--allow-missing-primitives]\n\
+  \       workero package <dir>/<name>.bc.wasm.js [--out <dir>] \
    [--allow-missing-primitives]"
 
 let fail fmt =
@@ -59,19 +59,17 @@ let has_profile args =
   || release args
   || List.exists (String.starts_with ~prefix:"--profile") args
 
-let dune_build dune_args target =
+let dune_build dune_args =
   let profile =
     if has_profile dune_args then [] else [ "--profile"; "release" ]
   in
-  let argv =
-    Array.of_list ((("dune" :: "build" :: profile) @ dune_args) @ [ target ])
-  in
+  let argv = Array.of_list (("dune" :: "build" :: profile) @ dune_args) in
   let pid =
     Unix.create_process "dune" argv Unix.stdin Unix.stdout Unix.stderr
   in
   match Unix.waitpid [] pid with
   | _, WEXITED 0 -> ()
-  | _, _ -> fail "dune build %s failed" target
+  | _, _ -> fail "dune build failed"
 
 let rec ancestors dir =
   let parent = Filename.dirname dir in
@@ -211,40 +209,39 @@ let package ~allow_missing ~built ~name out =
   Printf.printf "workero: wrote %s (%d wasm file%s)\n" out count
     (if count = 1 then "" else "s")
 
-let build ~allow_missing target out dune_args =
-  let dir = Filename.dirname target and name = Filename.basename target in
-  dune_build dune_args (Printf.sprintf "%s/%s.bc.wasm.js" dir name);
-  package ~allow_missing ~built:(built_dir dune_args dir) ~name out
+let loader_suffix = ".bc.wasm.js"
+let is_loader arg = String.ends_with ~suffix:loader_suffix arg
+
+let split_loader path =
+  let n = String.length path - String.length loader_suffix in
+  (Filename.dirname path, Filename.basename (String.sub path 0 n))
+
+let parse_own args =
+  let rec go out allow rest = function
+    | [] -> (out, allow, List.rev rest)
+    | "--out" :: dir :: tl -> go dir allow rest tl
+    | "--allow-missing-primitives" :: tl -> go out true rest tl
+    | arg :: tl when String.starts_with ~prefix:"--out=" arg ->
+        go (String.sub arg 6 (String.length arg - 6)) allow rest tl
+    | arg :: tl -> go out allow (arg :: rest) tl
+  in
+  go "_worker" false [] args
 
 let () =
-  let rec parse out allow targets = function
-    | [] -> (out, allow, targets)
-    | "--out" :: dir :: rest -> parse dir allow targets rest
-    | "--allow-missing-primitives" :: rest -> parse out true targets rest
-    | arg :: rest -> parse out allow (arg :: targets) rest
-  in
-  let split args =
-    let rec go acc = function
-      | [] -> (List.rev acc, None)
-      | "--" :: rest -> (List.rev acc, Some rest)
-      | arg :: rest -> go (arg :: acc) rest
-    in
-    go [] args
-  in
   match List.tl (Array.to_list Sys.argv) with
   | "build" :: args -> (
-      let args, dune_args = split args in
-      match parse "_worker" false [] args with
-      | out, allow_missing, [ target ] ->
-          build ~allow_missing target out (Option.value dune_args ~default:[])
+      let out, allow_missing, dune_args = parse_own args in
+      match List.filter is_loader dune_args with
+      | [ target ] ->
+          dune_build dune_args;
+          let dir, name = split_loader target in
+          package ~allow_missing ~built:(built_dir dune_args dir) ~name out
       | _ -> fail "%s" usage)
   | "package" :: args -> (
-      match split args with
-      | args, None -> (
-          match parse "_worker" false [] args with
-          | out, allow_missing, [ target ] ->
-              package ~allow_missing ~built:(Filename.dirname target)
-                ~name:(Filename.basename target) out
-          | _ -> fail "%s" usage)
+      let out, allow_missing, rest = parse_own args in
+      match rest with
+      | [ target ] when is_loader target ->
+          let dir, name = split_loader target in
+          package ~allow_missing ~built:dir ~name out
       | _ -> fail "%s" usage)
   | _ -> fail "%s" usage

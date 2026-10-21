@@ -7,7 +7,7 @@ dune=${DUNE:-dune}
 workerd=${WORKERD:-workerd}
 
 cd "$root"
-$dune exec workero -- build test/worker-init/main --out "$out"
+$dune exec workero -- build test/worker-init/main.bc.wasm.js --out "$out"
 cp test/worker-init/tests.mjs "$out/"
 
 {

@@ -6,7 +6,7 @@
 
 The workero repository tests its own worker with `workerd test`. You can do the same with yours. It runs the real wasm in the real runtime, so `Promise.await`, `fetch` and bindings all work.
 
-1. Build the worker: `workero build src/main --out _worker-test`.
+1. Build the worker: `workero build src/main.bc.wasm.js --out _worker-test`.
 2. Write a `workerd` config. It lists the files of `_worker-test` as modules (`.js` as `esModule`, `.wasm` as `wasm`) and binds the worker to a test worker as a service.
 3. In the test worker, call the service, as `env.WORKER.fetch(url)`, and compare status, headers and body. `env.WORKER.scheduled({ cron, scheduledTime })` runs the cron handler.
 4. Run `workerd test config.capnp`.

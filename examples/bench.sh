@@ -6,7 +6,7 @@ dir=${DIR:-examples/basic}; n=${N:-50}; port=${PORT:-8787}; wrangler=${WRANGLER:
 tmp=$(mktemp -d)
 trap 'kill $pid 2>/dev/null; rm -rf $tmp' EXIT
 
-dune exec workero -- build $dir/main
+dune exec workero -- build $dir/main.bc.wasm.js
 
 echo "== files in _worker/ (bytes raw, gzip)"
 total_raw=0; total_gz=0

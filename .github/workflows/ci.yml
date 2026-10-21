@@ -52,7 +52,7 @@ jobs:
         run: opam exec -- dune build @fmt
 
       - name: Build example worker
-        run: opam exec -- dune exec workero -- build examples/basic/main
+        run: opam exec -- dune exec workero -- build examples/basic/main.bc.wasm.js
 
       - name: Check docs/ is up to date
         run: |

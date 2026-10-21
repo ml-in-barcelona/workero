@@ -3,7 +3,7 @@ main = "_worker/index.js"
 compatibility_date = "2026-10-01"
 
 [build]
-command = "workero build src/main"
+command = "workero build src/main.bc.wasm.js"
 watch_dir = "src"
 
 [vars]

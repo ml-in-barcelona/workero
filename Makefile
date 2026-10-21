@@ -47,7 +47,7 @@ fmt: ## Format the code
 
 .PHONY: example
 example: ## Build examples/basic into _worker/
-	$(DUNE) exec workero -- build examples/basic/main
+	$(DUNE) exec workero -- build examples/basic/main.bc.wasm.js
 
 .PHONY: docs
 docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
