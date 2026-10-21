@@ -15,6 +15,7 @@ module Response = Response
 module Status = Status
 module Env = Env
 module Context = Context
+module Router = Router
 module Scheduled = Scheduled
 module JSON = Json
 module KV = Kv
