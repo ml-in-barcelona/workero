@@ -1,35 +1,18 @@
 
 # Waiting for JavaScript
 
-JavaScript APIs return Promises. In workero you do not chain them. A call waits for the result.
+JavaScript APIs return Promises. In workero you do not chain them. You write direct style code, and a call waits for the result.
 
 ```ocaml
-open Js_of_ocaml
-
-let sleep ms =
-  Workero.Promise.make (fun ~resolve ~reject:_ ->
-      let wake () = resolve () in
-      ignore
-        (Js.Unsafe.fun_call
-           (Js.Unsafe.get Js.Unsafe.global (Js.string "setTimeout"))
-           [| Js.Unsafe.inject (Js.wrap_callback wake); Js.Unsafe.inject ms |]))
-
-let handler _req _env ctx =
-  let open Workero in
-  Context.wait_until ctx (fun () ->
-      Promise.await (sleep 100);
-      print_endline "background work done");
-  let a = sleep 100 and b = sleep 100 in
-  Promise.await a;
-  Promise.await b;
-  let failed = Promise.reject (Promise.error_of_string "boom") in
-  match Promise.await failed with
-  | () -> Response.text "unreachable\n"
-  | exception Js_error reason ->
-      Response.text ("rejected: " ^ Promise.error_to_string reason ^ "\n")
+let handler _req _env _ctx =
+  let response = Workero.fetch "https://example.com" in
+  let body = Workero.Response.body_text response in
+  Workero.Response.text (Printf.sprintf "%d bytes\n" (String.length body))
 
 let () = Workero.serve handler
 ```
+`fetch` and `body_text` each wait for a Promise. The handler reads from top to bottom.
+
 
 ## How it works
 
@@ -64,6 +47,32 @@ wasm\_of\_ocaml implements effects with the JavaScript Promise Integration (JSPI
 ### Running things at once
 
 To run two things at once, start both Promises before you wait for either. Waiting for each in turn takes the sum of the times. Waiting after both started takes the longest one.
+
+`sleep` wraps `setTimeout` in a [`Workero.Promise.t`](./Workero-Promise.md#type-t):
+
+```ocaml
+open Js_of_ocaml
+
+let sleep ms =
+  Workero.Promise.make (fun ~resolve ~reject:_ ->
+      let wake () = resolve () in
+      ignore
+        (Js.Unsafe.fun_call
+           (Js.Unsafe.get Js.Unsafe.global (Js.string "setTimeout"))
+           [| Js.Unsafe.inject (Js.wrap_callback wake); Js.Unsafe.inject ms |]))
+
+let handler _req _env _ctx =
+  let open Workero in
+  Promise.await (sleep 100);
+  Promise.await (sleep 100);
+  let a = sleep 100 and b = sleep 100 in
+  Promise.await a;
+  Promise.await b;
+  Response.text "done\n"
+
+let () = Workero.serve handler
+```
+The first two waits take about 200 ms in total. The next two take about 100 ms, because both sleeps started before the first wait.
 
 
 ## Promise
@@ -114,7 +123,21 @@ The payload of [`Workero.Js_error`](./Workero.md#exception-Js_error) is a [`Work
 - [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) shows it as the JavaScript `String` function does, for example `"Error: nope"`.
 - [`Workero.Promise.error_of_string`](./Workero-Promise.md#val-error_of_string) makes a JavaScript `Error` with a message.
 - [`Workero.Promise.error_to_js`](./Workero-Promise.md#val-error_to_js) and [`Workero.Promise.error_of_js`](./Workero-Promise.md#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
-Catch it with `match ... with exception Js_error reason -> ...`. An exception that you do not catch is an error of the handler (see [Handlers](./handlers.md)).
+Catch it with `match ... with exception Js_error reason -> ...`:
+
+```ocaml
+let handler _req _env _ctx =
+  let open Workero in
+  let failed = Promise.reject (Promise.error_of_string "boom") in
+  match Promise.await failed with
+  | () -> Response.text "unreachable\n"
+  | exception Js_error reason ->
+      Response.text ~status:502
+        ("rejected: " ^ Promise.error_to_string reason ^ "\n")
+
+let () = Workero.serve handler
+```
+The response body is `rejected: Error: boom`. An exception that you do not catch is an error of the handler (see [Handlers](./handlers.md)).
 
 An exception that escapes the top level of the program, during start-up, fails the load of the Worker. The error is `workero: OCaml initialisation failed (exit code N): ...` followed by the OCaml exception text. Fix the exception and rebuild.
 
@@ -122,6 +145,20 @@ An exception that escapes the top level of the program, during start-up, fails t
 ## Work after the response
 
 [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) runs a function in its own fiber, with its own effect handler. It gives that fiber's Promise to `ctx.waitUntil`. The response can go out at once. The runtime keeps the isolate alive until the function returns. The function can call [`Workero.Promise.await`](./Workero-Promise.md#val-await). If it raises, the runtime logs the error. The request that called it and other requests are not affected.
+
+```ocaml
+let handler _req _env ctx =
+  let open Workero in
+  Context.wait_until ctx (fun () ->
+      let response =
+        fetch ~method_:Method.POST ~body:"hit" "https://example.com/log"
+      in
+      print_endline ("logged: " ^ string_of_int (Response.status response)));
+  Response.text "ok\n"
+
+let () = Workero.serve handler
+```
+The client gets `ok` at once. The response does not wait for the `POST`.
 
 
 ## What you cannot do
@@ -131,4 +168,4 @@ Await only inside a handler given to [`Workero.serve`](./Workero.md#val-serve) o
 - In a callback that JavaScript calls, such as a `setTimeout` function: the callback runs outside any handler fiber, and the wait raises `Stdlib.Effect.Unhandled(Workero__Async.Await(_))`.
 - In the executor of [`Workero.Promise.make`](./Workero-Promise.md#val-make): the wait fails with `SuspendError: trying to suspend JS frames`.
 - At the top level of the program: the load of the Worker fails with `workero: OCaml initialisation failed (exit code 2)` and the same `Effect.Unhandled` message.
-To use the result of a callback, resolve a [`Workero.Promise.t`](./Workero-Promise.md#type-t) from it and await that Promise in the handler, as the sample does with `sleep`.
+To use the result of a callback, resolve a [`Workero.Promise.t`](./Workero-Promise.md#type-t) from it and await that Promise in the handler, as `sleep` does in [Running things at once](./#running).
