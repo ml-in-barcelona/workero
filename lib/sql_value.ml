@@ -9,6 +9,8 @@ type t =
   | Text of string
   | Blob of string
 
+type row = (string * t) list
+
 let max_safe = 9007199254740992L
 let number f = Js.Unsafe.inject (Js.number_of_float f)
 
@@ -23,7 +25,7 @@ let to_js = function
       else number (Int64.to_float n)
   | Float f -> number f
   | Text s -> str s
-  | Blob s -> Message.body_of_string s
+  | Blob s -> Wire.body_of_string s
 
 let bytes_of_array_buffer v =
   Typed_array.String.of_uint8Array

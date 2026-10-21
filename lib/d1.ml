@@ -10,7 +10,7 @@ type value = Sql_value.t =
   | Text of string
   | Blob of string
 
-type row = (string * value) list
+type row = Sql_value.row
 
 let of_env env name =
   Binding.of_env ~who:"Workero.D1.of_env" ~what:"a D1 database"
@@ -51,3 +51,6 @@ let query ?(params = []) db sql =
 let run ?(params = []) db sql =
   let decode = Decode.(field "meta" (field "changes" int)) in
   Binding.call ~decode (statement db sql params) "run" [||]
+
+let of_js (v : js) : t = v
+let to_js (t : t) : js = t

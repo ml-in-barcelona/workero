@@ -1,13 +1,13 @@
 module Js = Js_of_ocaml.Js
 open Internal
 
-type js = Internal.js
+type js_value = Internal.js
 
 exception Js_error = Promise.Js_error
 
 module Promise = Promise
 module Decode = Decode
-module URL = Url
+module URL = URL
 module Method = Method
 module Cf = Cf
 module Request = Request
@@ -15,8 +15,8 @@ module Response = Response
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
-module JSON = Json
-module KV = Kv
+module JSON = JSON
+module KV = KV
 module Cache = Cache
 module R2 = R2
 module D1 = D1
@@ -50,11 +50,11 @@ let fetch ?(method_ = Method.GET) ?(headers = []) ?body url =
   let fields =
     [
       ("method", str (Method.to_string method_));
-      ("headers", Message.headers_of_list headers);
+      ("headers", Wire.headers_of_list headers);
     ]
     @
     match body with
-    | Some b -> [ ("body", Message.body_of_string b) ]
+    | Some b -> [ ("body", Wire.body_of_string b) ]
     | None -> []
   in
   let init = Js.Unsafe.obj (Array.of_list fields) in

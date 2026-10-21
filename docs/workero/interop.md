@@ -1,9 +1,9 @@
 
 # JavaScript interop
 
-Every workero type that wraps a JavaScript object has two conversions: `of_js` and `to_js`. The types are [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Context`](./Workero-Context.md), [`Workero.Scheduled`](./Workero-Scheduled.md), [`Workero.Cf`](./Workero-Cf.md) and [`Workero.Promise`](./Workero-Promise.md). They let you call a JavaScript API that workero does not wrap.
+Every workero type that wraps a JavaScript object has two conversions: `of_js` and `to_js`. The types are [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Context`](./Workero-Context.md), [`Workero.Scheduled`](./Workero-Scheduled.md), [`Workero.Cf`](./Workero-Cf.md), [`Workero.KV`](./Workero-KV.md), [`Workero.R2`](./Workero-R2.md), [`Workero.D1`](./Workero-D1.md) and [`Workero.Promise`](./Workero-Promise.md). They let you call a JavaScript API that workero does not wrap.
 
-[`Workero.js`](./Workero.md#type-js) is the type of a raw JavaScript value. It is `Js_of_ocaml.Js.Unsafe.any`. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings.
+[`Workero.js_value`](./Workero.md#type-js_value) is the type of a raw, unchecked JavaScript value. It is the same type as `Js_of_ocaml.Js.Unsafe.any`. Module signatures show the jsoo name. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings.
 
 ```ocaml
 open Js_of_ocaml
@@ -11,7 +11,7 @@ open Js_of_ocaml
 let global name = Js.Unsafe.get Js.Unsafe.global (Js.string name)
 
 let handler req _env _ctx =
-  let raw : Workero.js = Workero.Request.to_js req in
+  let raw : Workero.js_value = Workero.Request.to_js req in
   let method_ : Js.js_string Js.t = Js.Unsafe.get raw (Js.string "method") in
   let done_ : string Workero.Promise.t =
     Workero.Promise.of_js ~decode:Workero.Decode.string
@@ -28,7 +28,7 @@ let () = Workero.serve handler
 
 ## Decode
 
-[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js`](./Workero.md#type-js). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` also reads properties of a function. `field` reads one property of an object:
+[`Workero.Decode`](./Workero-Decode.md) has decoders for raw values: `js` (undecoded), `unit`, `string`, `int`, `float`, `bool`, `bytes`, `option`, `list` and `field name decoder`. A decoder is a function from [`Workero.js_value`](./Workero.md#type-js_value). It raises `Invalid_argument` with the expected and the actual JavaScript type when the value does not fit. `int` also rejects a number with a fraction or outside the range of `int`. `bytes` rejects array elements outside 0\..255. `field` also reads properties of a function. `field` reads one property of an object:
 
 ```ocaml
 open Js_of_ocaml

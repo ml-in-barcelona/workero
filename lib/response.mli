@@ -11,8 +11,8 @@ val html : ?status:int -> ?headers:(string * string) list -> string -> t
 (** Like {!text}, with [content-type: text/html; charset=utf-8] unless [headers]
     has a [content-type]. *)
 
-val make : ?status:int -> ?headers:(string * string) list -> string -> t
-(** [make body] sends the bytes of [body] as they are, with no [content-type]
+val bytes : ?status:int -> ?headers:(string * string) list -> string -> t
+(** [bytes body] sends the bytes of [body] as they are, with no [content-type]
     unless [headers] has one. *)
 
 val redirect : ?status:int -> string -> t

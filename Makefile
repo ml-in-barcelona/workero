@@ -19,7 +19,7 @@ dev: ## Build in watch mode
 	$(DUNE) build -w
 
 .PHONY: test
-test: test-unit test-worker test-init test-exports test-cli ## Run the unit, worker and CLI tests
+test: test-unit test-worker test-worker-init test-worker-exports test-cli ## Run the unit, worker and CLI tests
 
 .PHONY: test-unit
 test-unit: ## Run the alcotest unit tests (node)
@@ -29,12 +29,12 @@ test-unit: ## Run the alcotest unit tests (node)
 test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in workerd
 	DUNE="$(DUNE)" test/worker/run.sh
 
-.PHONY: test-init
-test-init: ## Build test/worker-init and check that an OCaml exception at init fails the load
+.PHONY: test-worker-init
+test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the load
 	DUNE="$(DUNE)" test/worker-init/run.sh
 
-.PHONY: test-exports
-test-exports: ## Build test/worker-exports and check which handlers each worker exports
+.PHONY: test-worker-exports
+test-worker-exports: ## Build test/worker-exports and check which handlers each worker exports
 	DUNE="$(DUNE)" test/worker-exports/run.sh
 
 .PHONY: test-cli

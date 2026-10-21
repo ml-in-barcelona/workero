@@ -33,7 +33,7 @@ let () = Workero.serve handler
 
 ## How it works
 
-Every handler runs in a fiber. [`Workero.Promise.await`](./Workero-Promise.md#val-await) suspends the fiber until the Promise settles. Meanwhile the worker runs other requests. The body readers ([`Workero.Request.text`](./Workero-Request.md#val-text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way.
+Every handler runs in a fiber. [`Workero.Promise.await`](./Workero-Promise.md#val-await) suspends the fiber until the Promise settles. Meanwhile the worker runs other requests. The body readers ([`Workero.Request.body_text`](./Workero-Request.md#val-body_text), [`Workero.Response.body_text`](./Workero-Response.md#val-body_text)) and [`Workero.fetch`](./Workero.md#val-fetch) wait in the same way.
 
 This is the JavaScript Promise Integration (JSPI) of WebAssembly with OCaml 5 effects. wasm\_of\_ocaml enables it by default.
 
@@ -92,7 +92,7 @@ For [`Workero.Js_error`](./Workero.md#exception-Js_error), the payload is a [`Wo
 - [`Workero.Promise.error_to_js`](./Workero-Promise.md#val-error_to_js) and [`Workero.Promise.error_of_js`](./Workero-Promise.md#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
 Catch it with `match ... with exception Js_error reason -> ...`. An exception that you do not catch is an error of the handler (see [Handlers](./handlers.md)).
 
-An exception that escapes the top level of the program, during start-up, fails the load of the Worker. The error is `OCaml initialisation failed (exit code N): ...` followed by the OCaml exception text. Fix the exception and rebuild.
+An exception that escapes the top level of the program, during start-up, fails the load of the Worker. The error is `workero: OCaml initialisation failed (exit code N): ...` followed by the OCaml exception text. Fix the exception and rebuild.
 
 
 ## Work after the response
@@ -106,5 +106,5 @@ Await only inside a handler given to [`Workero.serve`](./Workero.md#val-serve) o
 
 - In a callback that JavaScript calls, such as a `setTimeout` function: the callback runs outside any handler fiber, and the wait raises `Stdlib.Effect.Unhandled(Workero__Async.Await(_))`.
 - In the executor of [`Workero.Promise.make`](./Workero-Promise.md#val-make): the wait fails with `SuspendError: trying to suspend JS frames`.
-- At the top level of the program: the load of the Worker fails with `OCaml initialisation failed (exit code 2)` and the same `Effect.Unhandled` message.
+- At the top level of the program: the load of the Worker fails with `workero: OCaml initialisation failed (exit code 2)` and the same `Effect.Unhandled` message.
 To use the result of a callback, resolve a [`Workero.Promise.t`](./Workero-Promise.md#type-t) from it and await that Promise in the handler, as the sample does with `sleep`.

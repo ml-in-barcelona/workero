@@ -22,3 +22,4 @@ val asn : t -> int option
 (** Autonomous system number of the client. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any

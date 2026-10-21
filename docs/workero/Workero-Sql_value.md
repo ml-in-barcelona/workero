@@ -12,6 +12,11 @@ type t =
   | Blob of string (* Blob holds raw bytes.SQL APIs on the Workers runtime carry numbers as JavaScript numbers, which are 64-bit floats. An Int is therefore exact only within ±253, and a column holding 1.0 cannot be told apart from 1: both are read as Int 1L. Float is read only for numbers with a fractional part or beyond 253. *)
 ```
 ```ocaml
+type row = (string * t) list
+```
+The columns of a row in result order, with their names.
+
+```ocaml
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 ```
 The JavaScript value to bind: `null`, a number, a string or a `Uint8Array`.

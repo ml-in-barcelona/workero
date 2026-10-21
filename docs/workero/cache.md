@@ -15,8 +15,8 @@ let handler _req _env ctx =
       let body = Response.body_bytes upstream in
       let headers = [ ("cache-control", "max-age=60") ] in
       Context.wait_until ctx (fun () ->
-          Cache.put url (Response.make ~headers body));
-      Response.make ~headers body
+          Cache.put url (Response.bytes ~headers body));
+      Response.bytes ~headers body
 
 let () = Workero.serve handler
 ```

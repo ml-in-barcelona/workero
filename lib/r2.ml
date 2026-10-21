@@ -25,7 +25,7 @@ let put ?content_type bucket key bytes =
     | None -> []
   in
   Binding.call ~decode:Decode.unit bucket "put"
-    (Array.of_list (str key :: Message.body_of_string bytes :: options))
+    (Array.of_list (str key :: Wire.body_of_string bytes :: options))
 
 let delete bucket key =
   Binding.call ~decode:Decode.unit bucket "delete" [| str key |]
@@ -45,3 +45,6 @@ let head bucket key =
       }
   in
   Binding.call_opt ~decode bucket "head" [| str key |]
+
+let of_js (v : js) : t = v
+let to_js (t : t) : js = t

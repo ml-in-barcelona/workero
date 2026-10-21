@@ -37,3 +37,6 @@ Autonomous system number of the client.
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 ```
+```ocaml
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+```

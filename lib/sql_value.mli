@@ -15,6 +15,9 @@ type t =
           both are read as [Int 1L]. [Float] is read only for numbers with a
           fractional part or beyond 2{^ 53}. *)
 
+type row = (string * t) list
+(** The columns of a row in result order, with their names. *)
+
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 (** The JavaScript value to bind: [null], a number, a string or a [Uint8Array].
 

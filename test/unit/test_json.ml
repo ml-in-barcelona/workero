@@ -27,14 +27,14 @@ let test_content_type_override () =
     "content-type" (Some "application/vnd.api+json") (header r "content-type")
 
 let test_error () =
-  let r = Workero.JSON.error "bad" in
+  let r = Workero.JSON.bad_request "bad" in
   Alcotest.(check int) "default status" 400 (status r);
   Alcotest.(check (option string))
     "content-type" (Some "application/json; charset=utf-8")
     (header r "content-type");
   Alcotest.(check int)
     "custom status" 422
-    (status (Workero.JSON.error ~status:422 "x"))
+    (status (Workero.JSON.bad_request ~status:422 "x"))
 
 let () =
   Alcotest.run "workero.json"

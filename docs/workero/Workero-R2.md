@@ -39,3 +39,10 @@ type info = {
 val head : t -> string -> info option
 ```
 The metadata of an object without its body, or `None` when the key does not exist.
+
+```ocaml
+val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+```
+```ocaml
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+```

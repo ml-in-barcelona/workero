@@ -24,4 +24,8 @@ val list : ?prefix:string -> t -> string list
 (** The names of all keys that start with [prefix], in lexicographic order. KV
     returns at most 1000 keys per request, so a large namespace takes several
     requests; [list] follows the cursor until the listing is complete and holds
-    every name in memory. *)
+    every name in memory. Raises [Failure] when KV reports an incomplete page
+    without a cursor. *)
+
+val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any

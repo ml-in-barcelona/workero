@@ -1,7 +1,8 @@
 (** Write Cloudflare Workers in OCaml (via wasm_of_ocaml) *)
 
-type js = Js_of_ocaml.Js.Unsafe.any
-(** A raw JavaScript value. *)
+type js_value = Js_of_ocaml.Js.Unsafe.any
+(** An unchecked JavaScript value: what [of_js] takes and [to_js] returns. Read
+    it with {!Decode}. *)
 
 exception Js_error of Promise.error
 (** Raised by {!Promise.await} when the awaited JavaScript Promise rejects, and
@@ -11,7 +12,7 @@ exception Js_error of Promise.error
 
 module Promise = Promise
 module Decode = Decode
-module URL = Url
+module URL = URL
 module Method = Method
 module Cf = Cf
 module Request = Request
@@ -19,8 +20,8 @@ module Response = Response
 module Env = Env
 module Context = Context
 module Scheduled = Scheduled
-module JSON = Json
-module KV = Kv
+module JSON = JSON
+module KV = KV
 module Cache = Cache
 module R2 = R2
 module D1 = D1

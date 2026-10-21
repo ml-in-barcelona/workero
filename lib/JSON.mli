@@ -14,7 +14,7 @@
     let handler req _env _ctx =
       match Workero.JSON.decode user_of_json req with
       | Ok user -> Workero.JSON.response (user_to_json user)
-      | Error message -> Workero.JSON.error message
+      | Error message -> Workero.JSON.bad_request message
     ]}
 
     Without the ppx, write the decoder by hand:
@@ -34,20 +34,20 @@ val response : ?status:int -> ?headers:(string * string) list -> t -> Response.t
     [headers] already has a [content-type] (any letter case). Non-ASCII
     characters are sent as UTF-8. *)
 
-val error : ?status:int -> string -> Response.t
-(** [error message] is a response with status 400 and the body
+val bad_request : ?status:int -> string -> Response.t
+(** [bad_request message] is a response with status 400 and the body
     [{"error": message}]. *)
 
-val request : Request.t -> t
+val of_request : Request.t -> t
 (** Reads the whole body and parses it as JSON.
 
     Raises [Jsonkit.Of_string_error] when the body is not valid JSON. The
     payload describes the syntax error. A handler that lets it escape makes the
-    runtime answer with status 500; use {!parse} or {!decode} to answer with
-    400. *)
+    runtime answer with status 500; use {!of_request_result} or {!decode} to
+    answer with 400. *)
 
-val parse : Request.t -> (t, string) result
-(** Like {!request}. [Error message] when the body is not valid JSON. *)
+val of_request_result : Request.t -> (t, string) result
+(** Like {!of_request}. [Error message] when the body is not valid JSON. *)
 
 val decode : (t -> 'a) -> Request.t -> ('a, string) result
 (** [decode of_json req] parses the body and applies [of_json]. [of_json] is a

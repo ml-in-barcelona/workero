@@ -22,7 +22,7 @@ type value = Sql_value.t =
   | Blob of string (* An SQL value, see Sql_value. D1 carries numbers as JavaScript numbers, so an Int is exact within ±253 only and Float 1.0 reads back as Int 1L. *)
 ```
 ```ocaml
-type row = (string * value) list
+type row = Sql_value.row
 ```
 The columns of a row in result order, with their names.
 
@@ -35,3 +35,10 @@ val query : ?params:value list -> t -> string -> row list
 val run : ?params:value list -> t -> string -> int
 ```
 `run db sql ~params` runs a statement that returns no rows, such as `INSERT` or `CREATE TABLE`, and returns the number of rows it changed.
+
+```ocaml
+val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+```
+```ocaml
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+```

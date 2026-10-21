@@ -4,9 +4,9 @@
 Write Cloudflare Workers in OCaml (via wasm\_of\_ocaml)
 
 ```ocaml
-type js = Js_of_ocaml.Js.Unsafe.any
+type js_value = Js_of_ocaml.Js.Unsafe.any
 ```
-A raw JavaScript value.
+An unchecked JavaScript value: what `of_js` takes and `to_js` returns. Read it with [`Decode`](./Workero-Decode.md).
 
 ```ocaml
 exception Js_error of Promise.error

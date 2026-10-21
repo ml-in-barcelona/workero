@@ -43,9 +43,9 @@ let list ?prefix kv =
     | true, _ -> List.rev acc
     | false, Some _ -> pages cursor acc
     | false, None ->
-        raise
-          (Promise.Js_error
-             (Promise.error_of_string
-                "Workero.KV.list: incomplete listing without a cursor"))
+        failwith "Workero.KV.list: incomplete listing without a cursor"
   in
   pages None []
+
+let of_js (v : js) : t = v
+let to_js (t : t) : js = t

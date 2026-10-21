@@ -100,28 +100,28 @@ let storage req env url =
       let prefix = URL.query url "prefix" in
       Response.text (String.concat "," (KV.list ?prefix (KV.of_env env "KV")))
   | "/r2/put" ->
-      R2.put ?content_type:(URL.query url "type") (R2.of_env env "R2") key
-        (Request.bytes req);
+      R2.put ?content_type:(URL.query url "type") (R2.of_env env "BUCKET") key
+        (Request.body_bytes req);
       Response.text "ok"
   | "/r2/get" -> (
-      match R2.get (R2.of_env env "R2") key with
-      | Some bytes -> Response.make bytes
+      match R2.get (R2.of_env env "BUCKET") key with
+      | Some bytes -> Response.bytes bytes
       | None -> Response.text ~status:404 "none")
   | "/r2/head" -> (
-      match R2.head (R2.of_env env "R2") key with
+      match R2.head (R2.of_env env "BUCKET") key with
       | Some { size; etag; content_type } ->
           Response.text
             (Printf.sprintf "size=%d etag=%s type=%s" size etag
                (opt content_type))
       | None -> Response.text ~status:404 "none")
   | "/r2/delete" ->
-      R2.delete (R2.of_env env "R2") key;
+      R2.delete (R2.of_env env "BUCKET") key;
       Response.text "ok"
   | "/cache/put" ->
       Cache.put key
         (Response.text
            ~headers:[ ("cache-control", "max-age=60"); ("x-cached", "yes") ]
-           (Request.text req));
+           (Request.body_text req));
       Response.text "ok"
   | "/cache/match" -> (
       match Cache.match_ key with
@@ -198,8 +198,7 @@ let storage req env url =
   | "/kv/list-broken" -> (
       match KV.list ~prefix:"kv-broken-" (KV.of_env env "KV") with
       | _ -> Response.text "unreachable"
-      | exception Js_error message ->
-          Response.text ~status:502 (Promise.error_to_string message))
+      | exception Failure message -> Response.text ~status:502 message)
   | "/binding/shape" ->
       let name = arg "name" in
       let kv () = ignore (KV.of_env env name) in
@@ -222,16 +221,16 @@ let handler req env ctx =
   | GET, "/hello" ->
       let name = Option.value (URL.query url "name") ~default:"world" in
       Response.text (Printf.sprintf "hello, %s\n" name)
-  | POST, "/echo" -> Response.text (Request.text req)
+  | POST, "/echo" -> Response.text (Request.body_text req)
   | POST, "/json/echo" -> (
-      match JSON.parse req with
+      match JSON.of_request_result req with
       | Ok json -> JSON.response json
-      | Error message -> JSON.error message)
+      | Error message -> JSON.bad_request message)
   | POST, "/json/user" -> (
       match JSON.decode Json_user.of_json req with
       | Ok user -> JSON.response (Json_user.to_json user)
-      | Error message -> JSON.error ~status:422 message)
-  | POST, "/json/raise" -> JSON.response (JSON.request req)
+      | Error message -> JSON.bad_request ~status:422 message)
+  | POST, "/json/raise" -> JSON.response (JSON.of_request req)
   | GET, "/json/custom" ->
       JSON.response ~status:201
         ~headers:[ ("Content-Type", "application/vnd.api+json"); ("x-a", "b") ]
@@ -244,8 +243,8 @@ let handler req env ctx =
       |> List.map (fun (k, v) -> k ^ "=" ^ v)
       |> String.concat ";" |> Response.text
   | _, "/bytes" ->
-      let body = Request.bytes req in
-      Response.make
+      let body = Request.body_bytes req in
+      Response.bytes
         ~headers:
           [
             ("content-type", "application/octet-stream");
@@ -269,7 +268,7 @@ let handler req env ctx =
         ~headers:[ ("Content-Type", "text/html; charset=latin1") ]
         "<p>gone</p>"
   | _, "/make" ->
-      Response.make ~status:202
+      Response.bytes ~status:202
         ~headers:[ ("content-type", "image/png"); ("x-a", "1") ]
         "\000\137PNG\255"
   | _, "/redirect" -> Response.redirect "http://test/hello"
@@ -300,12 +299,12 @@ let handler req env ctx =
       Response.text (Response.body_text (fetch (upstream ^ "/echo")))
   | _, "/fetch-raw" ->
       let res =
-        fetch ~method_:POST ~body:(Request.bytes req) (upstream ^ "/raw")
+        fetch ~method_:POST ~body:(Request.body_bytes req) (upstream ^ "/raw")
       in
-      Response.make (Response.body_bytes res)
+      Response.bytes (Response.body_bytes res)
   | _, "/fetch-headers" ->
       let res = fetch (upstream ^ "/bytes") in
-      Response.make
+      Response.bytes
         ~headers:
           [
             ( "x-upstream-headers",

@@ -28,7 +28,7 @@ export async function loadWasmOCaml(modules, importLoader) {
   globalThis.process = undefined;
   globalThis.fetch = async (path) => {
     const module = modules[path];
-    if (!module) throw new Error("unknown wasm module: " + path);
+    if (!module) throw new Error("workero: unknown wasm module: " + path);
     return { module };
   };
   WebAssembly.instantiateStreaming = async (response, imports) => {
@@ -42,7 +42,7 @@ export async function loadWasmOCaml(modules, importLoader) {
             ? "OCaml program exited during initialisation"
             : "OCaml initialisation failed";
         settle.reject(
-          new Error(`${what} (exit code ${code}):\n${errors.join("\n").trim()}`),
+          new Error(`workero: ${what} (exit code ${code}):\n${errors.join("\n").trim()}`),
         );
         return exit(code);
       };
@@ -66,7 +66,8 @@ export async function loadWasmOCaml(modules, importLoader) {
       }
     };
   };
-  globalThis.__promisify = (f) => async (...args) => {
+  globalThis.__workero ??= {};
+  globalThis.__workero.promisify = (f) => async (...args) => {
     callbackPromising ??= saved.promising(callback);
     const arity = args.length || ((args = [undefined]), 1);
     return await (await callbackPromising(f, arity, args, 1));

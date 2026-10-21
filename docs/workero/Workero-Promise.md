@@ -16,7 +16,7 @@ A rejection reason. JavaScript allows any value, so the type is opaque.
 ```ocaml
 exception Js_error of error
 ```
-Raised by [`await`](./#val-await) when the awaited promise rejects, and by the bindings when the runtime throws. It carries the original reason, so a handler can re-raise or inspect it with [`error_to_js`](./#val-error_to_js). [`Workero.Js_error`](./Workero.md#exception-Js_error) is this exception.
+Raised by [`await`](./#val-await) when the awaited promise rejects, and by the bindings when the runtime throws. It carries the original reason, so a handler can re-raise or inspect it with [`error_to_js`](./#val-error_to_js). Use it through [`Workero.Js_error`](./Workero.md#exception-Js_error), the documented name.
 
 ```ocaml
 val error_of_exn : exn -> error

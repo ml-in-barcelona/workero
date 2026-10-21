@@ -21,10 +21,12 @@ Write Cloudflare Workers in OCaml (via wasm_of_ocaml)
 
 ## Demos
 
-- https://workero-example.davesnx.workers.dev (`examples/basic`): hello world, reports the OCaml version and backend. `/` also lists the feature routes (`/effects`, `/await`, `/js`, `/numbers`, `/marshal`, `/regex`, `/digest`, `/file`, ...).
+The `basic` and `features` demos are named `workero-example-basic` and `workero-example-features` in their `wrangler.toml`. The URLs below work after the next release deploys them; the old Workers `workero-example` and `workero-example-wasm` stay until deleted by hand.
+
+- https://workero-example-basic.davesnx.workers.dev (`examples/basic`): hello world, reports the OCaml version and backend. `/` also lists the feature routes (`/effects`, `/await`, `/js`, `/numbers`, `/marshal`, `/regex`, `/digest`, `/file`, ...).
 - https://workero-example-react.davesnx.workers.dev (`examples/react`): a page rendered on the server from `.mlx` components.
 - https://workero-example-limits.davesnx.workers.dev (`examples/limits`): `/cpu?n=1000&iter=500` renders a Mandelbrot set, `/memory?mb=200` allocates 200 MB. Raise the numbers until it fails.
-- https://workero-example-wasm.davesnx.workers.dev (`examples/features`): `/` lists one route per wasm_of_ocaml feature.
+- https://workero-example-features.davesnx.workers.dev (`examples/features`): `/` lists one route per wasm_of_ocaml feature.
 - https://workero-example-hello.davesnx.workers.dev (`examples/hello`): `/effects` and `/await` run a user-defined effect handler around awaited Promises; `/fail` returns 500.
 - https://workero-example-jspi.davesnx.workers.dev (`examples/jspi`): `/sequential` and `/concurrent` await two 100 ms timers (~200 ms vs ~100 ms); `/rejected` catches a rejected Promise.
 
@@ -39,7 +41,7 @@ let handler req env _ctx =
   let open Workero in
   match (Request.method_ req, URL.path (Request.url req)) with
   | GET, "/" -> Response.text "hello\n"
-  | POST, "/echo" -> Response.make (Request.bytes req)
+  | POST, "/echo" -> Response.bytes (Request.body_bytes req)
   | GET, "/upstream" ->
       let r = Workero.fetch "https://example.com/" in
       Response.text ~status:(Response.status r) (Response.body_text r)
@@ -50,7 +52,7 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ```
 
-Handlers run in direct style: `Request.text`, `Workero.fetch` and
+Handlers run in direct style: `Request.body_text`, `Workero.fetch` and
 `Promise.await` wait for the JavaScript Promise without blocking other
 requests. A rejected Promise raises `Workero.Js_error`, which carries the JavaScript
 reason (`Promise.error_to_string` shows it). Use
@@ -61,9 +63,9 @@ reason (`Promise.error_to_string` shows it). Use
 
 ```ocaml
 let handler req _env _ctx =
-  match Workero.JSON.parse req with
+  match Workero.JSON.of_request_result req with
   | Ok json -> Workero.JSON.response json
-  | Error msg -> Workero.JSON.error msg
+  | Error msg -> Workero.JSON.bad_request msg
 ```
 
 ## Cron triggers
@@ -112,7 +114,7 @@ tests.
   on `PATH`; `npm install workerd` or `wrangler` provides it. KV, R2 and Cache
   bindings point at small JS services in `test/worker/services/`; D1 is a
   `wrapped` binding over SQLite there.
-- Init tests, `test/worker-init/`: `make test-init` loads a worker whose
+- Init tests, `test/worker-init/`: `make test-worker-init` loads a worker whose
   toplevel raises and expects the load to fail with the OCaml exception.
 - CLI tests, `test/cli/`: `make test-cli` runs `workero build` on fixtures and
   expects a worker that uses functions with no wasm implementation to fail the

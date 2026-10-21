@@ -9,3 +9,4 @@ let colo cf = get_string cf "colo"
 let timezone cf = get_string cf "timezone"
 let asn cf = get_int cf "asn"
 let of_js (v : js) : t = v
+let to_js (t : t) : js = t

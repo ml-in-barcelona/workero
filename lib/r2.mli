@@ -24,3 +24,6 @@ type info = { size : int; etag : string; content_type : string option }
 val head : t -> string -> info option
 (** The metadata of an object without its body, or [None] when the key does not
     exist. *)
+
+val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+val to_js : t -> Js_of_ocaml.Js.Unsafe.any

@@ -115,7 +115,9 @@ let build ~allow_missing target out =
     |> List.sort compare
   in
   write_file (Filename.concat out "index.js") (index_js ~name wasm);
-  Printf.printf "workero: wrote %s (%d wasm file(s))\n" out (List.length wasm)
+  let count = List.length wasm in
+  Printf.printf "workero: wrote %s (%d wasm file%s)\n" out count
+    (if count = 1 then "" else "s")
 
 let () =
   let rec parse out allow targets = function

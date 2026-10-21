@@ -14,18 +14,18 @@ let response ?status ?(headers = []) json =
   in
   Response.text ?status ~headers (Jsonkit.to_string json)
 
-let error ?(status = 400) message =
+let bad_request ?(status = 400) message =
   response ~status (`Assoc [ ("error", `String message) ])
 
-let request req = Jsonkit.of_string (Request.text req)
+let of_request req = Jsonkit.of_string (Request.body_text req)
 
-let parse req =
-  match request req with
+let of_request_result req =
+  match of_request req with
   | json -> Ok json
   | exception Jsonkit.Of_string_error message -> Error message
 
 let decode of_json req =
-  match parse req with
+  match of_request_result req with
   | Error _ as e -> e
   | Ok json -> (
       match of_json json with

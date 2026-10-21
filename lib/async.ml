@@ -11,7 +11,7 @@ type _ Effect.t += Await : 'a Jp.t -> 'a Effect.t
 let await p = perform (Await p)
 
 let promising (f : 'a) : js =
-  call (global "__promisify") [| Js.Unsafe.inject f |]
+  call (Js.Unsafe.get (global "__workero") "promisify") [| Js.Unsafe.inject f |]
 
 let carried = "workero_exn"
 

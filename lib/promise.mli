@@ -12,8 +12,8 @@ type error
 exception Js_error of error
 (** Raised by {!await} when the awaited promise rejects, and by the bindings
     when the runtime throws. It carries the original reason, so a handler can
-    re-raise or inspect it with {!error_to_js}. {!Workero.Js_error} is this
-    exception. *)
+    re-raise or inspect it with {!error_to_js}. Use it through
+    {!Workero.Js_error}, the documented name. *)
 
 val error_of_exn : exn -> error
 (** A rejection that carries an OCaml exception. {!await} re-raises that

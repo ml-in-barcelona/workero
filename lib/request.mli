@@ -2,7 +2,7 @@ type t
 
 val method_ : t -> Method.t
 
-val url : t -> Url.t
+val url : t -> URL.t
 (** The request URL.
 
     Raises [Invalid_argument] when [Js_of_ocaml.Url] cannot parse it. A host
@@ -17,10 +17,10 @@ val headers : t -> (string * string) list
 (** All headers, with lower case names, sorted by name, as [Headers] iterates
     them. *)
 
-val text : t -> string
+val body_text : t -> string
 (** Reads the whole body as UTF-8 text. Invalid UTF-8 is replaced. *)
 
-val bytes : t -> string
+val body_bytes : t -> string
 (** Reads the whole body as raw bytes. *)
 
 val cf : t -> Cf.t

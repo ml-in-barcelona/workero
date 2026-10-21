@@ -1,8 +1,23 @@
-(test
- (name test_workero)
- (modules test_workero)
- (modes js)
+(library
+ (name helpers)
+ (modules helpers)
  (libraries workero alcotest js_of_ocaml))
+
+(tests
+ (names
+  test_url
+  test_method
+  test_request
+  test_response
+  test_fetch
+  test_env
+  test_scheduled
+  test_bindings
+  test_sql_value
+  test_decode)
+ (modules :standard \ helpers test_json)
+ (modes js)
+ (libraries helpers workero alcotest js_of_ocaml))
 
 (test
  (name test_json)

@@ -31,7 +31,7 @@ let handler req env _ctx =
       | Some value -> Response.text value
       | None -> Response.text ~status:404 "not found\n")
   | PUT, "/kv" ->
-      KV.put ~expiration_ttl:3600 kv key (Request.text req);
+      KV.put ~expiration_ttl:3600 kv key (Request.body_text req);
       Response.text "stored\n"
   | DELETE, "/kv" ->
       KV.delete kv key;
@@ -47,7 +47,7 @@ let () = Workero.serve handler
 - [`Workero.KV.get`](./Workero-KV.md#val-get) gives `Some value`, or `None` when the key does not exist.
 - [`Workero.KV.put`](./Workero-KV.md#val-put) stores a value. `~expiration_ttl` is a number of seconds. Cloudflare requires at least 60\.
 - [`Workero.KV.delete`](./Workero-KV.md#val-delete) removes a key. A missing key is not an error.
-- [`Workero.KV.list`](./Workero-KV.md#val-list) gives the names of all keys that start with `~prefix`, in lexicographic order. KV returns at most 1000 keys for each request. `list` follows the cursor until the listing is complete, so a large namespace takes several requests and its names are all held in memory.
+- [`Workero.KV.list`](./Workero-KV.md#val-list) gives the names of all keys that start with `~prefix`, in lexicographic order. KV returns at most 1000 keys for each request. `list` follows the cursor until the listing is complete, so a large namespace takes several requests and its names are all held in memory. It raises `Failure "Workero.KV.list: ..."` when KV reports an incomplete page.
 Values are text. KV is eventually consistent: a change can take up to 60 seconds to show in other locations.
 
 

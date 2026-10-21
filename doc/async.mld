@@ -35,7 +35,7 @@ let () = Workero.serve handler
 
 Every handler runs in a fiber. {!Workero.Promise.await} suspends the fiber until
 the Promise settles. Meanwhile the worker runs other requests. The body readers
-({!Workero.Request.text}, {!Workero.Response.body_text}) and {!Workero.fetch}
+({!Workero.Request.body_text}, {!Workero.Response.body_text}) and {!Workero.fetch}
 wait in the same way.
 
 This is the JavaScript Promise Integration (JSPI) of WebAssembly with
@@ -119,7 +119,7 @@ that you do not catch is an error of the handler (see
 {{!page-handlers}Handlers}).
 
 An exception that escapes the top level of the program, during start-up, fails
-the load of the Worker. The error is [OCaml initialisation failed (exit code
+the load of the Worker. The error is [workero: OCaml initialisation failed (exit code
 N): ...] followed by the OCaml exception text. Fix the exception and rebuild.
 
 {1 Work after the response}
@@ -141,7 +141,7 @@ call. Anywhere else the wait fails. Observed failures:
 - In the executor of {!Workero.Promise.make}: the wait fails with
   [SuspendError: trying to suspend JS frames].
 - At the top level of the program: the load of the Worker fails with
-  [OCaml initialisation failed (exit code 2)] and the same
+  [workero: OCaml initialisation failed (exit code 2)] and the same
   [Effect.Unhandled] message.
 
 To use the result of a callback, resolve a {!Workero.Promise.t} from it and

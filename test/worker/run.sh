@@ -31,7 +31,7 @@ cp test/worker/tests.mjs test/worker/upstream.mjs test/worker/services/*.mjs "$o
   echo '      bindings = ['
   echo '        (name = "GREETING", text = "from test config"),'
   echo '        (name = "KV", kvNamespace = "kv"),'
-  echo '        (name = "R2", r2Bucket = "r2"),'
+  echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
   echo '          moduleName = "workero-test:d1",'
   echo '          innerBindings = [(name = "DATABASE", service = (name = "d1", entrypoint = "D1"))],'
