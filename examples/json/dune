@@ -1,4 +1,4 @@
 (executable
  (name main)
  (modes wasm)
- (libraries workero jsonkit))
+ (libraries workero))
