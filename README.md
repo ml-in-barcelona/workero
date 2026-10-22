@@ -37,6 +37,21 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ```
 
+`Workero.Router` matches methods and paths with parameters, as in
+`/users/:id<int>` and `/files/:rest<string...>`. It answers 404, 405 and 400
+itself:
+
+```ocaml
+let router =
+  Workero.Router.make
+    [
+      Workero.Router.get "/users/:id<int>" (fun params _req _env _ctx ->
+          Workero.Response.text (Workero.Router.param_exn params "id"));
+    ]
+
+let () = Workero.serve (Workero.Router.to_handler router)
+```
+
 Register a Cron Trigger handler with `Workero.scheduled`. It can run alongside
 `Workero.serve`, or on its own. Add the schedule to `wrangler.toml`:
 
@@ -50,6 +65,85 @@ let () =
   Workero.scheduled (fun controller _env _ctx ->
       ignore (Workero.Scheduled.cron controller))
 ```
+
+Read required secrets with `Env.secret`, object variables with `Env.json`, and
+Secrets Store secrets with `Secret_store`. Call another Worker through a service
+binding with `Fetcher`:
+
+```ocaml
+let handler req env _ctx =
+  let open Workero in
+  let token = Env.secret env "API_TOKEN" in
+  let backend = Fetcher.of_env env "BACKEND" in
+  let res =
+    Fetcher.fetch ~headers:[ ("authorization", "Bearer " ^ token) ] backend
+      "http://backend/users"
+  in
+  Response.text ~status:(`Status (Response.status res)) (Response.body_text res)
+```
+
+Send messages to a Cloudflare Queue with `Queue`, and receive them with
+`Workero.queue`. `Queue` hides `Stdlib.Queue` under `open Workero`:
+
+```ocaml
+let handler _req env _ctx =
+  let jobs = Workero.Queue.of_env env "JOBS" in
+  Workero.Queue.send jobs (Workero.Queue.Json (`Assoc [ ("id", `Int 7) ]));
+  Workero.Response.text "queued\n"
+
+let () =
+  Workero.serve handler;
+  Workero.queue (fun batch _env _ctx ->
+      List.iter
+        (fun message ->
+          ignore (Workero.Queue.Message.body_json message);
+          Workero.Queue.Message.ack message)
+        (Workero.Queue.Batch.messages batch))
+```
+
+`Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
+model with JSON input and output, and `Analytics_engine.write` records a data
+point:
+
+```ocaml
+let handler req env _ctx =
+  let open Workero in
+  let key = Option.value (Request.header req "cf-connecting-ip") ~default:"anon" in
+  if not (Rate_limiter.limit (Rate_limiter.of_env env "LIMITER") key) then
+    Response.text ~status:`Too_Many_Requests "slow down\n"
+  else begin
+    Analytics_engine.write ~index:key ~doubles:[ 1. ]
+      (Analytics_engine.of_env env "EVENTS");
+    JSON.response
+      (Ai.run (Ai.of_env env "AI") "@cf/meta/llama-3.1-8b-instruct"
+         (`Assoc [ ("prompt", `String "Say hi") ]))
+  end
+```
+
+Keep state in a Durable Object with SQLite storage. Register the class at the
+top level of the program, and declare it in `wrangler.toml`:
+
+```ocaml
+let () =
+  Workero.Durable_object.register "Counter" (fun state _env ->
+      let open Workero in
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          let n =
+            match Durable_object.Storage.get storage "count" with
+            | Some (`Int n) -> n + 1
+            | _ -> 1
+          in
+          Durable_object.Storage.put storage "count" (`Int n);
+          Response.text (string_of_int n))
+        ())
+```
+
+Reach an object with `Durable_object.Namespace.get_by_name` and `Fetcher.fetch`.
+Alarms use `Storage.set_alarm` and the `~alarm` handler. `Storage.sql` and
+`Storage.transaction_sync` give SQL and transactions. `State.accept_websocket`
+and the `~websocket_message` handler serve hibernatable WebSockets.
 
 ## Build and package a worker
 
@@ -66,7 +160,9 @@ executable, package its output without running dune again:
 workero package _build/default/src/main.bc.wasm.js
 ```
 
-Both commands accept `--out <dir>` to choose another output directory. See the
+Both commands accept `--out <dir>` to choose another output directory. They run
+the program once in `workerd` to find its Durable Object classes, so `workerd`
+must be installed (`npm install workerd`, or Wrangler). See the
 [documentation](https://ml-in-barcelona.github.io/workero/workero/),
 [getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html),
 and [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html).

@@ -79,11 +79,18 @@ without [.bc.wasm.js].
 + Copies the wasm_of_ocaml loader ([<name>.bc.wasm.js]) and its
   [<name>.bc.wasm.assets] directory into the output directory.
 + Writes [load-wasm.js], which loads the precompiled wasm modules in workerd.
++ Runs the program once in [workerd] to read the Durable Object classes that
+  it registered with {!Workero.Durable_object.register}. It needs [workerd] for
+  every build. It looks for it in [WORKERD], on [PATH], then in
+  [node_modules/.bin] of the current directory and its parents.
 + Writes [index.js], the worker entry point. It imports every [.wasm] file and
   exports the handlers that the program registered with {!Workero.serve} and
-  {!Workero.scheduled}.
+  {!Workero.scheduled}, {!Workero.queue}, and one class for each registered
+  Durable Object. For those it also writes [durable-object.js], and it removes a
+  [durable-object.js] that an earlier run left.
 
-It prints [workero: wrote <dir> (<n> wasm file(s))]. On an error it prints
+It prints [workero: wrote <dir> (<n> wasm file(s))], and the Durable Object
+classes on a second line when there are any. On an error it prints
 [workero: <reason>] to stderr and exits with code 1.
 
 {1 Errors}
@@ -96,6 +103,9 @@ It prints [workero: wrote <dir> (<n> wasm file(s))]. On an error it prints
 - dune does not produce the loader or the [.wasm.assets] directory (the
   executable lacks [(modes wasm)], or the path is wrong),
 - the target is outside the dune root ([workero build] only),
+- [workerd] is not installed, or [WORKERD] names a file that does not exist,
+- the program raises while it initialises. [workerd] reports the error of the
+  program, and the build prints it,
 - the program uses OCaml functions that have no wasm implementation. The
   message is [workero: <name> uses functions with no wasm implementation:
   <list>]. They fail at run time if called. Provide a wasm implementation

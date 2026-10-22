@@ -60,6 +60,9 @@ module Context : sig ... end
 The `ctx` argument of a Worker handler.
 
 ```ocaml
+module Router : sig ... end
+```
+```ocaml
 module Scheduled : sig ... end
 ```
 The `controller` argument of a Worker `scheduled` handler.
@@ -130,6 +133,41 @@ module Console : sig ... end
 The global `console`. Each call writes one entry to the Workers logs, with its level. Unlike `print_string`, it needs no flush.
 
 ```ocaml
+module Secret_store : sig ... end
+```
+A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. The value is plain text: do not log it. For a secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
+
+```ocaml
+module Fetcher : sig ... end
+```
+A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Bind it in `wrangler.toml` with `[[services]]` or `[assets]`. The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
+
+```ocaml
+module Queue : sig ... end
+```
+Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages to a queue, bound in `wrangler.toml` with `[[queues.producers]]`. A Worker reads messages with the handler that [`Workero.queue`](./#val-queue) registers.
+
+```ocaml
+module Rate_limiter : sig ... end
+```
+A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The limit and its period come from the binding, not from the code.
+
+```ocaml
+module Ai : sig ... end
+```
+A Workers AI binding, declared in `wrangler.toml` with `[ai]`. Workers AI runs models and bills your account, also in `wrangler dev`.
+
+```ocaml
+module Analytics_engine : sig ... end
+```
+A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
+
+```ocaml
+module Durable_object : sig ... end
+```
+Durable Objects with SQLite storage.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
@@ -138,6 +176,11 @@ val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
 ```
 `scheduled handler` registers the cron trigger handler, like `scheduled(controller, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve); a Worker may register either or both. An exception raised by the handler rejects the event Promise, so Cloudflare records the run as failed.
+
+```ocaml
+val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
+```
+`queue handler` registers the queue consumer, like `queue(batch, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve) and [`scheduled`](./#val-scheduled). An exception raised by the handler rejects the event Promise, so the runtime retries the messages that the handler did not ack.
 
 ```ocaml
 val fetch : 

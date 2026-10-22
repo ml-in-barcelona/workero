@@ -21,10 +21,19 @@ worker, worker-init, worker-exports, and CLI tests.
   for a handler that raises. A service binding rethrows where HTTP answers
   500. `workerd` must be on `PATH`; `npm install workerd` or `wrangler`
   provides it. KV, R2, and Cache bindings point at small JS services in
-  `test/worker/services/`. D1 is a `wrapped` binding over SQLite there.
-- Init tests in `test/worker-init/` run with `make test-worker-init`. They load
-  a worker whose toplevel raises and expect the load to fail with the OCaml
-  exception.
+  `test/worker/services/`. D1 is a `wrapped` binding over SQLite there. The
+  Queue producer binding points at an HTTP service that records what the
+  runtime sends. Rate limiter, AI and Analytics Engine are `wrapped` stubs.
+  Durable Object classes are registered in `test/worker/routes_do.ml`; the config
+  gives the worker on-disk storage for them, because SQLite needs it.
+  Queue consumer cases run in a second test service, `test-queue`
+  (`tests_queue.mjs`), because `env.WORKER.queue(...)` needs the
+  `service_binding_extra_handlers` compatibility flag, which changes how
+  `scheduled` reports a failure, and `workerd test --experimental`.
+- Init tests in `test/worker-init/` run with `make test-worker-init`. They build
+  a worker whose toplevel raises and expect the build to fail with the OCaml
+  exception. `workero build` runs the program in `workerd` to find its Durable
+  Object classes, so an initialisation error stops the build.
 - Worker export tests in `test/worker-exports/` run with
   `make test-worker-exports`. They check which handlers each worker exports.
 - CLI tests in `test/cli/` run with `make test-cli`. They check `workero build`

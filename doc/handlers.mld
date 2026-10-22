@@ -1,7 +1,8 @@
 {0 Handlers}
 
 A worker answers events. workero has one handler for each kind of event:
-{!Workero.serve} for HTTP requests and {!Workero.scheduled} for cron triggers.
+{!Workero.serve} for HTTP requests, {!Workero.scheduled} for cron triggers and
+{!Workero.queue} for queue messages.
 Register a handler once, at the top level of your program.
 
 {1 HTTP requests}
@@ -75,7 +76,27 @@ curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
 ]}
 
 A worker can register {!Workero.serve}, {!Workero.scheduled}, or both. A
-worker that only has cron triggers needs no {!Workero.serve}.
+worker that only has cron triggers needs no {!Workero.serve}. The same holds
+for {!Workero.queue}.
+
+{1 Queue messages}
+
+{!Workero.queue} registers the consumer of a Cloudflare Queue. It gets a
+{!Workero.Queue.Batch.t}, the [env] and the [ctx], and returns [unit]. See
+{{!page-queue}Queue} for configuration, acknowledgement and retries.
+
+{@ocaml[
+let () =
+  Workero.queue (fun batch _env _ctx ->
+      List.iter
+        (fun message ->
+          print_endline (Workero.Queue.Message.body_text message);
+          Workero.Queue.Message.ack message)
+        (Workero.Queue.Batch.messages batch))
+]}
+
+A worker can register any combination of {!Workero.serve}, {!Workero.scheduled}
+and {!Workero.queue}.
 
 {1 What index.js exports}
 
@@ -83,7 +104,7 @@ worker that only has cron triggers needs no {!Workero.serve}.
 function for each registered handler:
 
 {@js[
-export default { fetch, scheduled };
+export default { fetch, scheduled, queue };
 ]}
 
 Only the handlers that your program registered are present, so Wrangler sees
@@ -97,6 +118,8 @@ top level, not inside another function that runs later.
   Promise, and the runtime answers with status 500.
 - An exception that escapes the {!Workero.scheduled} handler rejects the event
   Promise, and Cloudflare records the run as failed.
+- An exception that escapes the {!Workero.queue} handler rejects the event
+  Promise. Cloudflare delivers again the messages that the handler did not ack.
 - A later request or event is not affected.
 
 Catch the exceptions that you can answer, and let the others escape. For

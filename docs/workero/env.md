@@ -1,7 +1,7 @@
 
 # Variables and secrets
 
-The `env` argument of a handler holds the configuration of the worker. [`Workero.Env.var`](./Workero-Env.md#val-var) reads a value by name. It returns `Some value` for a string variable or secret, and `None` for a name that does not exist or does not hold a string.
+The `env` argument of a handler holds the configuration of the worker. [`Workero.Env.var`](./Workero-Env.md#val-var) reads a value by name. It returns `Some value` for a string variable or secret, and `None` for a name that does not exist or does not hold a string. [`Workero.Env.secret`](./Workero-Env.md#val-secret) is the same read for a value that the worker cannot run without. It returns the string, and raises `Invalid_argument` when the name does not exist or does not hold a string.
 
 ```ocaml
 let handler _req env _ctx =
@@ -13,7 +13,14 @@ let handler _req env _ctx =
 
 let () = Workero.serve handler
 ```
-One function covers both. A variable and a secret look the same in `env`. They differ in how you set them.
+A variable and a secret look the same in `env`. They differ in how you set them. [`Workero.Env.secret`](./Workero-Env.md#val-secret) suits a secret, because a missing secret then stops the request with a message that names it:
+
+```ocaml
+let handler _req env _ctx =
+  let token = Workero.Env.secret env "API_TOKEN" in
+  Workero.Response.text (Printf.sprintf "token of %d bytes\n" (String.length token))
+```
+The message is `Workero.Env.secret: "API_TOKEN" not found`, or `Workero.Env.secret: "API_TOKEN" is an object, not a string`. It never contains the value.
 
 
 ## Variables
@@ -33,3 +40,48 @@ Set a secret with Wrangler. It reads the value from the terminal and stores it f
 npx wrangler secret put API_TOKEN
 ```
 For `wrangler dev`, put local values in a `.dev.vars` file next to `wrangler.toml`, one `NAME=value` line each. Keep that file out of Git.
+
+
+## Object variables
+
+A variable in `wrangler.toml` can be an object or an array:
+
+```toml
+[vars]
+LIMITS = { max_items = 50, regions = ["eu", "us"] }
+```
+[`Workero.Env.var`](./Workero-Env.md#val-var) gives `None` for it. [`Workero.Env.json`](./Workero-Env.md#val-json) gives it as a `Jsonkit.t`, or `None` when the name does not exist or holds a string, a number, a boolean or `null`:
+
+```ocaml
+let handler _req env _ctx =
+  let open Jsonkit.Of_json in
+  match Workero.Env.json env "LIMITS" with
+  | Some limits ->
+      Workero.Response.text
+        (Printf.sprintf "max %d\n" (limits |> field "max_items" int))
+  | None -> Workero.Response.text ~status:`Internal_Server_Error "LIMITS is not set\n"
+```
+[`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) and [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) convert any JavaScript value that has a JSON form. See [Requests and responses](./requests.md) for JSON bodies.
+
+
+## Secrets Store
+
+A secret in [Secrets Store](https://developers.cloudflare.com/secrets-store/) is shared between Workers. It is a binding, not a value in `env`. Declare it in `wrangler.toml`:
+
+```toml
+[[secrets_store_secrets]]
+binding = "API_KEY"
+store_id = "<store id>"
+secret_name = "api-key"
+```
+[`Workero.Secret_store.of_env`](./Workero-Secret_store.md#val-of_env) opens the binding and [`Workero.Secret_store.get`](./Workero-Secret_store.md#val-get) reads the value:
+
+```ocaml
+let handler _req env _ctx =
+  let key = Workero.Secret_store.of_env env "API_KEY" in
+  match Workero.Secret_store.get key with
+  | Some value ->
+      Workero.Response.text (Printf.sprintf "key of %d bytes\n" (String.length value))
+  | None -> Workero.Response.text ~status:`Internal_Server_Error "no key\n"
+```
+`get` suspends like [`Workero.Promise.await`](./Workero-Promise.md#val-await). It gives `None` when the runtime returns `null` or `undefined`, and raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the access fails. `of_env` raises `Invalid_argument` when `env` has no such binding. Read the secret inside the handler. Do not log it.

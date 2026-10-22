@@ -8,7 +8,7 @@ The workero repository tests its own worker with `workerd test`. You can do the 
 
 1. Build the worker: `workero build src/main.bc.wasm.js --out _worker-test`.
 2. Write a `workerd` config. It lists the files of `_worker-test` as modules (`.js` as `esModule`, `.wasm` as `wasm`) and binds the worker to a test worker as a service.
-3. In the test worker, call the service, as `env.WORKER.fetch(url)`, and compare status, headers and body. `env.WORKER.scheduled({ cron, scheduledTime })` runs the cron handler.
+3. In the test worker, call the service, as `env.WORKER.fetch(url)`, and compare status, headers and body. `env.WORKER.scheduled({ cron, scheduledTime })` runs the cron handler. `env.WORKER.queue(name, messages)` runs the queue handler. It needs the `service_binding_extra_handlers` compatibility flag on the test worker and `workerd test --experimental`.
 4. Run `workerd test config.capnp`.
 `test/worker/run.sh` in the repository generates the config and runs the tests. `test/worker/main.ml` is the worker, and `test/worker/tests.mjs` has the cases. Set `globalOutbound` to a small worker to answer [`Workero.fetch`](./Workero.md#val-fetch) calls without the network.
 

@@ -12,7 +12,9 @@ same with yours. It runs the real wasm in the real runtime, so [Promise.await],
   worker as a service.
 + In the test worker, call the service, as [env.WORKER.fetch(url)], and compare
   status, headers and body. [env.WORKER.scheduled({ cron, scheduledTime })]
-  runs the cron handler.
+  runs the cron handler. [env.WORKER.queue(name, messages)] runs the queue
+  handler. It needs the [service_binding_extra_handlers] compatibility flag on
+  the test worker and [workerd test --experimental].
 + Run [workerd test config.capnp].
 
 [test/worker/run.sh] in the repository generates the config and runs the tests.

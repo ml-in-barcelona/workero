@@ -1,7 +1,7 @@
 const exported = async (call) => {
   try {
-    await call();
-    return true;
+    const result = await call();
+    return result?.outcome === undefined || result.outcome === "ok";
   } catch {
     return false;
   }
@@ -13,7 +13,12 @@ export default {
     const scheduled = await exported(() =>
       env.WORKER.scheduled({ cron: "* * * * *", scheduledTime: 0 }),
     );
-    const actual = [fetch && "fetch", scheduled && "scheduled"].filter(Boolean).join("+");
+    const queue = await exported(() =>
+      env.WORKER.queue("jobs", [{ id: "m1", timestamp: new Date(0), body: "x", attempts: 1 }]),
+    );
+    const actual = [fetch && "fetch", scheduled && "scheduled", queue && "queue"]
+      .filter(Boolean)
+      .join("+");
     if (actual !== env.EXPECT)
       throw new Error(`exports ${JSON.stringify(actual)}, expected ${JSON.stringify(env.EXPECT)}`);
     console.log(`ok - exports ${actual}`);

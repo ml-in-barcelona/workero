@@ -1,0 +1,36 @@
+
+# Analytics Engine
+
+[`Workero.Analytics_engine`](./Workero-Analytics_engine.md) writes data points to a [Workers Analytics Engine](https://developers.cloudflare.com/analytics/analytics-engine/) dataset. You read them back with the SQL API.
+
+
+## Configure
+
+```toml
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "events"
+```
+
+## Use
+
+```ocaml
+let handler req env _ctx =
+  let open Workero in
+  let events = Analytics_engine.of_env env "EVENTS" in
+  let path = URL.path (Request.url req) in
+  Analytics_engine.write ~index:path ~doubles:[ 1. ]
+    ~blobs:[ Text (Method.to_string (Request.method_ req)) ]
+    events;
+  Response.text "ok\n"
+
+let () = Workero.serve handler
+```
+- [`Workero.Analytics_engine.of_env`](./Workero-Analytics_engine.md#val-of_env) opens the dataset. It raises `Invalid_argument` when there is no such binding, or when the binding has no `writeDataPoint` method.
+- [`Workero.Analytics_engine.write`](./Workero-Analytics_engine.md#val-write) records one data point. `index` is the sampling key, `doubles` are the numbers and `blobs` the strings or raw bytes that you query by.
+`write` returns at once and has no result: the runtime writes the point after the handler goes on. It raises [`Workero.Js_error`](./Workero.md#exception-Js_error) only when the runtime throws while it takes the data point. See the [limits](https://developers.cloudflare.com/analytics/analytics-engine/limits/) on the number and size of fields.
+
+
+## Test
+
+The binding is not available in a plain `workerd` configuration. The tests of workero use a stub that records the points. See `test/worker/services/analytics-binding.mjs`.
