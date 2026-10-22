@@ -17,6 +17,7 @@ module Env = Env
 module Context = Context
 module Router = Router
 module Scheduled = Scheduled
+module Email = Email
 module JSON = Json
 module KV = Kv
 module Cache = Cache
@@ -31,12 +32,15 @@ module Date = Date
 module Crypto = Crypto
 module Console = Console
 module Secret_store = Secret_store
+module Hyperdrive = Hyperdrive
 module Fetcher = Fetcher
 module Queue = Queue
+module Socket = Socket
 module Rate_limiter = Rate_limiter
 module Ai = Ai
 module Analytics_engine = Analytics_engine
 module Durable_object = Durable_object
+module Entrypoint = Entrypoint
 
 let register name handler = Registry.set name (Async.promising handler)
 let flushing f = Fun.protect ~finally:flush_all f
@@ -64,6 +68,13 @@ let queue handler =
           flushing (fun () ->
               handler (Queue.Batch.of_js batch) (Env.of_js env)
                 (Context.of_js ctx);
+              Js.Unsafe.inject Js.undefined)))
+
+let email handler =
+  register "email" (fun message env ctx : js ->
+      Async.run (fun () ->
+          flushing (fun () ->
+              handler (Email.of_js message) (Env.of_js env) (Context.of_js ctx);
               Js.Unsafe.inject Js.undefined)))
 
 let fetch ?method_ ?headers ?body url =

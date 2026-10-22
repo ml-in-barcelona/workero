@@ -23,3 +23,4 @@ _worker-test/
 _worker-init-test/
 _worker-cli-test/
 _worker-exports-test/
+_worker-containers-test/

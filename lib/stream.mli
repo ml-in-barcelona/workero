@@ -14,6 +14,10 @@ module Reader : sig
 
   val cancel : ?reason:string -> t -> unit
   (** Tells the source to stop. Suspends. *)
+
+  val release : t -> unit
+  (** Unlocks the stream so that {!Stream.reader} can lock it again. The reader
+      is unusable afterwards. *)
 end
 
 module Writer : sig
@@ -29,6 +33,13 @@ module Writer : sig
 
   val abort : ?reason:string -> t -> unit
   (** Ends the stream with an error. Suspends. *)
+
+  val release : t -> unit
+  (** Unlocks the stream so that a new writer can lock it. The writer is
+      unusable afterwards. *)
+
+  val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+  (** A JavaScript [WritableStreamDefaultWriter]. *)
 end
 
 val reader : t -> Reader.t

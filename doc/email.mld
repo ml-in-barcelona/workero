@@ -1,0 +1,117 @@
+{0 Email}
+
+{!Workero.email} registers the handler for
+{{:https://developers.cloudflare.com/email-routing/email-workers/}Email Workers}.
+Cloudflare Email Routing calls it for each message sent to an address that you
+route to the Worker. The handler gets an {!Workero.Email.t}, the [env] and the
+[ctx], and returns [unit].
+
+{1 Configure}
+
+Turn on Email Routing for the domain. In the dashboard, add a custom address
+and set its action to "Send to a Worker". To forward a message, add the
+destination address to Email Routing first and verify it. [wrangler.toml] needs
+no email setting for the handler.
+
+{1 Handle a message}
+
+The handler must decide what happens to the message. It does one of three
+things:
+
+- {!Workero.Email.forward} sends the message to a verified address.
+- {!Workero.Email.reply} sends a reply to the sender.
+- {!Workero.Email.set_reject} refuses the message with a permanent SMTP error.
+
+{@ocaml[
+let () =
+  Workero.email (fun message _env _ctx ->
+      let open Workero in
+      match Email.header message "subject" with
+      | Some subject when String.length subject > 0 ->
+          Email.forward
+            ~headers:[ ("X-Routed-By", "workero") ]
+            message "me@example.org"
+      | _ -> Email.set_reject message "a subject is required")
+]}
+
+{!Workero.Email.from} is the envelope sender and {!Workero.Email.to_} is the
+envelope recipient. They can differ from the [From] and [To] headers. Read the
+headers with {!Workero.Email.header}, {!Workero.Email.header_all} and
+{!Workero.Email.headers}. {!Workero.Email.raw_size} is the size of the raw
+message in bytes.
+
+{!Workero.Email.forward} takes extra headers. The runtime accepts only names
+that start with [X-]. It raises {!Workero.Js_error} when the address is not a
+verified destination.
+
+{1 Read the raw message}
+
+{!Workero.Email.raw_text} and {!Workero.Email.raw_bytes} read the whole message,
+with its headers, and suspend like {!Workero.Promise.await}. The raw message
+can be read once. A second read raises {!Workero.Js_error}.
+
+{@ocaml[
+let () =
+  Workero.email (fun message _env _ctx ->
+      let open Workero in
+      if Email.raw_size message > 1_000_000 then
+        Email.set_reject message "message too large"
+      else
+        let raw = Email.raw_text message in
+        Console.log raw;
+        Email.forward message "me@example.org")
+]}
+
+The program holds the whole message in memory, and the bytes are copied once
+from JavaScript into the memory of the wasm program. For a large message, read
+{!Workero.Email.raw} as a {!Workero.Stream.t} and handle it in chunks with
+{!Workero.Stream.iter}. Check {!Workero.Email.raw_size} before you read.
+
+{1 Reply}
+
+{!Workero.Email.reply} sends a complete message, with headers, as the reply. The
+runtime accepts a reply only when the sender allows it, so the raw message needs
+a [Message-ID] header and an [In-Reply-To] header with the [Message-ID] of the
+incoming message:
+
+{@ocaml[
+let () =
+  Workero.email (fun message _env _ctx ->
+      let open Workero in
+      let id = Option.value (Email.header message "message-id") ~default:"" in
+      Email.reply message ~from:"support@example.com" ~to_:(Email.from message)
+        (String.concat "\r\n"
+           [
+             "From: support@example.com";
+             "To: " ^ Email.from message;
+             "Message-ID: <reply-1@example.com>";
+             "In-Reply-To: " ^ id;
+             "Subject: Received";
+             "";
+             "We got your message.";
+             "";
+           ]))
+]}
+
+[reply] creates the [EmailMessage] from the [cloudflare:email] module when it is
+called. [workerd] does not provide that module. See {{!page-known_issues}Support
+and known issues}.
+
+{1 Errors}
+
+An exception that escapes the handler rejects the event Promise, and Cloudflare
+treats the delivery as failed. Catch {!Workero.Js_error} from {!Workero.Email.forward}
+and {!Workero.Email.reply} to answer with {!Workero.Email.set_reject} instead.
+
+{1 Testing}
+
+[workerd] 2026-10-19 cannot deliver an email. A service binding has [fetch],
+[scheduled] and [queue] methods but no [email] method, and the runtime has no
+[cloudflare:email] module. To
+test a handler, import the generated [index.js] in a small test worker, build a
+message object with the fields of [ForwardableEmailMessage] ([from], [to],
+[headers], [raw], [rawSize], [setReject], [forward], [reply]) and call
+[handlers.email(message, env, ctx)]. [test/worker/services/email-harness.mjs]
+does this, and [test/worker/cases/email.mjs] has the cases. The test worker gives
+a stand-in [cloudflare:email] module for [reply]. The tests do not prove that
+the real runtime accepts the messages.

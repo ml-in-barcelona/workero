@@ -27,11 +27,25 @@ config() {
       done
     echo '      ],'
     echo '    )),'
+    echo '    (name = "probe", worker = ('
+    echo '      compatibilityDate = "2026-10-01",'
+    echo '      modules = ['
+    echo '        (name = "probe.mjs", esModule = embed "probe.mjs"),'
+    (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
+      while read -r f; do
+        echo "        (name = \"$f\", esModule = embed \"$f\"),"
+      done
+    (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
+      while read -r f; do
+        echo "        (name = \"$f\", wasm = embed \"$f\"),"
+      done
+    echo '      ],'
+    echo '    )),'
     echo '    (name = "test", worker = ('
     echo '      compatibilityDate = "2026-10-01",'
     echo '      compatibilityFlags = ["service_binding_extra_handlers"],'
     echo '      modules = [(name = "tests.mjs", esModule = embed "tests.mjs")],'
-    echo "      bindings = [(name = \"WORKER\", service = \"worker\"), (name = \"EXPECT\", text = \"$expect\")],"
+    echo "      bindings = [(name = \"WORKER\", service = \"worker\"), (name = \"PROBE\", service = \"probe\"), (name = \"EXPECT\", text = \"$expect\")],"
     echo '    )),'
     echo '  ],'
     echo ');'
@@ -46,7 +60,7 @@ check() {
   rm -rf "$out"
   mkdir -p "$out"
   $dune exec workero -- build "test/worker-exports/$name/main.bc.wasm.js" --out "$out" >/dev/null
-  cp test/worker-exports/tests.mjs "$out/"
+  cp test/worker-exports/tests.mjs test/worker-exports/probe.mjs "$out/"
   config "$out" "$expect"
   if [ "$expect" = none ]; then
     if $workerd test --experimental "$out/config.capnp" >"$log" 2>&1; then
@@ -74,4 +88,5 @@ check serve fetch
 check scheduled scheduled
 check both fetch+scheduled
 check queue queue
+check email email
 check none none
