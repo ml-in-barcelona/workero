@@ -5,14 +5,20 @@ let handlers =
     Routes_ws.handle;
     Routes_context.handle;
     Routes_globals.handle;
+    Routes_crypto.handle;
     Routes_env.handle;
     Routes_fetcher.handle;
     Routes_router.handle;
     Routes_queue.handle;
     Routes_rate_limiter.handle;
+    Routes_hyperdrive.handle;
     Routes_ai.handle;
     Routes_analytics.handle;
+    Routes_socket.handle;
     Routes_do.handle;
+    Routes_entrypoint.handle;
+    Routes_workflow.handle;
+    Routes_rpc.handle;
   ]
 
 let handler req env ctx =
@@ -22,3 +28,4 @@ let handler req env ctx =
 
 let () = Workero.serve handler
 let () = Workero.queue Routes_queue.consume
+let () = Workero.email Routes_email.receive

@@ -8,6 +8,8 @@ through [env], see {{!page-bindings}Bindings}.
 
 - {{!page-handlers}Handlers}: register HTTP, scheduled, and queue handlers with
   {!Workero.serve}, {!Workero.scheduled}, and {!Workero.queue}.
+- {{!page-email}Email}: receive messages from Email Routing with
+  {!Workero.email}, then forward, reply to or reject them.
 - {{!page-router}Router}: match methods and paths, read route parameters, and
   mount groups of routes.
 
@@ -25,6 +27,15 @@ through [env], see {{!page-bindings}Bindings}.
   For hibernating connections, see {{!page-durable_objects}Durable Objects}.
 - {{!page-cache}Cache}: read and write cached responses in the local data
   center. Cache uses [caches.default] and needs no [env] binding.
+
+{1 Network}
+
+- {{!page-socket}Sockets}: open outbound TCP connections with
+  {!Workero.Socket.connect} and read and write them with streams.
+- {{!page-entrypoints}Entrypoints}: expose RPC methods with
+  {!Workero.Entrypoint.register} and call them on a service binding.
+- {{!page-workflows}Workflows}: write durable multi-step programs with
+  {!Workero.Workflow.register} and start them with a Workflow binding.
 
 {1 Execution}
 

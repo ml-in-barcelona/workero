@@ -15,6 +15,8 @@ module Reader = struct
   let cancel ?reason r =
     let args = match reason with Some s -> [| str s |] | None -> [||] in
     Binding.call ~decode:Decode.unit r "cancel" args
+
+  let release r = ignore (Binding.invoke r "releaseLock" [||])
 end
 
 module Writer = struct
@@ -28,6 +30,9 @@ module Writer = struct
   let abort ?reason w =
     let args = match reason with Some s -> [| str s |] | None -> [||] in
     Binding.call ~decode:Decode.unit w "abort" args
+
+  let release w = ignore (Binding.invoke w "releaseLock" [||])
+  let of_js (v : js) : t = v
 end
 
 let reader s : Reader.t = Binding.invoke s "getReader" [||]

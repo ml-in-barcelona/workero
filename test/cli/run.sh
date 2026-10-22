@@ -118,6 +118,12 @@ for probe in workero-probe.mjs workero-probe.capnp workero-probe.log; do
 done
 echo "ok - build exports the registered Durable Object classes"
 
+grep -q 'prototype\[m\] = function' "$out/index.js" || fail "index.js adds the RPC methods of a class"
+[ "$(grep -c 'for (const m of' "$out/index.js")" -eq 1 ] || fail "only the class with RPC methods gets RPC glue"
+grep -q 'for (const m of \["increment", "get"\]) workero_class_[0-9]*.prototype' "$out/index.js" ||
+  fail "index.js lists the RPC methods in declaration order"
+echo "ok - build adds the declared RPC methods to the class"
+
 workero test/cli/present/main.bc.wasm.js || fail "a rebuild without classes builds"
 [ ! -e "$out/durable-object.js" ] || fail "a rebuild without classes removes durable-object.js"
 grep -q "WorkeroDurableObject" "$out/index.js" && fail "a rebuild without classes drops the class exports"
@@ -153,3 +159,48 @@ rm -rf "$out"
 if WORKERD=/nonexistent/workerd workero test/cli/present/main.bc.wasm.js; then fail "build fails without workerd"; fi
 grep -q "workero: WORKERD is set to /nonexistent/workerd, which does not exist" "$log" || fail "the error names the missing workerd"
 echo "ok - build fails when workerd is missing"
+
+rm -rf "$out"
+workero test/cli/entrypoints/main.bc.wasm.js || fail "a program with entrypoint classes builds"
+grep -q "workero: entrypoint classes: Alpha, Beta, class" "$log" || fail "build lists the entrypoint classes"
+[ -f "$out/entrypoint.js" ] || fail "entrypoint.js is written when an entrypoint is registered"
+[ ! -e "$out/durable-object.js" ] || fail "a program without Durable Object classes has no durable-object.js"
+for class in Alpha Beta class; do
+  grep -q "^export { workero_class_[0-9]* as $class };" "$out/index.js" ||
+    fail "index.js exports the entrypoint $class"
+done
+[ "$(grep -c 'for (const m of \["ping"\]) workero_class_[0-9]*.prototype' "$out/index.js")" -eq 3 ] ||
+  fail "index.js adds the declared RPC methods to each entrypoint"
+echo "ok - build exports the registered entrypoint classes"
+
+workero test/cli/present/main.bc.wasm.js || fail "a rebuild without entrypoints builds"
+[ ! -e "$out/entrypoint.js" ] || fail "a rebuild without entrypoints removes entrypoint.js"
+echo "ok - a program without entrypoints has no entrypoint glue"
+
+rm -rf "$out"
+if workero test/cli/entrypoint-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and an entrypoint share a name"; fi
+grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing class"
+echo "ok - build fails when a Durable Object and an entrypoint share a name"
+
+rm -rf "$out"
+workero test/cli/workflows/main.bc.wasm.js || fail "a program with workflow classes builds"
+grep -q "workero: workflow classes: Alpha, Beta, class" "$log" || fail "build lists the workflow classes"
+[ -f "$out/workflow.js" ] || fail "workflow.js is written when a workflow is registered"
+[ ! -e "$out/entrypoint.js" ] || fail "a program without entrypoints has no entrypoint.js"
+for class in Alpha Beta class; do
+  grep -q "^export { workero_class_[0-9]* as $class };" "$out/index.js" ||
+    fail "index.js exports the workflow $class"
+done
+grep -q 'import { WorkeroWorkflow } from "./workflow.js";' "$out/index.js" || fail "index.js imports the workflow glue"
+grep -q 'cloudflare:workflows' "$out/index.js" && fail "index.js does not import cloudflare:workflows itself"
+echo "ok - build exports the registered workflow classes"
+
+workero test/cli/present/main.bc.wasm.js || fail "a rebuild without workflows builds"
+[ ! -e "$out/workflow.js" ] || fail "a rebuild without workflows removes workflow.js"
+grep -q 'cloudflare:workflows' "$out/index.js" && fail "a worker without workflows does not import cloudflare:workflows"
+echo "ok - a program without workflows has no workflow glue"
+
+rm -rf "$out"
+if workero test/cli/workflow-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and a workflow share a name"; fi
+grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing workflow"
+echo "ok - build fails when a Durable Object and a workflow share a name"

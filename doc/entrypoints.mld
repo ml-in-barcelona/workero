@@ -1,0 +1,99 @@
+{0 Entrypoints}
+
+A {{:https://developers.cloudflare.com/workers/runtime-apis/rpc/}WorkerEntrypoint}
+is a named class of a Worker. Its methods are RPC methods: another Worker calls
+them through a service binding as if they were local functions.
+{!Workero.Entrypoint} declares such a class in OCaml. JavaScript Workers and
+OCaml Workers can call it.
+
+{1 Declare a class}
+
+Register the class under a name at module initialisation. Give the names of
+its methods with [~rpc], and a function that builds the handlers:
+
+{@ocaml[
+open Workero
+
+let () =
+  Entrypoint.register "Math" ~rpc:[ "add"; "greet" ] (fun env _ctx ->
+      Entrypoint.make
+        ~rpc:(fun name args ->
+          match (name, args) with
+          | "add", [ `Int a; `Int b ] -> `Int (a + b)
+          | "greet", [ `String who ] ->
+              `String
+                (Option.value (Env.var env "GREETING") ~default:"Hello"
+                ^ ", " ^ who)
+          | _ -> invalid_arg ("bad call to " ^ name))
+        ())
+]}
+
+[workero build] runs the program once in [workerd] and exports every
+registered class from [index.js]. It reads the names in [~rpc] at that time,
+before the program has an {!Workero.Env.t}, so they are given apart from the
+handler. The [rpc] handler of {!Workero.Entrypoint.make} gets the method name
+and the arguments, like the [rpc] handler of a Durable Object. A call to a
+declared name on a class whose handlers have no [rpc] fails with an error.
+
+The handler gets the arguments of the call as a list of {!Workero.Rpc.t} values
+and returns one. They are JSON values and also bytes, dates, big integers, maps,
+sets, streams, stubs and functions; see
+{{!page-durable_objects}Durable Objects}. It runs in its own fiber and may call {!Workero.Promise.await},
+{!Workero.fetch} and the other bindings. An exception that the handler raises
+rejects the call. The caller sees an [Error] whose message is the exception.
+
+The runtime creates a new instance of the class for each call. The function
+given to {!Workero.Entrypoint.register} runs for each of them and gets the
+[env] and the [ctx], so a method can call {!Workero.Context.wait_until}. Keep no
+state in it.
+
+{1 Call it from JavaScript}
+
+Bind the class in the [wrangler.toml] of the caller. The caller may be this
+Worker or another one:
+
+{@toml[
+[[services]]
+binding = "MATH"
+service = "my-worker"
+entrypoint = "Math"
+]}
+
+{@javascript[
+const sum = await env.MATH.add(2, 3); // 5
+]}
+
+{1 Call it from OCaml}
+
+Read the binding with {!Workero.Fetcher.of_env} and call a method with
+{!Workero.Entrypoint.call}:
+
+{@ocaml[
+let handler _req env _ctx =
+  let math = Fetcher.of_env env "MATH" in
+  match Entrypoint.call math "add" [ `Int 2; `Int 3 ] with
+  | `Int sum -> Response.text (string_of_int sum)
+  | _ -> Response.text ~status:`Bad_Gateway "unexpected result"
+]}
+
+The callee may be an entrypoint written in OCaml or in JavaScript.
+{!Workero.Entrypoint.call} raises {!Workero.Js_error} when the method does not
+exist or raises, and when the runtime rejects the call.
+
+{1 The fetch handler}
+
+{!Workero.Entrypoint.make} accepts a [~fetch] handler. It answers
+{!Workero.Fetcher.fetch} on a binding of the class. Without it, such a request
+fails with an error.
+
+{1 Limits}
+
+- A value with no {!Workero.Rpc.t} form, such as an [Error], raises
+  [Invalid_argument]. A result of [undefined] is [`Undefined].
+- The [scheduled], [queue], [email] and [tail] handlers of a
+  class are not supported.
+- A class cannot share its name with a Durable Object class, and the method
+  names [constructor], [prototype], [__proto__], [then], [env], [ctx], [fetch],
+  [scheduled], [queue], [email], [tail], [trace], [tailStream], [test],
+  [connect] and [dup] are reserved.
+- RPC methods on Durable Object stubs are not part of this page.

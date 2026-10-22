@@ -18,3 +18,13 @@ Ends the stream. Suspends.
 val abort : ?reason:string -> t -> unit
 ```
 Ends the stream with an error. Suspends.
+
+```ocaml
+val release : t -> unit
+```
+Unlocks the stream so that a new writer can lock it. The writer is unusable afterwards.
+
+```ocaml
+val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+```
+A JavaScript `WritableStreamDefaultWriter`.

@@ -70,6 +70,11 @@ module Scheduled : sig ... end
 The `controller` argument of a Worker `scheduled` handler.
 
 ```ocaml
+module Email : sig ... end
+```
+Email Routing. The handler that [`Workero.email`](./#val-email) registers receives a [`t`](./Workero-Email.md#type-t): a message that Cloudflare Email Routing delivered to the Worker. The handler can read the message, forward it, reply to it or reject it.
+
+```ocaml
 module JSON : sig ... end
 ```
 JSON requests and responses for workero (`Workero.JSON`).
@@ -140,6 +145,11 @@ module Secret_store : sig ... end
 A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. Local `wrangler dev` requires a local Secrets Store secret; it cannot read the remote one. The value is plain text: do not log it. For a Worker secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
 
 ```ocaml
+module Hyperdrive : sig ... end
+```
+A Hyperdrive binding, declared in `wrangler.toml` with `[[hyperdrive]]`. Hyperdrive pools and caches connections to a PostgreSQL or MySQL database.
+
+```ocaml
 module Fetcher : sig ... end
 ```
 A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Configure service and assets bindings in `wrangler.toml` with `[[services]]` or `[assets]`. A Durable Object stub comes from [`Durable_object.Namespace.get`](./Workero-Durable_object-Namespace.md#val-get). The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
@@ -148,6 +158,11 @@ A `Fetcher` sends requests to another Worker, to static assets or to a Durable O
 module Queue : sig ... end
 ```
 Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages through a producer binding in `wrangler.toml` (`[[queues.producers]]`). A [`Workero.queue`](./#val-queue) handler consumes batches from a queue configured under `[[queues.consumers]]`, not through a producer binding. See [Queue](./queue.md) for a complete Worker.
+
+```ocaml
+module Socket : sig ... end
+```
+Outbound TCP sockets, like `connect` from `cloudflare:sockets`. `index.js` imports `connect` on every build, so a program needs no setup. See [Sockets](./socket.md).
 
 ```ocaml
 module Rate_limiter : sig ... end
@@ -165,9 +180,24 @@ module Analytics_engine : sig ... end
 A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
 
 ```ocaml
+module Rpc : sig ... end
+```
+Values of Workers RPC calls.
+
+```ocaml
 module Durable_object : sig ... end
 ```
 Durable Objects with SQLite-backed key-value and SQL storage.
+
+```ocaml
+module Entrypoint : sig ... end
+```
+`WorkerEntrypoint` classes with RPC methods.
+
+```ocaml
+module Workflow : sig ... end
+```
+Cloudflare Workflows: durable, multi-step programs.
 
 ```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
@@ -183,6 +213,11 @@ val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
 val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
 ```
 `queue handler` registers the queue consumer, like `queue(batch, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve) and [`scheduled`](./#val-scheduled). An exception raised by the handler rejects the event Promise, so the runtime retries the messages that the handler did not ack.
+
+```ocaml
+val email : (Email.t -> Env.t -> Context.t -> unit) -> unit
+```
+`email handler` registers the Email Routing handler, like `email(message, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve), [`scheduled`](./#val-scheduled) and [`queue`](./#val-queue). The handler must call [`Email.forward`](./Workero-Email.md#val-forward), [`Email.reply`](./Workero-Email.md#val-reply) or [`Email.set_reject`](./Workero-Email.md#val-set_reject), or the runtime drops the message. An exception raised by the handler rejects the event Promise, so the runtime treats the delivery as failed.
 
 ```ocaml
 val fetch : 

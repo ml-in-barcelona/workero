@@ -3,14 +3,15 @@ open Internal
 
 type t = js
 
-let of_string s =
-  match Js.Unsafe.new_obj (global "URL") [| str s |] with
+let make v =
+  match Js.Unsafe.new_obj (global "URL") [| v |] with
   | u -> (
       match get_string u "protocol" with
       | Some ("http:" | "https:") -> Some u
       | _ -> None)
   | exception Js.Js_error.Exn _ -> None
 
+let of_string s = make (str s)
 let field t name = Option.value (get_string t name) ~default:""
 let to_string t = field t "href"
 let is_secure t = String.equal (field t "protocol") "https:"

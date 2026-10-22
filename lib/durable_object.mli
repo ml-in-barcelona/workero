@@ -93,6 +93,23 @@ module Storage : sig
       back and the same exception reaches the caller. [f] cannot suspend: a call
       to {!Promise.await} in it raises [Invalid_argument]. *)
 
+  type transaction
+  (** The handle of a running {!transaction}. *)
+
+  val transaction : t -> (transaction -> 'a) -> 'a
+  (** [transaction storage f] runs [f] in a transaction and returns its result.
+      Unlike {!transaction_sync}, [f] may call {!Promise.await}. Every write of
+      [f] to storage and to SQL, made through [storage] or its {!sql}, commits
+      when [f] returns. If [f] raises, those writes are rolled back and the same
+      exception reaches the caller. Calls to [transaction] in [f] nest: a nested
+      transaction that raises rolls back alone. Suspends. *)
+
+  val rollback : transaction -> unit
+  (** Rolls back the writes of the transaction so far and lets [f] go on
+      running: writes after [rollback] are not part of the transaction, so raise
+      to stop instead when they must not happen. Raises {!Js_error} when the
+      transaction has ended. *)
+
   val delete_all : t -> unit
   (** Deletes every key-value pair. It does not delete an alarm. Suspends. *)
 
@@ -129,6 +146,87 @@ module Storage : sig
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 end
 
+module Container : sig
+  (** The container attached to an object, on Cloudflare Containers. Declare it
+      in [wrangler.toml] with [[[containers]]] and the class name of the object.
+      The container starts only when {!start} runs. The functions raise
+      {!Js_error} when the runtime throws or rejects, for example when no image
+      is configured or the container is not running.
+
+      [workerd] runs a container only with Docker: see
+      {{!page-durable_objects}Durable Objects}. *)
+
+  type t
+
+  val running : t -> bool
+  (** [true] once {!start} ran and until the container exits or is destroyed. It
+      does not mean that the program in the container accepts connections. *)
+
+  val start :
+    ?entrypoint:string list ->
+    ?env:(string * string) list ->
+    ?enable_internet:bool ->
+    t ->
+    unit
+  (** Boots the container and returns at once, before it is ready to accept
+      connections. [entrypoint] replaces the command of the image, [env] adds
+      environment variables, and [enable_internet] allows outbound traffic.
+      Raises {!Js_error} when the container already runs. *)
+
+  val monitor : t -> unit
+  (** Waits until the container exits. Raises {!Js_error} when it exits with an
+      error, or when {!destroy} gave a [message]. Suspends. *)
+
+  val destroy : ?message:string -> t -> unit
+  (** Stops the container, and fails {!monitor} with [message] when given.
+      Suspends. *)
+
+  val signal : t -> int -> unit
+  (** [signal container signo] sends the Unix signal number [signo], for example
+      [15] for [SIGTERM], to the main process. *)
+
+  val get_tcp_port : t -> int -> Fetcher.t
+  (** A {!Fetcher.t} for a TCP port of the container: {!Fetcher.fetch} sends an
+      HTTP request to the program that listens on that port. The host of the URL
+      is ignored, so any host works, such as ["http://container/path"]. The
+      program may need time to start: retry on {!Js_error}. For raw TCP, see
+      {!connect}. *)
+
+  val connect : t -> port:int -> Socket.t
+  (** [connect container ~port] opens a raw TCP connection to [port] of the
+      container and returns at once. Call {!Socket.opened} to wait for it; it
+      raises {!Js_error} while the program does not listen yet. The runtime
+      takes the address ["10.0.0.1:<port>"]; the container ignores the host.
+      Raises [Invalid_argument] when [port] is outside 1 to 65535. *)
+
+  val set_inactivity_timeout : t -> ms:int -> unit
+  (** Sets how long the container may run without a request before the runtime
+      stops it. [ms] is 1 to 21600000 (6 hours). Suspends. Raises
+      [Invalid_argument] when [ms] is outside that range. *)
+
+  val intercept_outbound_http : t -> string -> Fetcher.t -> unit
+  (** [intercept_outbound_http container address fetcher] sends the outbound
+      HTTP requests (port 80) of the container to [fetcher], for example a
+      service binding to the Worker, instead of the network. [address] is a host
+      name, a host name pattern such as ["*.example.com"], an IP address,
+      ["ip:port"] or an IPv4 CIDR range. The target sees the original URL.
+      Suspends. A container has 128 interceptors in all; more raise {!Js_error}.
+  *)
+
+  val intercept_all_outbound_http : t -> Fetcher.t -> unit
+  (** Like {!intercept_outbound_http} for every outbound HTTP request on port
+      80. HTTPS is not covered. Suspends. *)
+
+  val intercept_outbound_https : t -> string -> Fetcher.t -> unit
+  (** Like {!intercept_outbound_http} for HTTPS. [address] is a host name or a
+      pattern with an optional port; ["*"] means every host on port 443. The
+      container must trust [/etc/cloudflare/certs/cloudflare-containers-ca.crt].
+      Suspends. *)
+
+  val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+  val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+end
+
 module State : sig
   type t
   (** The [ctx] of an object. *)
@@ -138,6 +236,9 @@ module State : sig
 
   val wait_until : t -> (unit -> unit) -> unit
   (** Like {!Context.wait_until}. *)
+
+  val container : t -> Container.t option
+  (** The container of the object, or [None] when the class has none. *)
 
   val block_concurrency_while : t -> (unit -> 'a) -> 'a
   (** [block_concurrency_while state f] runs [f] in its own fiber and lets no
@@ -188,6 +289,7 @@ val make :
   ?websocket_close:
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
   ?websocket_error:(Websocket.t -> string -> unit) ->
+  ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   unit ->
   t
 (** [make ()] gives an object that handles no event. [init] runs under
@@ -196,11 +298,14 @@ val make :
     object. [fetch] answers the requests that a stub sends. [alarm] runs when
     the alarm is due; an exception makes the runtime retry it. The [websocket_*]
     handlers get the events of sockets accepted with {!State.accept_websocket};
-    [websocket_error] gets the error message. Every handler runs in its own
-    fiber and may call {!Promise.await}. A stub fetch on an object without a
-    [fetch] handler fails. *)
+    [websocket_error] gets the error message. [rpc] answers the calls of the
+    methods that {!register} declared: [rpc name args] gets the method name and
+    the arguments as {!Rpc.t} values, and returns the result as one. See
+    {!register}. Every handler runs in its own fiber and may call
+    {!Promise.await}. A stub fetch on an object without a [fetch] handler fails.
+*)
 
-val register : string -> (State.t -> Env.t -> t) -> unit
+val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 (** [register class_name create] binds [create] to the class that
     [workero build] exports under [class_name]. Call it at module
     initialisation, once per class. The build reads the names by running the
@@ -212,11 +317,32 @@ val register : string -> (State.t -> Env.t -> t) -> unit
     Load stored values in [~init] of {!make}. If [create] raises, the object
     fails to start and the request that needed it fails.
 
+    [rpc] names the RPC methods of the class, for example [["increment"]]. The
+    build adds each name as a method of the exported class, so JavaScript code
+    calls [stub.increment(...)] and OCaml code calls {!call}. The [rpc] handler
+    of {!make} runs each call. A name must follow the rules of [class_name],
+    must be unique in the class, and must not be [fetch], [alarm], [connect],
+    [constructor], [prototype], [webSocketMessage], [webSocketClose] or
+    [webSocketError]. Declare the names here, not in [create]: the build reads
+    them before any object exists. A call to a declared name on a class whose
+    handlers have no [rpc] fails.
+
     Raises [Invalid_argument] when [class_name] is empty, starts with a digit,
     has a character other than an ASCII letter, a digit, ["_"] or ["$"], is
     ["default"], ["then"] or ["__proto__"], or is already registered. Reserved
     words such as ["class"] are accepted: the generated module exports the class
-    under that name without declaring a variable of it. *)
+    under that name without declaring a variable of it. It also raises
+    [Invalid_argument] for an invalid or repeated name in [rpc]. *)
+
+val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
+(** [call stub name args] calls the RPC method [name] of the object that [stub]
+    reaches, with [args], and waits for the result. It is {!Rpc.call}: arguments
+    and result are {!Rpc.t} values, so [Date], [Map], bytes, streams, stubs and
+    functions cross the call, and a JavaScript [undefined] result reads as
+    [`Undefined]. The runtime creates the object on the first call. Suspends.
+    Raises {!Js_error} when the method is missing or when it raises or rejects;
+    the error message is that of the remote exception. Raises [Invalid_argument]
+    when an argument or the result has no {!Rpc.t} form. *)
 
 module Namespace : sig
   type t

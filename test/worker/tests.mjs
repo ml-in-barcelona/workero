@@ -4,18 +4,26 @@ import form from "./cases/form.mjs";
 import ws from "./cases/ws.mjs";
 import context from "./cases/context.mjs";
 import globals from "./cases/globals.mjs";
+import crypto from "./cases/crypto.mjs";
 import envSuite from "./cases/env.mjs";
 import fetcher from "./cases/fetcher.mjs";
 import router from "./cases/router.mjs";
 import rateLimiter from "./cases/rate_limiter.mjs";
+import hyperdrive from "./cases/hyperdrive.mjs";
 import ai from "./cases/ai.mjs";
 import analytics from "./cases/analytics.mjs";
 import durableObject from "./cases/do.mjs";
+import durableObjectRpc from "./cases/do_rpc.mjs";
+import entrypoint from "./cases/entrypoint.mjs";
+import rpcValues from "./cases/rpc_values.mjs";
+import socket from "./cases/socket.mjs";
+import email from "./cases/email.mjs";
+import workflow from "./cases/workflow.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher, router, rateLimiter, ai, analytics, durableObject]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, rpcValues, email, workflow]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };

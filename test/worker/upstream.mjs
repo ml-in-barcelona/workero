@@ -21,4 +21,16 @@ export default {
     }
     throw new Error("upstream down");
   },
+  async connect(socket) {
+    const reader = socket.readable.getReader();
+    const writer = socket.writable.getWriter();
+    const bye = new TextEncoder().encode("bye");
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value.length === bye.length && value.every((b, i) => b === bye[i])) await writer.close();
+      else await writer.write(value);
+    }
+    await writer.close().catch(() => {});
+  },
 };

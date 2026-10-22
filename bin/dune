@@ -6,7 +6,7 @@
 
 (rule
  (targets embedded.ml)
- (deps load-wasm.js index.js durable-object.js)
+ (deps load-wasm.js index.js durable-object.js entrypoint.js workflow.js)
  (action
   (with-stdout-to
    embedded.ml
@@ -17,4 +17,8 @@
     (cat index.js)
     (echo "|js}\nlet durable_object = {js|")
     (cat durable-object.js)
+    (echo "|js}\nlet entrypoint = {js|")
+    (cat entrypoint.js)
+    (echo "|js}\nlet workflow = {js|")
+    (cat workflow.js)
     (echo "|js}\n")))))
