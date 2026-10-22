@@ -181,3 +181,26 @@ rm -rf "$out"
 if workero test/cli/entrypoint-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and an entrypoint share a name"; fi
 grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing class"
 echo "ok - build fails when a Durable Object and an entrypoint share a name"
+
+rm -rf "$out"
+workero test/cli/workflows/main.bc.wasm.js || fail "a program with workflow classes builds"
+grep -q "workero: workflow classes: Alpha, Beta, class" "$log" || fail "build lists the workflow classes"
+[ -f "$out/workflow.js" ] || fail "workflow.js is written when a workflow is registered"
+[ ! -e "$out/entrypoint.js" ] || fail "a program without entrypoints has no entrypoint.js"
+for class in Alpha Beta class; do
+  grep -q "^export { workero_class_[0-9]* as $class };" "$out/index.js" ||
+    fail "index.js exports the workflow $class"
+done
+grep -q 'import { WorkeroWorkflow } from "./workflow.js";' "$out/index.js" || fail "index.js imports the workflow glue"
+grep -q 'cloudflare:workflows' "$out/index.js" && fail "index.js does not import cloudflare:workflows itself"
+echo "ok - build exports the registered workflow classes"
+
+workero test/cli/present/main.bc.wasm.js || fail "a rebuild without workflows builds"
+[ ! -e "$out/workflow.js" ] || fail "a rebuild without workflows removes workflow.js"
+grep -q 'cloudflare:workflows' "$out/index.js" && fail "a worker without workflows does not import cloudflare:workflows"
+echo "ok - a program without workflows has no workflow glue"
+
+rm -rf "$out"
+if workero test/cli/workflow-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and a workflow share a name"; fi
+grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing workflow"
+echo "ok - build fails when a Durable Object and a workflow share a name"

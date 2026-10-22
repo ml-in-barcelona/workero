@@ -34,6 +34,8 @@ through [env], see {{!page-bindings}Bindings}.
   {!Workero.Socket.connect} and read and write them with streams.
 - {{!page-entrypoints}Entrypoints}: expose RPC methods with
   {!Workero.Entrypoint.register} and call them on a service binding.
+- {{!page-workflows}Workflows}: write durable multi-step programs with
+  {!Workero.Workflow.register} and start them with a Workflow binding.
 
 {1 Execution}
 

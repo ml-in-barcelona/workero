@@ -50,10 +50,11 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
 
     Raises [Invalid_argument] when [class_name] is not a valid class name (see
     {!Durable_object.register}), when it is also the name of a Durable Object
-    class or of another entrypoint, or when [rpc] has a duplicate or a name that
-    is not a JavaScript identifier. The names [constructor], [prototype],
-    [__proto__], [then], [env], [ctx], [fetch], [scheduled], [queue], [email],
-    [tail], [trace], [tailStream], [test], [connect] and [dup] are reserved. *)
+    class or of a Workflow or another entrypoint, or when [rpc] has a duplicate
+    or a name that is not a JavaScript identifier. The names [constructor],
+    [prototype], [__proto__], [then], [env], [ctx], [fetch], [scheduled],
+    [queue], [email], [tail], [trace], [tailStream], [test], [connect] and [dup]
+    are reserved. *)
 
 val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 (** [call binding name args] calls the RPC method [name] of the entrypoint

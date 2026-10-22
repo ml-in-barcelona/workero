@@ -47,6 +47,7 @@ module Analytics_engine = Analytics_engine
 module Rpc = Rpc
 module Durable_object = Durable_object
 module Entrypoint = Entrypoint
+module Workflow = Workflow
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like

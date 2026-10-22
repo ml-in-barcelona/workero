@@ -36,7 +36,7 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
 
 `create` gets the `env` and the `ctx` of the instance, so a method can call [`Context.wait_until`](./Workero-Context.md#val-wait_until). It runs for each call, as the runtime creates a new instance of the class for each call. It must not call [`Promise.await`](./Workero-Promise.md#val-await): that raises `Invalid_argument`. Keep no state in the instance; two calls can run in different instances. If `create` raises, the call fails.
 
-Raises `Invalid_argument` when `class_name` is not a valid class name (see [`Durable_object.register`](./Workero-Durable_object.md#val-register)), when it is also the name of a Durable Object class or of another entrypoint, or when `rpc` has a duplicate or a name that is not a JavaScript identifier. The names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
+Raises `Invalid_argument` when `class_name` is not a valid class name (see [`Durable_object.register`](./Workero-Durable_object.md#val-register)), when it is also the name of a Durable Object class or of a Workflow or another entrypoint, or when `rpc` has a duplicate or a name that is not a JavaScript identifier. The names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
 
 ```ocaml
 val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t

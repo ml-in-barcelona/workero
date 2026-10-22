@@ -23,17 +23,6 @@ let reserved =
     "dup";
   ]
 
-let is_identifier name =
-  name <> ""
-  && (match name.[0] with '0' .. '9' -> false | _ -> true)
-  && String.for_all
-       (function
-         | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '$' -> true | _ -> false)
-       name
-
-let is_class_name name =
-  is_identifier name && not (List.mem name [ "default"; "then"; "__proto__" ])
-
 let throw message =
   Js.Js_error.raise_
     (Js.Js_error.of_error
@@ -88,10 +77,11 @@ let register ?(rpc = []) name create =
   if List.length (List.sort_uniq compare rpc) <> List.length rpc then
     invalid_arg (Printf.sprintf "%s: class %S repeats a method name" who name);
   let root = Registry.root () in
-  let durable = Js.Unsafe.get root "durable_objects" in
-  if
-    (typeof durable <> "undefined" && has_own durable name)
-    || has_own (classes ()) name
+  let taken table =
+    let t = Js.Unsafe.get root table in
+    typeof t <> "undefined" && has_own t name
+  in
+  if taken "durable_objects" || taken "workflows" || has_own (classes ()) name
   then
     invalid_arg (Printf.sprintf "%s: class %S is already registered" who name);
   let create_js env ctx : js =

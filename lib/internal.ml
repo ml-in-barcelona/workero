@@ -32,3 +32,14 @@ let describe v =
 
 let has_own o name =
   Js.to_bool (meth (global "Object") "hasOwn" [| o; str name |])
+
+let is_identifier name =
+  name <> ""
+  && (match name.[0] with '0' .. '9' -> false | _ -> true)
+  && String.for_all
+       (function
+         | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '$' -> true | _ -> false)
+       name
+
+let is_class_name name =
+  is_identifier name && not (List.mem name [ "default"; "then"; "__proto__" ])

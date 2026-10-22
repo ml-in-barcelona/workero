@@ -89,7 +89,7 @@ file name without [.bc.wasm.js].
 + Writes [load-wasm.js], which loads the precompiled wasm modules in workerd.
 + Writes an initial [index.js] and runs the program once in [workerd test] to
   read class names registered at module initialization with
-  {!Workero.Durable_object.register} and {!Workero.Entrypoint.register}. The probe runs for at most 30 seconds by
+  {!Workero.Durable_object.register}, {!Workero.Entrypoint.register} and {!Workero.Workflow.register}. The probe runs for at most 30 seconds by
   default. Set [WORKERO_PROBE_TIMEOUT] to a positive number of seconds to
   change it; absent, invalid and nonpositive values use 30 seconds. The probe
   does not call a fetch, scheduled, queue or email handler.
@@ -101,12 +101,15 @@ file name without [.bc.wasm.js].
   classes exist, it writes [durable-object.js] for their initialization, fetch,
   alarm, and WebSocket event handlers. If entrypoint classes exist, it writes
   [entrypoint.js] for their RPC methods (see {{!page-entrypoints}Entrypoints}).
-  It removes a stale [durable-object.js] or [entrypoint.js] when no classes of
-  that kind are registered.
+  If Workflow classes exist, it writes [workflow.js], which imports
+  [cloudflare:workflows] (see {{!page-workflows}Workflows}). It removes a stale
+  [durable-object.js], [entrypoint.js] or [workflow.js] when no classes of that
+  kind are registered.
 
 On success it prints [workero: wrote <dir> (<n> wasm file(s))] and, Durable
 Object classes were found, [workero: Durable Object classes: <names>] and, if
-entrypoint classes were found, [workero: entrypoint classes: <names>]. Its explicit
+entrypoint classes were found, [workero: entrypoint classes: <names>] and, if
+Workflow classes were found, [workero: workflow classes: <names>]. Its explicit
 usage and packaging errors print [workero: <reason>] to stderr and exit with
 code 1. Other errors, such as file-system exceptions during a copy, are not
 wrapped by that error handler.

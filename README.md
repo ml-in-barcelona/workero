@@ -46,7 +46,7 @@ Follow [Getting started](https://ml-in-barcelona.github.io/workero/workero/getti
 to edit the template and run it locally. The [Runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html)
 and [Bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html)
 guides cover requests, JSON, routing, scheduled handlers, sockets, email,
-entrypoints and RPC, Queues, Durable Objects, SQL, and hibernating WebSockets.
+entrypoints and RPC, Workflows, Queues, Durable Objects, SQL, and hibernating WebSockets.
 See the [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html)
 for packaging and [CONTRIBUTING.md](CONTRIBUTING.md) for repository work.
 

@@ -42,6 +42,7 @@ module Analytics_engine = Analytics_engine
 module Rpc = Rpc
 module Durable_object = Durable_object
 module Entrypoint = Entrypoint
+module Workflow = Workflow
 
 let register name handler = Registry.set name (Async.promising handler)
 let flushing f = Fun.protect ~finally:flush_all f

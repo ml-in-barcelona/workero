@@ -18,7 +18,7 @@ Use [Runtime APIs](./runtime_apis.md) to register handlers, route HTTP requests,
 
 ## Bindings
 
-[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument. Use them for storage, Durable Objects, Queues, other Workers, static assets, databases through Hyperdrive, AI, analytics, and rate limiting. [Entrypoints](./entrypoints.md) expose RPC methods that other Workers call through a service binding.
+[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument. Use them for storage, Durable Objects, Queues, other Workers, static assets, databases through Hyperdrive, AI, analytics, and rate limiting. [Entrypoints](./entrypoints.md) expose RPC methods that other Workers call through a service binding, and [Workflows](./workflows.md) run durable multi-step programs.
 
 
 ## Development and deployment

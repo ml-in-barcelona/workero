@@ -9,7 +9,8 @@ for (const name of ["fetch", "scheduled", "queue", "email"]) {
 if (
   Object.keys(handlers).length +
     Object.keys(registered.durable_objects ?? {}).length +
-    Object.keys(registered.entrypoints ?? {}).length ===
+    Object.keys(registered.entrypoints ?? {}).length +
+    Object.keys(registered.workflows ?? {}).length ===
   0
 )
   throw new Error(
