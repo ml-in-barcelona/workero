@@ -25,6 +25,7 @@
   ai
   analytics_engine
   durable_objects
+  entrypoints
   interop
   how_it_works
   libraries

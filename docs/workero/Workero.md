@@ -168,6 +168,11 @@ module Durable_object : sig ... end
 Durable Objects with SQLite storage.
 
 ```ocaml
+module Entrypoint : sig ... end
+```
+`WorkerEntrypoint` classes with RPC methods.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.

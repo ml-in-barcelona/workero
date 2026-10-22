@@ -13,6 +13,7 @@ let handlers =
     Routes_ai.handle;
     Routes_analytics.handle;
     Routes_do.handle;
+    Routes_entrypoint.handle;
   ]
 
 let handler req env ctx =

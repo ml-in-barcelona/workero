@@ -80,17 +80,19 @@ without [.bc.wasm.js].
   [<name>.bc.wasm.assets] directory into the output directory.
 + Writes [load-wasm.js], which loads the precompiled wasm modules in workerd.
 + Runs the program once in [workerd] to read the Durable Object classes that
-  it registered with {!Workero.Durable_object.register}. It needs [workerd] for
+  it registered with {!Workero.Durable_object.register} and the entrypoint
+  classes that it registered with {!Workero.Entrypoint.register}. It needs [workerd] for
   every build. It looks for it in [WORKERD], on [PATH], then in
   [node_modules/.bin] of the current directory and its parents.
 + Writes [index.js], the worker entry point. It imports every [.wasm] file and
   exports the handlers that the program registered with {!Workero.serve} and
   {!Workero.scheduled}, {!Workero.queue}, and one class for each registered
-  Durable Object. For those it also writes [durable-object.js], and it removes a
-  [durable-object.js] that an earlier run left.
+  Durable Object and one for each registered entrypoint. For those it also
+  writes [durable-object.js] and [entrypoint.js], and it removes a file that an
+  earlier run left.
 
 It prints [workero: wrote <dir> (<n> wasm file(s))], and the Durable Object
-classes on a second line when there are any. On an error it prints
+and entrypoint classes on further lines when there are any. On an error it prints
 [workero: <reason>] to stderr and exits with code 1.
 
 {1 Errors}

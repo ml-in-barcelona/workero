@@ -24,6 +24,13 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [Workers AI](./ai.md): no streaming answers and no gateway options. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` on a stream.
 - [Analytics Engine](./analytics_engine.md): `write` returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
 
+## Limits of entrypoints
+
+- [Entrypoints](./entrypoints.md): arguments and results are JSON values. `Uint8Array`, `Date`, `Map`, `BigInt`, streams and stubs do not cross the call. The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
+- The runtime creates a new instance of an entrypoint for each call, so it keeps no state between calls.
+- An entrypoint and a Durable Object class cannot share a name.
+- A method declared in `~rpc` on a class whose handlers have no `rpc` fails on the first call, not at build time.
+
 ## Limits of Durable Objects
 
 - Only classes with SQLite storage work. A class listed in `new_classes` builds, then fails at run time with a JavaScript error. See [Durable Objects](./durable_objects.md).
@@ -41,7 +48,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - The `tail` and `email` handlers.
 - Workflows.
-- RPC: `WorkerEntrypoint` and RPC methods on Durable Object stubs.
+- RPC methods on Durable Object stubs.
 - Durable Objects without SQLite storage, and `State.container`.
 - Vectorize, Hyperdrive and the Send Email binding.
 - `HTMLRewriter`.

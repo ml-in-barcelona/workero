@@ -140,3 +140,25 @@ rm -rf "$out"
 if WORKERD=/nonexistent/workerd workero test/cli/present/main.bc.wasm.js; then fail "build fails without workerd"; fi
 grep -q "workero: WORKERD is set to /nonexistent/workerd, which does not exist" "$log" || fail "the error names the missing workerd"
 echo "ok - build fails when workerd is missing"
+
+rm -rf "$out"
+workero test/cli/entrypoints/main.bc.wasm.js || fail "a program with entrypoint classes builds"
+grep -q "workero: entrypoint classes: Alpha, Beta, class" "$log" || fail "build lists the entrypoint classes"
+[ -f "$out/entrypoint.js" ] || fail "entrypoint.js is written when an entrypoint is registered"
+[ ! -e "$out/durable-object.js" ] || fail "a program without Durable Object classes has no durable-object.js"
+for class in Alpha Beta class; do
+  grep -q "^export { workero_class_[0-9]* as $class };" "$out/index.js" ||
+    fail "index.js exports the entrypoint $class"
+done
+[ "$(grep -c 'for (const m of \["ping"\]) workero_class_[0-9]*.prototype' "$out/index.js")" -eq 3 ] ||
+  fail "index.js adds the declared RPC methods to each entrypoint"
+echo "ok - build exports the registered entrypoint classes"
+
+workero test/cli/present/main.bc.wasm.js || fail "a rebuild without entrypoints builds"
+[ ! -e "$out/entrypoint.js" ] || fail "a rebuild without entrypoints removes entrypoint.js"
+echo "ok - a program without entrypoints has no entrypoint glue"
+
+rm -rf "$out"
+if workero test/cli/entrypoint-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and an entrypoint share a name"; fi
+grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing class"
+echo "ok - build fails when a Durable Object and an entrypoint share a name"

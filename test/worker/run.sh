@@ -40,6 +40,10 @@ cp test/worker/cases/*.mjs "$out/cases/"
   for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
     echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"
   done
+  echo '        (name = "CALC", service = (name = "worker", entrypoint = "Calc")),'
+  echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
+  echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
+  echo '        (name = "JSRPC", service = (name = "rpc", entrypoint = "Js")),'
   echo '        (name = "KV", kvNamespace = "kv"),'
   echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
@@ -69,7 +73,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache backend queue-sink limiter ai; do
+  for svc in kv r2 cache backend queue-sink limiter ai rpc; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
@@ -92,7 +96,12 @@ cp test/worker/cases/*.mjs "$out/cases/"
     echo "        (name = \"$f\", esModule = embed \"$f\"),"
   done
   echo '      ],'
-  echo '      bindings = [(name = "WORKER", service = "worker")],'
+  echo '      bindings = ['
+  echo '        (name = "WORKER", service = "worker"),'
+  echo '        (name = "CALC", service = (name = "worker", entrypoint = "Calc")),'
+  echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
+  echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
+  echo '      ],'
   echo '    )),'
   echo '    (name = "test-queue", worker = ('
   echo '      compatibilityDate = "2026-10-01",'

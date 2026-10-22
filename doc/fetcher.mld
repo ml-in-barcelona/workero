@@ -50,6 +50,8 @@ let () = Workero.serve handler
 - {!Workero.Fetcher.fetch_request} forwards a {!Workero.Request.t} as it is. The
   runtime consumes the body of the request. Use {!Workero.Request.clone} first
   if the handler reads it too.
+- {!Workero.Entrypoint.call} calls an RPC method of a binding that names an
+  entrypoint class. See {{!page-entrypoints}Entrypoints}.
 
 The URL must be absolute. A service binding ignores the host, so write any
 host, such as [http://backend/users]. The target Worker sees the path and the
