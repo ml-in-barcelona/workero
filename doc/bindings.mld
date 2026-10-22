@@ -31,6 +31,8 @@ look up bindings and check their methods.
 - {{!page-rate_limiter}Rate Limiting}: {!Workero.Rate_limiter.of_env} looks up a
   limiter.
 - {{!page-ai}Workers AI}: {!Workero.Ai.of_env} looks up a model binding.
+- {{!page-workflows}Workflows}: {!Workero.Workflow.of_env} looks up a Workflow
+  binding; {!Workero.Workflow.create} starts an instance.
 - {{!page-analytics_engine}Analytics Engine}:
   {!Workero.Analytics_engine.of_env} looks up a dataset.
 

@@ -24,7 +24,8 @@ and run background work.
 your handler's [env] argument. Use them for storage, Durable Objects, Queues,
 other Workers, static assets, databases through Hyperdrive, AI, analytics, and
 rate limiting. {{!page-entrypoints}Entrypoints} expose RPC methods that other
-Workers call through a service binding.
+Workers call through a service binding, and {{!page-workflows}Workflows} run
+durable multi-step programs.
 
 {1 Development and deployment}
 

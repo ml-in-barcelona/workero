@@ -17,11 +17,12 @@ import durableObjectRpc from "./cases/do_rpc.mjs";
 import entrypoint from "./cases/entrypoint.mjs";
 import socket from "./cases/socket.mjs";
 import email from "./cases/email.mjs";
+import workflow from "./cases/workflow.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, email]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, email, workflow]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };

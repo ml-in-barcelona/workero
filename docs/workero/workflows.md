@@ -1,0 +1,88 @@
+
+# Workflows
+
+A [Workflow](https://developers.cloudflare.com/workflows/) is a durable, multi-step program. Each step runs at least once, its result is stored, and the runtime can sleep, retry and resume the program for days. [`Workero.Workflow`](./Workero-Workflow.md) covers both halves: the class that runs the steps, and the binding that starts and controls instances.
+
+
+## Write a Workflow
+
+Register the class under a name at module initialisation. The function gets the `env`, the event and the step object:
+
+```ocaml
+open Workero
+module Step = Workflow.Step
+
+let () =
+  Workflow.register "Greet" (fun env event step ->
+      let name =
+        Step.do_ step "read name" (fun () ->
+            match event.Workflow.payload with
+            | `Assoc [ ("name", `String n) ] -> `String n
+            | _ -> `String "world")
+      in
+      Step.sleep step "pause" (Workflow.Duration.seconds 10);
+      let greeting =
+        Step.do_ step "greet"
+          ~retries:
+            (Step.retries ~limit:3 ~delay:(Workflow.Duration.seconds 5)
+               ~backoff:Step.Exponential ())
+          ~timeout:(Workflow.Duration.minutes 1)
+          (fun () ->
+            let res = fetch "https://example.com/greeting" in
+            `String (Response.body_text res))
+      in
+      `Assoc [ ("name", name); ("greeting", greeting) ])
+```
+The function runs in a fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Its result is the output of the instance. An exception that it raises fails the instance.
+
+`workero build` runs the program once in `workerd` and exports every registered class from `index.js`, like Durable Object and entrypoint classes. It writes `workflow.js` only when a Workflow is registered, so a Worker without Workflows imports nothing new. Declare the class in `wrangler.toml`; `class_name` is the name given to [`Workero.Workflow.register`](./Workero-Workflow.md#val-register):
+
+```toml
+[[workflows]]
+name = "greet"
+binding = "GREET"
+class_name = "Greet"
+```
+
+## Replay
+
+The runtime runs the function again after every sleep, wait, retry and eviction. [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_) returns the stored result of a step that already finished and does not call its callback. So:
+
+- Code outside the steps runs again each time. It must be deterministic: do not read the clock or random numbers there. Produce the value inside a step and return it, as in the example.
+- OCaml values do not live between runs. Keep what later steps need in the results of earlier steps.
+- A step is identified by its name and the number of calls with that name. Do not rename or reorder the steps of instances that already run.
+- A step callback runs at least once. Make it idempotent.
+
+## Steps
+
+- [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_): run a callback, store its JSON result. `retries` sets `limit`, `delay` and `backoff` (`Constant`, `Linear` or `Exponential`); `timeout` applies to each attempt. Without them the runtime uses 5 retries, a 10 second delay, exponential backoff and a 10 minute timeout.
+- [`Workero.Workflow.Step.sleep`](./Workero-Workflow-Step.md#val-sleep) and [`Workero.Workflow.Step.sleep_until`](./Workero-Workflow-Step.md#val-sleep_until): wait for a [`Workero.Workflow.Duration.t`](./Workero-Workflow-Duration.md#type-t) or until a time in milliseconds since the epoch, like [`Workero.Date.now`](./Workero-Date.md#val-now).
+- [`Workero.Workflow.Step.wait_for_event`](./Workero-Workflow-Step.md#val-wait_for_event): wait for an event of a given type, sent with [`Workero.Workflow.Instance.send_event`](./Workero-Workflow-Instance.md#val-send_event), and return its payload. It fails with [`Workero.Js_error`](./Workero.md#exception-Js_error) after the timeout (24 hours by default). Catch the error to go on.
+A callback that raises fails the attempt, and the runtime retries it. Raise [`Workero.Workflow.Non_retryable`](./Workero-Workflow.md#exception-Non_retryable) to fail without retries; the runtime sees a `NonRetryableError`. After the last attempt, [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) in the function; catch it to keep the instance running.
+
+Step results, event payloads and params are JSON values ([`Workero.JSON`](./Workero-JSON.md)). The JSON parser reads integers as OCaml `int`, which has 31 bits in a Worker: a step that returns a number above 1073741823, such as `Date.now ()`, fails with a parse error. Return such a value as a string.
+
+
+## Start and control instances
+
+Read the binding with [`Workero.Workflow.of_env`](./Workero-Workflow.md#val-of_env):
+
+```ocaml
+let handler req env _ctx =
+  let greet = Workflow.of_env env "GREET" in
+  let instance =
+    Workflow.create greet ~params:(`Assoc [ ("name", `String "Ana") ])
+  in
+  let state = Workflow.Instance.status instance in
+  Response.text
+    (Workflow.Instance.id instance
+    ^ (match state.status with
+      | Workflow.Instance.Complete -> " complete"
+      | _ -> " running"))
+```
+[`Workero.Workflow.create`](./Workero-Workflow.md#val-create) takes an optional `id` and `params`; the params are the `payload` of the event. [`Workero.Workflow.create_batch`](./Workero-Workflow.md#val-create_batch) starts up to 100 instances and returns the instances and the errors, for example for an `id` in use. [`Workero.Workflow.get`](./Workero-Workflow.md#val-get) finds an instance by id. An instance has [`Workero.Workflow.Instance.status`](./Workero-Workflow-Instance.md#val-status), `pause`, `resume`, `terminate`, `restart` and [`Workero.Workflow.Instance.send_event`](./Workero-Workflow-Instance.md#val-send_event). The calls raise [`Workero.Js_error`](./Workero.md#exception-Js_error) when the runtime rejects them: a missing instance, an `id` in use, `resume` of an instance that runs, `send_event` to an instance that is not running.
+
+
+## Limits
+
+The runtime enforces its [limits](https://developers.cloudflare.com/workflows/reference/limits/): 1,024 steps (free) or 10,000 (paid, up to 25,000) per instance, 1 MiB for a step result and for an event payload, 365 days for a sleep, and an instance id of up to 100 characters. See [Troubleshooting and support](./known_issues.md) for what workero leaves out and for what its tests prove.

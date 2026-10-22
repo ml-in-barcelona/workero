@@ -148,24 +148,27 @@ let missing_primitives loader =
   in
   scan 0 []
 
-type kind = Durable_object | Entrypoint
+type kind = Durable_object | Entrypoint | Workflow
 type class_export = { name : string; kind : kind; methods : string list }
 
 let kind_tag = function
   | Durable_object -> "durable_object"
   | Entrypoint -> "entrypoint"
+  | Workflow -> "workflow"
 
 let kind_of_tag = function
   | "durable_object" -> Some Durable_object
   | "entrypoint" -> Some Entrypoint
+  | "workflow" -> Some Workflow
   | _ -> None
 
 let kind_glue = function
   | Durable_object ->
       ("durable-object.js", Embedded.durable_object, "WorkeroDurableObject")
   | Entrypoint -> ("entrypoint.js", Embedded.entrypoint, "WorkeroEntrypoint")
+  | Workflow -> ("workflow.js", Embedded.workflow, "WorkeroWorkflow")
 
-let glue_files = [ "durable-object.js"; "entrypoint.js" ]
+let glue_files = [ "durable-object.js"; "entrypoint.js"; "workflow.js" ]
 
 let class_exports classes =
   let glue_of c = kind_glue c.kind in
@@ -285,7 +288,7 @@ let probe_end = "workero-classes-end"
 let probe_script ~name wasm =
   loader_prelude ~name wasm
   ^ "const kinds = { durable_objects: \"durable_object\", entrypoints: \
-     \"entrypoint\" };\n\
+     \"entrypoint\", workflows: \"workflow\" };\n\
      export default {\n\
     \  async test() {\n\
     \    for (const [key, kind] of Object.entries(kinds))\n\
@@ -486,7 +489,10 @@ let package ~allow_missing ~built ~name out =
       (String.concat ", " (names Durable_object));
   if names Entrypoint <> [] then
     Printf.printf "workero: entrypoint classes: %s\n"
-      (String.concat ", " (names Entrypoint))
+      (String.concat ", " (names Entrypoint));
+  if names Workflow <> [] then
+    Printf.printf "workero: workflow classes: %s\n"
+      (String.concat ", " (names Workflow))
 
 let loader_suffix = ".bc.wasm.js"
 let is_loader arg = String.ends_with ~suffix:loader_suffix arg

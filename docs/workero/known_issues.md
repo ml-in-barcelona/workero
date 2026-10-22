@@ -28,6 +28,13 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [Email](./email.md): `workerd` has no way to deliver a test email, and it has no `cloudflare:email` module. [`Workero.Email.reply`](./Workero-Email.md#val-reply) fails there with a [`Workero.Js_error`](./Workero.md#exception-Js_error). The tests call the handler from a JavaScript harness with a mock message and a stand-in module, so they do not prove what the real runtime accepts.
 - Email: [`Workero.Email.reply`](./Workero-Email.md#val-reply) takes the raw message as a string, not a stream. [`Workero.Email.raw_text`](./Workero-Email.md#val-raw_text) and [`Workero.Email.raw_bytes`](./Workero-Email.md#val-raw_bytes) copy the whole message into the memory of the program; use [`Workero.Email.raw`](./Workero-Email.md#val-raw) for a large message. The raw message can be read once. The runtime checks the rules for `forward` headers and for the `reply` message.
 
+## Workflow limits
+
+- [Workflows](./workflows.md): workerd has no Workflows engine, so the tests run the class and the binding against a small JavaScript engine. It calls the OCaml class over RPC as Cloudflare's engine does, and it implements steps, retries, `sleep`, `wait_for_event` and replay. The tests do not prove persistence, eviction, real retry timing, the Cloudflare limits or a deployment. Run a Workflow with `wrangler dev` or on Cloudflare before you rely on it.
+- Step results, event payloads, params and outputs are JSON values; integers above 1073741823 do not parse (see [Workflows](./workflows.md)).
+- Not wrapped: `retention`, `createBatch` with `count`, `deleteBatch`, `Instance.delete`, `subscribe`, `terminate` and `restart` options, rollback handlers, the step context (`attempt`), a function as `delay`, the cron `schedule` and the `workflowName` of the event. `wait_for_event` returns the payload, not the event.
+- A Workflow class and a Durable Object or entrypoint class cannot share a name.
+
 ## Entrypoint limits
 
 - [Entrypoints](./entrypoints.md): arguments and results are JSON values. `Uint8Array`, `Date`, `Map`, `BigInt`, streams and stubs do not cross the call. The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
@@ -52,7 +59,6 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 ## Not supported yet
 
 - The `tail` handler.
-- Workflows.
 - Durable Objects without SQLite storage.
 - Vectorize and the Send Email binding.
 - `HTMLRewriter`.
