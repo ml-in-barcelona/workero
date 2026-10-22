@@ -5,6 +5,7 @@ let handlers =
     Routes_ws.handle;
     Routes_context.handle;
     Routes_globals.handle;
+    Routes_crypto.handle;
     Routes_env.handle;
     Routes_fetcher.handle;
     Routes_router.handle;

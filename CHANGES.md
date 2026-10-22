@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `Workero.Crypto` wraps `crypto.subtle`: `digest` (SHA-1, SHA-256, SHA-384, SHA-512), `Key.import_hmac`, `hmac_sign`, `hmac_verify`, `Key.import_aes_gcm`, `aes_gcm_encrypt`, `aes_gcm_decrypt`, `pbkdf2` and `hkdf`. Bytes are OCaml strings; keys are typed by algorithm.
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).

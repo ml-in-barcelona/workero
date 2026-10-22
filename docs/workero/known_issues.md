@@ -47,7 +47,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - `HTMLRewriter`.
 - Outbound TCP sockets (`connect`).
 - `AbortController` and request cancellation.
-- `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has `random_uuid` and `random_bytes` only.
+- Most of `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has digests, HMAC, AES-GCM, PBKDF2 and HKDF with raw keys. It has no key generation, no `exportKey`, no `jwk`, `pkcs8` or `spki` import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no `wrapKey` and no `DigestStream`. Keys are never extractable.
 - Containers.
 
 ## Differences from native OCaml
