@@ -32,6 +32,9 @@ not supported yet.
 - {{!page-ai}Workers AI}: no streaming answers and no gateway options. {!Workero.Ai.run} raises [Invalid_argument] on a stream.
 - {{!page-analytics_engine}Analytics Engine}: [write] returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
 
+- {{!page-socket}Sockets}: outbound connections only, from a handler. There is no [connect] handler for incoming TCP and no [Socket.upgraded]. {!Workero.Socket.opened} gives no address information. [workerd] cannot test TLS: with a Worker as outbound, [secure_transport:On] and [start_tls] fail. Cloudflare limits the destination (no Cloudflare addresses, loopback or port 25) and the number of open connections for each request; see its documentation.
+- Sockets: [index.js] always imports [cloudflare:sockets]. It is available on Cloudflare and in [workerd] without a flag. A program run outside a Worker, for example in Node.js, raises [Failure] from {!Workero.Socket.connect}.
+
 {1 Limits of entrypoints}
 
 - {{!page-entrypoints}Entrypoints}: arguments and results are JSON values. [Uint8Array], [Date], [Map], [BigInt], streams and stubs do not cross the call. The [scheduled], [queue], [email] and [tail] handlers of a class are not supported.
@@ -59,7 +62,6 @@ not supported yet.
 - Durable Objects without SQLite storage, and [State.container].
 - Vectorize and the Send Email binding.
 - [HTMLRewriter].
-- Outbound TCP sockets ([connect]). {!Workero.Hyperdrive} gives connection details, but no OCaml database driver can use them yet.
 - [AbortController] and request cancellation.
 - Most of [crypto.subtle]. {!Workero.Crypto} has digests, HMAC, AES-GCM, PBKDF2
   and HKDF with raw keys. It has no key generation, no [exportKey], no [jwk],

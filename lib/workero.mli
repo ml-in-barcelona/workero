@@ -39,6 +39,7 @@ module Secret_store = Secret_store
 module Hyperdrive = Hyperdrive
 module Fetcher = Fetcher
 module Queue = Queue
+module Socket = Socket
 module Rate_limiter = Rate_limiter
 module Ai = Ai
 module Analytics_engine = Analytics_engine

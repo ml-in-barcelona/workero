@@ -3,7 +3,7 @@
 
 A Hyperdrive binding, declared in `wrangler.toml` with `[[hyperdrive]]`. Hyperdrive pools and caches connections to a PostgreSQL or MySQL database.
 
-The binding gives connection details only. To query the database you need a database driver that speaks the wire protocol over TCP, and no such driver for OCaml runs in a Worker yet. The `Socket` module of workero, which opens the TCP connection, is still in development.
+The binding gives connection details only. To query the database you need a database driver that speaks the wire protocol over TCP, and no such driver for OCaml runs in a Worker yet. A driver would open the connection with [`Socket.connect`](./Workero-Socket.md#val-connect).
 
 The host, user and password are valid only inside the running Worker. Treat [`password`](./#val-password) and [`connection_string`](./#val-connection_string) as secrets: do not log them. No error that this module raises contains them.
 

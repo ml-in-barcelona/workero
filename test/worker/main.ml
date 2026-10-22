@@ -14,6 +14,7 @@ let handlers =
     Routes_hyperdrive.handle;
     Routes_ai.handle;
     Routes_analytics.handle;
+    Routes_socket.handle;
     Routes_do.handle;
     Routes_entrypoint.handle;
   ]

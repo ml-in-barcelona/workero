@@ -23,7 +23,7 @@ The pages follow the order of a Worker project.
 - [WebSockets](./websockets.md): accept a connection and read its messages.
 - [Variables and secrets](./env.md): `Env.var`, `Env.secret`, `Env.json` and Secrets Store.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
-- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md), [Queue](./queue.md), [Rate limiting](./rate_limiter.md), [Hyperdrive](./hyperdrive.md), [Workers AI](./ai.md) and [Analytics Engine](./analytics_engine.md).
+- [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md), [Queue](./queue.md), [Sockets](./socket.md), [Rate limiting](./rate_limiter.md), [Hyperdrive](./hyperdrive.md), [Workers AI](./ai.md) and [Analytics Engine](./analytics_engine.md).
 - [Durable Objects](./durable_objects.md): classes, stubs, storage and alarms.
 - [Entrypoints](./entrypoints.md): `WorkerEntrypoint` classes and RPC methods.
 - [Logging](./logging.md): output and `Workero.Console`.

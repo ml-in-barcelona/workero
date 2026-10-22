@@ -11,6 +11,7 @@
   test_response
   test_status
   test_stream
+  test_socket
   test_form_data
   test_websocket
   test_fetch

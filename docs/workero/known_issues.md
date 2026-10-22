@@ -24,6 +24,8 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [Hyperdrive](./hyperdrive.md): connection details only. There is no `connect` and no query driver, so workero cannot read from the database yet. The host and password are valid only inside the running Worker. In `workerd` the host is a fake name with no database behind it.
 - [Workers AI](./ai.md): no streaming answers and no gateway options. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` on a stream.
 - [Analytics Engine](./analytics_engine.md): `write` returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
+- [Sockets](./socket.md): outbound connections only, from a handler. There is no `connect` handler for incoming TCP and no `Socket.upgraded`. [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives no address information. `workerd` cannot test TLS: with a Worker as outbound, `secure_transport:On` and `start_tls` fail. Cloudflare limits the destination (no Cloudflare addresses, loopback or port 25\) and the number of open connections for each request; see its documentation.
+- Sockets: `index.js` always imports `cloudflare:sockets`. It is available on Cloudflare and in `workerd` without a flag. A program run outside a Worker, for example in Node.js, raises `Failure` from [`Workero.Socket.connect`](./Workero-Socket.md#val-connect).
 
 ## Limits of entrypoints
 
@@ -52,7 +54,6 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - Durable Objects without SQLite storage, and `State.container`.
 - Vectorize and the Send Email binding.
 - `HTMLRewriter`.
-- Outbound TCP sockets (`connect`). [`Workero.Hyperdrive`](./Workero-Hyperdrive.md) gives connection details, but no OCaml database driver can use them yet.
 - `AbortController` and request cancellation.
 - Most of `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has digests, HMAC, AES-GCM, PBKDF2 and HKDF with raw keys. It has no key generation, no `exportKey`, no `jwk`, `pkcs8` or `spki` import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no `wrapKey` and no `DigestStream`. Keys are never extractable.
 - Containers.

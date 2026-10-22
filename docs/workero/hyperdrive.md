@@ -3,7 +3,7 @@
 
 [`Workero.Hyperdrive`](./Workero-Hyperdrive.md) is the [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) binding. Hyperdrive pools and caches connections to a PostgreSQL or MySQL database. The binding tells your Worker where and how to connect.
 
-**Workero cannot query the database yet.** The binding gives connection details only. To send a query you need a database driver that speaks the database protocol over TCP, and no such driver for OCaml runs in a Worker. The TCP module of workero is still in development. Until a driver exists, use Hyperdrive from workero only to read the details and pass them on.
+**Workero cannot query the database yet.** The binding gives connection details only. To send a query you need a database driver that speaks the database protocol over TCP, and no such driver for OCaml runs in a Worker. A driver would open the connection with [`Workero.Socket.connect`](./Workero-Socket.md#val-connect). Until a driver exists, use Hyperdrive from workero only to read the details and pass them on.
 
 
 ## Configure
