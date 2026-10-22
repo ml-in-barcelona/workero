@@ -7,7 +7,7 @@ let method_ r = Method.of_string (Js.to_string (Js.Unsafe.get r "method"))
 
 let url r =
   let v = Js.Unsafe.get r "url" in
-  match Url_core.of_js v with
+  match Url.make v with
   | Some u -> u
   | None ->
       invalid_arg ("Workero.Request.url: " ^ Js.to_string (Js.Unsafe.coerce v))

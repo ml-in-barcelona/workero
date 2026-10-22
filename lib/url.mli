@@ -2,10 +2,14 @@
     query arguments are percent-decoded. In a query, [+] decodes to a space, as
     in WHATWG [URLSearchParams]. *)
 
-type t = Url_core.t
+type t
 
 val of_string : string -> t option
 (** [None] when the string is not an [http] or [https] URL. *)
+
+val make : Js_of_ocaml.Js.Unsafe.any -> t option
+(** [make v] builds a URL from a JavaScript value, such as a URL string, with
+    [new URL(v)]. [None] when it is not an [http] or [https] URL. *)
 
 val to_string : t -> string
 val scheme : t -> string

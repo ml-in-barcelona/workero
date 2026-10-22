@@ -45,6 +45,20 @@ let test_url_rejects () =
   Alcotest.(check bool) "not a URL" true (Workero.URL.of_string "nope" = None);
   Alcotest.(check bool) "ftp" true (Workero.URL.of_string "ftp://a.test/" = None)
 
+let test_url_make () =
+  let make src = Workero.URL.make (Helpers.js_eval src) in
+  (match make "'https://a.test/x?k=1'" with
+  | Some u ->
+      Alcotest.(check string)
+        "href" "https://a.test/x?k=1" (Workero.URL.to_string u)
+  | None -> Alcotest.fail "string rejected");
+  (match make "new URL('http://b.test/y')" with
+  | Some u -> Alcotest.(check string) "URL object" "b.test" (Workero.URL.host u)
+  | None -> Alcotest.fail "URL object rejected");
+  Alcotest.(check bool) "not a URL" true (make "'nope'" = None);
+  Alcotest.(check bool) "ftp" true (make "'ftp://a.test/'" = None);
+  Alcotest.(check bool) "undefined" true (make "undefined" = None)
+
 let test_url_underscore_host () =
   let u = url_of "http://my_host:8080/p/x" in
   Alcotest.(check string) "host" "my_host" (Workero.URL.host u);
@@ -114,6 +128,7 @@ let () =
           Alcotest.test_case "raw parts" `Quick test_url_raw_parts;
           Alcotest.test_case "empty parts" `Quick test_url_empty_parts;
           Alcotest.test_case "rejects" `Quick test_url_rejects;
+          Alcotest.test_case "make" `Quick test_url_make;
           Alcotest.test_case "underscore host" `Quick test_url_underscore_host;
           Alcotest.test_case "userinfo" `Quick test_url_userinfo;
           Alcotest.test_case "path table" `Quick test_url_path_table;

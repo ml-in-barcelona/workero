@@ -1,7 +1,17 @@
-include Url_core
+module Js = Js_of_ocaml.Js
 open Internal
 
-let of_string s = of_js (str s)
+type t = js
+
+let make v =
+  match Js.Unsafe.new_obj (global "URL") [| v |] with
+  | u -> (
+      match get_string u "protocol" with
+      | Some ("http:" | "https:") -> Some u
+      | _ -> None)
+  | exception Js.Js_error.Exn _ -> None
+
+let of_string s = make (str s)
 let field t name = Option.value (get_string t name) ~default:""
 let to_string t = field t "href"
 let is_secure t = String.equal (field t "protocol") "https:"
