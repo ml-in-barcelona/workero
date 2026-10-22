@@ -10,6 +10,8 @@
 workero build [<dune build args>...] <dir>/<name>.bc.wasm.js [--out <dir>] [--allow-missing-primitives]
 workero package <path>/<name>.bc.wasm.js [--out <dir>] [--allow-missing-primitives]
 ```
+`workero --help`, `workero build --help` and `workero package --help` describe the commands and options.
+
 `workero` has two options of its own, and both commands take them:
 
 - `--out <dir>` (or `--out=<dir>`) sets the output directory. The default is `_worker`.
@@ -24,7 +26,7 @@ They can be anywhere in the arguments.
 ```sh
 workero build src/main.bc.wasm.js --profile dev --display short
 ```
-Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`. Without an explicit dune root, write it relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
+Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`. Without an explicit dune root, write it relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. The error is the usage line followed by `workero: expected exactly one .bc.wasm.js target`. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
 
 Run it from any directory inside the dune project.
 
@@ -33,7 +35,7 @@ Run it from any directory inside the dune project.
 
 ### package
 
-`workero package _build/default/src/main.bc.wasm.js` reads `_build/default/src/main.bc.wasm.js` and `_build/default/src/main.bc.wasm.assets` and never runs dune. Use it when another step builds the executable, such as a Makefile or CI job. A path that does not end in `.bc.wasm.js` is a usage error.
+`workero package _build/default/src/main.bc.wasm.js` reads `_build/default/src/main.bc.wasm.js` and `_build/default/src/main.bc.wasm.assets` and never runs dune. Use it when another step builds the executable, such as a Makefile or CI job. A path that does not end in `.bc.wasm.js` is a usage error, as are extra arguments.
 
 
 ## Where it finds the build output

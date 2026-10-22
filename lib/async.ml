@@ -49,14 +49,22 @@ let resume ~reject f =
   ignore (meth (call (promising f) [||]) "catch" [| reject |])
 
 let run (f : unit -> js) : js =
-  let r = meth (global "Promise") "withResolvers" [||] in
-  let settle name v = ignore (call (Js.Unsafe.get r name) [| v |]) in
-  let reject = Js.Unsafe.get r "reject" in
+  let r = lazy (meth (global "Promise") "withResolvers" [||]) in
+  let field name = Js.Unsafe.get (Lazy.force r) name in
+  let early = ref None in
+  let finish name v =
+    if Lazy.is_val r then ignore (call (field name) [| v |])
+    else
+      early :=
+        Some
+          (if name = "resolve" then v
+           else meth (global "Promise") "reject" [| v |])
+  in
   try_with
     (fun () ->
       match f () with
-      | v -> settle "resolve" v
-      | exception e -> settle "reject" (error_to_js e))
+      | v -> finish "resolve" v
+      | exception e -> finish "reject" (error_to_js e))
     ()
     {
       effc =
@@ -65,7 +73,7 @@ let run (f : unit -> js) : js =
           | Await p ->
               Some
                 (fun (k : (a, _) continuation) ->
-                  let resume = resume ~reject in
+                  let resume = resume ~reject:(field "reject") in
                   ignore
                     (Jp.then_
                        ~on_error:(fun e ->
@@ -77,4 +85,4 @@ let run (f : unit -> js) : js =
                        p))
           | _ -> None);
     };
-  Js.Unsafe.get r "promise"
+  match !early with Some v -> v | None -> field "promise"

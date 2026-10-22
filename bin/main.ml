@@ -1,9 +1,3 @@
-let usage =
-  "usage: workero build [dune build args...] <dir>/<name>.bc.wasm.js [--out \
-   <dir>] [--allow-missing-primitives]\n\
-  \       workero package <dir>/<name>.bc.wasm.js [--out <dir>] \
-   [--allow-missing-primitives]"
-
 let fail fmt =
   Printf.ksprintf
     (fun s ->
@@ -501,32 +495,122 @@ let split_loader path =
   let n = String.length path - String.length loader_suffix in
   (Filename.dirname path, Filename.basename (String.sub path 0 n))
 
-let parse_own args =
-  let rec go out allow rest = function
-    | [] -> (out, allow, List.rev rest)
-    | "--out" :: dir :: tl -> go dir allow rest tl
-    | "--allow-missing-primitives" :: tl -> go out true rest tl
-    | arg :: tl when String.starts_with ~prefix:"--out=" arg ->
-        go (String.sub arg 6 (String.length arg - 6)) allow rest tl
-    | arg :: tl -> go out allow (arg :: rest) tl
+open Cmdliner
+
+let out =
+  let last = List.fold_left (fun _ dir -> dir) "_worker" in
+  Term.(
+    const last
+    $ Arg.(
+        value & opt_all string []
+        & info [ "out" ] ~docv:"DIR"
+            ~doc:
+              "Output directory of the worker. The default is $(b,_worker). \
+               The last one given wins."))
+
+let allow_missing =
+  Arg.(
+    value & flag
+    & info
+        [ "allow-missing-primitives" ]
+        ~doc:
+          "Turn the missing-primitives error into a warning. Use it when the \
+           functions without a wasm implementation are never called.")
+
+let exits =
+  [
+    Cmd.Exit.info 0 ~doc:"on success.";
+    Cmd.Exit.info 1 ~doc:"on usage errors and on run-time errors.";
+  ]
+
+let usage_error fmt = Printf.ksprintf (fun s -> `Error (true, s)) fmt
+
+let build_cmd =
+  let dune_args =
+    Arg.(
+      value & pos_all string []
+      & info [] ~docv:"DUNE_ARG"
+          ~doc:
+            "Argument for $(b,dune build), passed unchanged and in order. \
+             Exactly one must be the target, a path ending in \
+             $(b,.bc.wasm.js).")
   in
-  go "_worker" false [] args
+  let run out allow_missing dune_args =
+    match List.filter is_loader dune_args with
+    | [ target ] ->
+        dune_build dune_args;
+        let dir, name = split_loader target in
+        `Ok (package ~allow_missing ~built:(built_dir dune_args dir) ~name out)
+    | _ -> usage_error "expected exactly one %s target" loader_suffix
+  in
+  Cmd.v
+    (Cmd.info "build" ~exits
+       ~doc:"Run $(b,dune build), then write a worker directory"
+       ~man:
+         [
+           `S Manpage.s_description;
+           `P
+             "$(b,workero build) wraps $(b,dune build). Every argument that is \
+              not a workero option goes to dune unchanged, with no $(b,--) \
+              separator. It adds $(b,--profile release) unless the arguments \
+              or $(b,DUNE_PROFILE) select a profile.";
+           `S Manpage.s_examples;
+           `Pre
+             "workero build --profile dev src/main.bc.wasm.js --out=x \
+              --display quiet";
+         ])
+    Term.(ret (const run $ out $ allow_missing $ dune_args))
+
+let package_cmd =
+  let target =
+    Arg.(
+      required
+      & pos 0 (some string) None
+      & info [] ~docv:"TARGET"
+          ~doc:
+            "Path of the built loader, ending in $(b,.bc.wasm.js). The \
+             $(b,.bc.wasm.assets) directory must be next to it.")
+  in
+  let run out allow_missing target =
+    if is_loader target then
+      let dir, name = split_loader target in
+      `Ok (package ~allow_missing ~built:dir ~name out)
+    else usage_error "TARGET must end in %s" loader_suffix
+  in
+  Cmd.v
+    (Cmd.info "package" ~exits
+       ~doc:"Write a worker directory from output that dune already built")
+    Term.(ret (const run $ out $ allow_missing $ target))
+
+let cmd =
+  Cmd.group
+    (Cmd.info "workero" ~exits
+       ~doc:"Package OCaml wasm_of_ocaml programs as workers")
+    [ build_cmd; package_cmd ]
+
+let is_own arg =
+  arg = "--allow-missing-primitives"
+  || arg = "--help"
+  || String.starts_with ~prefix:"--help=" arg
+  || String.starts_with ~prefix:"--out=" arg
+
+let split_build args =
+  let rec go own rest = function
+    | [] -> List.rev_append own ("--" :: List.rev rest)
+    | "--out" :: value :: tl -> go (value :: "--out" :: own) rest tl
+    | arg :: tl when is_own arg || arg = "--out" -> go (arg :: own) rest tl
+    | arg :: tl -> go own (arg :: rest) tl
+  in
+  go [] [] args
+
+let argv =
+  match Array.to_list Sys.argv with
+  | prog :: "build" :: args ->
+      Array.of_list (prog :: "build" :: split_build args)
+  | argv -> Array.of_list argv
 
 let () =
-  match List.tl (Array.to_list Sys.argv) with
-  | "build" :: args -> (
-      let out, allow_missing, dune_args = parse_own args in
-      match List.filter is_loader dune_args with
-      | [ target ] ->
-          dune_build dune_args;
-          let dir, name = split_loader target in
-          package ~allow_missing ~built:(built_dir dune_args dir) ~name out
-      | _ -> fail "%s" usage)
-  | "package" :: args -> (
-      let out, allow_missing, rest = parse_own args in
-      match rest with
-      | [ target ] when is_loader target ->
-          let dir, name = split_loader target in
-          package ~allow_missing ~built:dir ~name out
-      | _ -> fail "%s" usage)
-  | _ -> fail "%s" usage
+  match Cmd.eval_value ~argv cmd with
+  | Ok (`Ok () | `Help | `Version) -> exit 0
+  | Error `Exn -> exit Cmd.Exit.internal_error
+  | Error (`Parse | `Term) -> exit 1
