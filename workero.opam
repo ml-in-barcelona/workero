@@ -13,7 +13,7 @@ depends: [
   "wasm_of_ocaml-compiler" {>= "6.4.1" & < "6.5"}
   "cmdliner" {>= "2.0"}
   "jsonkit" {>= "1.1.0" & < "2"}
-  "html_of_jsx" {with-dev-setup & >= "0.1.0"}
+  "html_of_jsx" {with-dev-setup & >= "0.1.1"}
   "alcotest" {with-test}
   "odoc" {with-doc & >= "3.2.1"}
   "ocamlformat" {with-dev-setup & = "0.29.0"}
