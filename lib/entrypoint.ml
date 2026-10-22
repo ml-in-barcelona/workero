@@ -111,14 +111,4 @@ let register ?(rpc = []) name create =
     (Js.Unsafe.inject (Js.array (Array.of_list (List.map str rpc))));
   Js.Unsafe.set (classes ()) name factory
 
-let call fetcher name args =
-  let stub = Fetcher.to_js fetcher in
-  let args =
-    Js.Unsafe.inject (Js.array (Array.of_list (List.map Json_js.to_js args)))
-  in
-  let result =
-    Binding.guard (fun () ->
-        meth (global "Reflect") "apply"
-          [| Js.Unsafe.get stub name; stub; args |])
-  in
-  Promise.await (Promise.of_js ~decode:json_of_js result)
+let call = Durable_object.call
