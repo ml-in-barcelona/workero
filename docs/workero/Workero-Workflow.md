@@ -18,7 +18,7 @@ A Workflow has two sides. The class side is a function that [`register`](./#val-
 
 The engine runs the function again after each sleep, wait, retry or eviction. [`Step.do_`](./Workero-Workflow-Step.md#val-do_) returns the stored result of a step that already finished, without calling its callback. So code outside the steps runs again every time: it must be deterministic. Do not read the clock, random numbers or mutable state outside a step; produce the value inside a step and return it. Keep no state in OCaml values between steps, as they are lost on replay. A step callback runs at least once, so make it idempotent.
 
-Step results, event payloads and params are JSON values.
+Step results, event payloads and params are [`Rpc.value`](./Workero-Rpc.md#type-value)s: JSON values and also ``Undefined`, ``Bytes`, ``Date`, ``Bigint`, ``Map` and ``Set`, the types that the runtime stores.
 
 ```ocaml
 exception Non_retryable of string
@@ -30,7 +30,7 @@ module Duration : sig ... end
 ```
 ```ocaml
 type event = {
-  payload : Jsonkit.t; (* The params of create; `Null when there were none. *)
+  payload : Rpc.value; (* The params of create; `Undefined when there were none. *)
   timestamp : float; (* When the instance was created, in milliseconds since the epoch, like Date.now. *)
   instance_id : string;
 }
@@ -41,7 +41,7 @@ The event given to the function of [`register`](./#val-register).
 module Step : sig ... end
 ```
 ```ocaml
-val register : string -> (Env.t -> event -> Step.t -> Jsonkit.t) -> unit
+val register : string -> (Env.t -> event -> Step.t -> Rpc.value) -> unit
 ```
 `register class_name run` binds `run` to the class that `workero build` exports under `class_name`. Call it at module initialisation, once per class. `run env event step` runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). Its result is the output of the instance, and an uncaught exception fails the instance. The runtime creates a new instance of the class for each run.
 
@@ -65,7 +65,7 @@ module Instance : sig ... end
 The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects, for example for an instance that does not exist.
 
 ```ocaml
-val create : ?id:string -> ?params:Jsonkit.t -> t -> Instance.t
+val create : ?id:string -> ?params:Rpc.value -> t -> Instance.t
 ```
 `create workflow` starts an instance. `id` defaults to a generated one; `params` is the `payload` of the [`event`](./#type-event). Raises [`Js_error`](./Workero.md#exception-Js_error) when `id` is in use, and `Invalid_argument` when `id` is longer than 100 characters.
 
@@ -75,7 +75,7 @@ type options
 The arguments of one instance in [`create_batch`](./#val-create_batch).
 
 ```ocaml
-val options : ?id:string -> ?params:Jsonkit.t -> unit -> options
+val options : ?id:string -> ?params:Rpc.value -> unit -> options
 ```
 ```ocaml
 type batch_error = {

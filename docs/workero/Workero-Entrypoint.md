@@ -13,7 +13,7 @@ An entrypoint class is a set of named methods that other Workers call through a 
 ```
 Another Worker, in JavaScript or OCaml, calls the methods of that binding. Use [`call`](./#val-call) from OCaml.
 
-Arguments and results are JSON values. Other types that RPC supports, such as `Uint8Array`, `Date` or stubs, are not supported. A method that returns nothing in JavaScript gives ``Null` to [`call`](./#val-call).
+Arguments and results are [`Rpc.t`](./Workero-Rpc.md#type-t) values: JSON, and also bytes, `Date`, `BigInt`, `Map`, `Set`, streams, stubs and functions. A method that returns nothing in JavaScript gives ``Undefined` to [`call`](./#val-call).
 
 ```ocaml
 type t
@@ -23,7 +23,7 @@ The handlers of one entrypoint instance.
 ```ocaml
 val make : 
   ?fetch:(Request.t -> Response.t) ->
-  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
+  ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   unit ->
   t
 ```
@@ -39,8 +39,8 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
 Raises `Invalid_argument` when `class_name` is not a valid class name (see [`Durable_object.register`](./Workero-Durable_object.md#val-register)), when it is also the name of a Durable Object class or of a Workflow or another entrypoint, or when `rpc` has a duplicate or a name that is not a JavaScript identifier. The names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
 
 ```ocaml
-val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 ```
-`call binding name args` calls the RPC method `name` of the entrypoint behind `binding`, a service binding read with [`Fetcher.of_env`](./Workero-Fetcher.md#val-of_env), and waits for the result. A result that is `undefined` in JavaScript gives ``Null`. Suspends like [`Promise.await`](./Workero-Promise.md#val-await).
+`call binding name args` calls the RPC method `name` of the entrypoint behind `binding`, a service binding read with [`Fetcher.of_env`](./Workero-Fetcher.md#val-of_env), and waits for the result. It is [`Rpc.call`](./Workero-Rpc.md#val-call). A result that is `undefined` in JavaScript gives ``Undefined`. Suspends like [`Promise.await`](./Workero-Promise.md#val-await).
 
-Raises [`Js_error`](./Workero.md#exception-Js_error) when the method does not exist, when it raises, or when the runtime rejects the call. Raises `Invalid_argument` when the result has no JSON form, or when an argument has none.
+Raises [`Js_error`](./Workero.md#exception-Js_error) when the method does not exist, when it raises, or when the runtime rejects the call. Raises `Invalid_argument` when the result has no [`Rpc.t`](./Workero-Rpc.md#type-t) form, or when an argument has none.

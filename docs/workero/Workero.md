@@ -180,6 +180,11 @@ module Analytics_engine : sig ... end
 A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
 
 ```ocaml
+module Rpc : sig ... end
+```
+Values of Workers RPC calls.
+
+```ocaml
 module Durable_object : sig ... end
 ```
 Durable Objects with SQLite-backed key-value and SQL storage.

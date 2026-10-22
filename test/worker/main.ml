@@ -18,6 +18,7 @@ let handlers =
     Routes_do.handle;
     Routes_entrypoint.handle;
     Routes_workflow.handle;
+    Routes_rpc.handle;
   ]
 
 let handler req env ctx =

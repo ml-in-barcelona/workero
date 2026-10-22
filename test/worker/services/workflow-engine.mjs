@@ -146,7 +146,7 @@ const execute = async (inst, env) => {
 
 const fresh = (id, params) => ({
   id,
-  params: params ?? null,
+  params,
   createdAt: new Date(),
   status: "queued",
   output: undefined,

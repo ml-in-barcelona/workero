@@ -30,6 +30,7 @@
   test_durable_object
   test_entrypoint
   test_workflow
+  test_rpc
   test_decode
   test_globals
   test_router)

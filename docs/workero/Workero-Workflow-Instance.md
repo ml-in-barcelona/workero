@@ -24,7 +24,7 @@ type status =
 type state = {
   status : status;
   error : (string * string) option; (* Error name and message. *)
-  output : Jsonkit.t option; (* What the function of register returned, once complete. *)
+  output : Rpc.value option; (* What the function of register returned, once complete. *)
 }
 ```
 ```ocaml
@@ -50,7 +50,7 @@ val restart : t -> unit
 Starts again from the beginning.
 
 ```ocaml
-val send_event : t -> type_:string -> Jsonkit.t -> unit
+val send_event : t -> type_:string -> Rpc.value -> unit
 ```
 `send_event i ~type_ payload` delivers an event to [`Step.wait_for_event`](./Workero-Workflow-Step.md#val-wait_for_event). The runtime raises [`Js_error`](./Workero.md#exception-Js_error) when the instance is not running.
 

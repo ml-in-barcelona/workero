@@ -99,14 +99,75 @@ let run env (event : W.event) step =
       S.do_ step "slow" (fun _ ->
           Promise.await (Timer.sleep 200);
           `String "slow done")
+  | "rich" ->
+      let step_result =
+        S.do_ step "rich" (fun _ ->
+            `Assoc
+              [
+                ("date", `Date 172_800_000.);
+                ("bytes", `Bytes "\000\255");
+                ("map", `Map [ (`String "k", `Set [ `Int 1 ]) ]);
+                ("undefined", `Undefined);
+              ])
+      in
+      let sent = S.wait_for_event step "go" ~type_:"go" in
+      `Assoc
+        [ ("step", step_result); ("payload", event.payload); ("event", sent) ]
+  | "undefined" ->
+      let step_result = S.do_ step "undefined" (fun _ -> `Undefined) in
+      let sent = S.wait_for_event step "go" ~type_:"go" in
+      `Assoc [ ("step", step_result); ("event", sent) ]
   | "fail" -> failwith "run failed"
   | other -> invalid_arg ("unknown scenario " ^ other)
 
 let () = W.register "Flow" run
 
+let rich : Rpc.value =
+  `Assoc
+    [
+      ("scenario", `String "rich");
+      ("when", `Date 86_400_000.);
+      ("data", `Bytes "\000\001\255");
+      ("big", `Bigint "12345678901234567890");
+    ]
+
 let json_or_null = function
   | None -> None
-  | Some s -> Some (Jsonkit.of_string s)
+  | Some s -> Some (Rpc.to_value (Rpc.of_json (Jsonkit.of_string s)))
+
+let value_arg url name =
+  match (URL.query url "rich", URL.query url "undefined") with
+  | Some _, _ -> Some rich
+  | None, Some _ -> Some `Undefined
+  | None, None -> json_or_null (URL.query url name)
+
+let params_of url = value_arg url "params"
+
+let rec tagged : Rpc.value -> Jsonkit.t = function
+  | `Undefined -> `Assoc [ ("$undefined", `Bool true) ]
+  | `Null -> `Null
+  | `Bool b -> `Bool b
+  | `Int n -> `Int n
+  | `Float f -> `Float f
+  | `String s -> `String s
+  | `List l -> `List (List.map tagged l)
+  | `Assoc l -> `Assoc (List.map (fun (k, v) -> (k, tagged v)) l)
+  | `Bytes s ->
+      `Assoc
+        [
+          ( "$bytes",
+            `List
+              (List.init (String.length s) (fun i -> `Int (Char.code s.[i]))) );
+        ]
+  | `Date f -> `Assoc [ ("$date", `Float f) ]
+  | `Bigint s -> `Assoc [ ("$bigint", `String s) ]
+  | `Map l ->
+      `Assoc
+        [
+          ( "$map",
+            `List (List.map (fun (k, v) -> `List [ tagged k; tagged v ]) l) );
+        ]
+  | `Set l -> `Assoc [ ("$set", `List (List.map tagged l)) ]
 
 let state_json (s : W.Instance.state) =
   let status =
@@ -129,7 +190,7 @@ let state_json (s : W.Instance.state) =
         | None -> `Null
         | Some (name, message) ->
             `Assoc [ ("name", `String name); ("message", `String message) ] );
-      ("output", Option.value s.output ~default:`Null);
+      ("output", Option.fold s.output ~none:`Null ~some:tagged);
       ("has_output", `Bool (s.output <> None));
     ]
 
@@ -154,17 +215,12 @@ let handle req env _ctx =
     guarded (fun () ->
         match path with
         | "/workflow/create" ->
-            let i =
-              W.create ?id:(arg "id")
-                ?params:(json_or_null (arg "params"))
-                (flow ())
-            in
+            let i = W.create ?id:(arg "id") ?params:(params_of url) (flow ()) in
             json (`String (W.Instance.id i))
         | "/workflow/create_batch" ->
             let options =
               String.split_on_char ',' (need "ids")
-              |> List.map (fun id ->
-                  W.options ~id ?params:(json_or_null (arg "params")) ())
+              |> List.map (fun id -> W.options ~id ?params:(params_of url) ())
             in
             let created, errors = W.create_batch (flow ()) options in
             json
@@ -206,7 +262,7 @@ let handle req env _ctx =
             json `Null
         | "/workflow/send_event" ->
             W.Instance.send_event (instance ()) ~type_:(need "type")
-              (Option.value (json_or_null (arg "payload")) ~default:`Null);
+              (Option.value (value_arg url "payload") ~default:`Null);
             json `Null
         | "/workflow/of_env_error" -> (
             match W.of_env env (need "binding") with

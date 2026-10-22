@@ -291,6 +291,64 @@ let sqlite state _env =
             | exception Js_error _ -> "Js_error"
           in
           ok (Printf.sprintf "%s count=%d" outcome (count ()))
+      | "tx-async-commit" ->
+          let v =
+            D.Storage.transaction storage (fun _ ->
+                ignore (insert 14L);
+                Promise.await (Promise.resolve ());
+                D.Storage.put storage "ka" (`Int 1);
+                43)
+          in
+          ok (Printf.sprintf "%d count=%d ka=%s" v (count ()) (stored "ka"))
+      | "tx-async-rollback" ->
+          let outcome =
+            match
+              D.Storage.transaction storage (fun _ ->
+                  ignore (insert 15L);
+                  D.Storage.put storage "kb" (`Int 1);
+                  Promise.await (Promise.resolve ());
+                  failwith "boom")
+            with
+            | _ -> "no raise"
+            | exception Failure m -> "Failure " ^ m
+          in
+          ok
+            (Printf.sprintf "%s count=%d kb=%s" outcome (count ()) (stored "kb"))
+      | "tx-async-explicit" ->
+          let v =
+            D.Storage.transaction storage (fun txn ->
+                ignore (insert 16L);
+                D.Storage.put storage "kc" (`Int 1);
+                Promise.await (Promise.resolve ());
+                D.Storage.rollback txn;
+                D.Storage.put storage "kd" (`Int 1);
+                9)
+          in
+          ok
+            (Printf.sprintf "%d count=%d kc=%s kd=%s" v (count ()) (stored "kc")
+               (stored "kd"))
+      | "tx-async-nested" ->
+          D.Storage.transaction storage (fun _ ->
+              D.Storage.put storage "ke" (`Int 1);
+              try
+                D.Storage.transaction storage (fun _ ->
+                    D.Storage.put storage "kf" (`Int 1);
+                    Promise.await (Promise.resolve ());
+                    failwith "inner")
+              with Failure _ -> ());
+          ok (Printf.sprintf "ke=%s kf=%s" (stored "ke") (stored "kf"))
+      | "tx-async-sql-error" ->
+          let outcome =
+            match
+              D.Storage.transaction storage (fun _ ->
+                  ignore (insert 17L);
+                  Promise.await (Promise.resolve ());
+                  ignore (D.Sql.query sql "SELEKT"))
+            with
+            | () -> "no raise"
+            | exception Js_error _ -> "Js_error"
+          in
+          ok (Printf.sprintf "%s count=%d" outcome (count ()))
       | other -> Response.text ~status:`Not_Found other)
     ()
 
@@ -358,7 +416,7 @@ let rooms ~hibernating state _env =
              Websocket.close ~code:1000 ws))
     ()
 
-let rpc_counter state _env =
+let rpc_counter state env =
   let storage = D.State.storage state in
   let get () = count_of (D.Storage.get storage "n") in
   D.make
@@ -376,12 +434,22 @@ let rpc_counter state _env =
       | "slow", [] ->
           Promise.await (Timer.sleep 20);
           `String "slept"
-      | _ -> invalid_arg ("bad RPC call " ^ name))
+      | _ -> (
+          match
+            Rpc_values.answer
+              ~stub:(fun () -> Fetcher.of_env env "BACKEND")
+              ~spawn:(D.State.wait_until state) name args
+          with
+          | Some v -> v
+          | None -> invalid_arg ("bad RPC call " ^ name)))
+    ~fetch:(fun _ -> Response.text "rpc object")
     ()
 
 let () =
   D.register
-    ~rpc:[ "increment"; "add"; "get"; "echo"; "nothing"; "fail"; "slow" ]
+    ~rpc:
+      ([ "increment"; "add"; "get"; "echo"; "nothing"; "fail"; "slow" ]
+      @ Rpc_values.methods)
     "Rpc" rpc_counter;
   D.register ~rpc:[ "ping" ] "RpcNoHandler" (fun _ _ -> D.make ());
   D.register "Sqlite" sqlite;
@@ -434,10 +502,52 @@ let container_stub log =
     (inject
        (Js.Unsafe.callback_with_arity 1 (fun n ->
             record ("signal:" ^ string_of_int (num n)))));
+  let recorded name f =
+    set c (Js.string name)
+      (inject
+         (Js.Unsafe.callback_with_arity 2 (fun a b ->
+              record (f a b);
+              promise "resolve" (inject Js.undefined))))
+  in
+  let tag binding = Js.to_string (get binding (Js.string "tag")) in
+  recorded "setInactivityTimeout" (fun ms _ ->
+      "timeout:" ^ string_of_int (num ms));
+  recorded "interceptOutboundHttp" (fun addr binding ->
+      "http:" ^ Js.to_string addr ^ ":" ^ tag binding);
+  recorded "interceptOutboundHttps" (fun addr binding ->
+      "https:" ^ Js.to_string addr ^ ":" ^ tag binding);
+  set c
+    (Js.string "interceptAllOutboundHttp")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun binding ->
+            record ("all:" ^ tag binding);
+            promise "resolve" (inject Js.undefined))));
   set c (Js.string "getTcpPort")
     (inject
        (Js.Unsafe.callback_with_arity 1 (fun port ->
             let tcp = obj [||] in
+            set tcp (Js.string "connect")
+              (inject
+                 (Js.Unsafe.callback_with_arity 1 (fun address ->
+                      record
+                        (Printf.sprintf "connect:%d:%s" (num port)
+                           (Js.to_string address));
+                      let echo =
+                        new_obj (g "TransformStream")
+                          [|
+                            inject (obj [||]);
+                            inject (obj [||]);
+                            inject (obj [| ("highWaterMark", inject 16) |]);
+                          |]
+                      in
+                      let socket = obj [||] in
+                      set socket (Js.string "opened")
+                        (promise "resolve" (inject Js.undefined));
+                      set socket (Js.string "readable")
+                        (get echo (Js.string "readable"));
+                      set socket (Js.string "writable")
+                        (get echo (Js.string "writable"));
+                      socket)));
             set tcp (Js.string "fetch")
               (inject
                  (Js.Unsafe.callback_with_arity 1 (fun url ->
@@ -473,7 +583,39 @@ let container_probe () =
   let body = Response.body_text (Fetcher.fetch tcp "http://container/x") in
   D.Container.destroy ~message:"bye" container;
   D.Container.destroy container;
-  Printf.sprintf "%s|%s|%s" (String.concat ";" (List.rev !log)) monitored body
+  let socket = D.Container.connect container ~port:9000 in
+  Socket.opened socket;
+  let writer = Socket.writer socket in
+  Stream.Writer.write writer "ping";
+  Stream.Writer.close writer;
+  let echoed = Stream.Reader.read (Socket.reader socket) in
+  D.Container.set_inactivity_timeout container ~ms:60_000;
+  let binding tag =
+    Fetcher.of_js
+      (Js.Unsafe.obj [| ("tag", Js.Unsafe.inject (Js.string tag)) |])
+  in
+  D.Container.intercept_outbound_http container "*.example.com" (binding "a");
+  D.Container.intercept_all_outbound_http container (binding "b");
+  D.Container.intercept_outbound_https container "*" (binding "c");
+  let invalid f =
+    match f () with
+    | () -> "no raise"
+    | exception Invalid_argument _ -> "invalid"
+  in
+  let invalids =
+    String.concat ","
+      [
+        invalid (fun () -> D.Container.set_inactivity_timeout container ~ms:0);
+        invalid (fun () ->
+            D.Container.set_inactivity_timeout container ~ms:21_600_001);
+        invalid (fun () -> ignore (D.Container.connect container ~port:0));
+      ]
+  in
+  Printf.sprintf "%s|%s|%s|%s|%s"
+    (String.concat ";" (List.rev !log))
+    monitored body
+    (Option.value echoed ~default:"-")
+    invalids
 
 let handle req env _ctx =
   let segments = String.split_on_char '/' (Request.path req) in
@@ -499,11 +641,11 @@ let handle req env _ctx =
         | None -> []
         | Some text -> (
             match Jsonkit.of_string text with
-            | `List l -> l
+            | `List l -> List.map Rpc.of_json l
             | _ -> invalid_arg "args must be a JSON array")
       in
       match D.call stub meth args with
-      | v -> Some (Response.text (Jsonkit.to_string v))
+      | v -> Some (Response.text (Rpc_values.text v))
       | exception Js_error e ->
           Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
   | [ ""; "do-ws"; binding; name; op ] ->

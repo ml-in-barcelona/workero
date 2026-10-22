@@ -23,7 +23,9 @@
     it. Keep no state in OCaml values between steps, as they are lost on replay.
     A step callback runs at least once, so make it idempotent.
 
-    Step results, event payloads and params are JSON values. *)
+    Step results, event payloads and params are {!Rpc.value}s: JSON values and
+    also [`Undefined], [`Bytes], [`Date], [`Bigint], [`Map] and [`Set], the
+    types that the runtime stores. *)
 
 exception Non_retryable of string
 (** Raise it in a {!Step.do_} callback to fail the step without retries. The
@@ -44,8 +46,8 @@ module Duration : sig
 end
 
 type event = {
-  payload : Jsonkit.t;
-      (** The [params] of {!create}; [`Null] when there were none. *)
+  payload : Rpc.value;
+      (** The [params] of {!create}; [`Undefined] when there were none. *)
   timestamp : float;
       (** When the instance was created, in milliseconds since the epoch, like
           {!Date.now}. *)
@@ -80,8 +82,8 @@ module Step : sig
     ?timeout:Duration.t ->
     t ->
     string ->
-    (context -> Jsonkit.t) ->
-    Jsonkit.t
+    (context -> Rpc.value) ->
+    Rpc.value
   (** [do_ step name f] runs [f] as a step and returns its result. [f] gets the
       {!context} of the attempt. The result is stored and a replay returns it
       without calling [f]. [name] identifies the step, so it must be the same on
@@ -95,7 +97,7 @@ module Step : sig
       instance running. A step cannot start another step.
 
       Raises [Invalid_argument] when [name] is longer than 256 characters, or
-      when the result has no JSON form. *)
+      when the result has no {!Rpc.value} form. *)
 
   val sleep : t -> string -> Duration.t -> unit
   (** [sleep step name d] sleeps for [d]. The runtime allows up to 365 days. *)
@@ -106,7 +108,7 @@ module Step : sig
       replays agree. *)
 
   val wait_for_event :
-    ?timeout:Duration.t -> t -> string -> type_:string -> Jsonkit.t
+    ?timeout:Duration.t -> t -> string -> type_:string -> Rpc.value
   (** [wait_for_event step name ~type_] waits for {!Instance.send_event} with
       the same [type_] and returns its payload. An event sent earlier is kept.
       [timeout] defaults to 24 hours. When it expires, raises {!Js_error}.
@@ -115,7 +117,7 @@ module Step : sig
       characters or has a character other than letters, digits, [-] and [_]. *)
 end
 
-val register : string -> (Env.t -> event -> Step.t -> Jsonkit.t) -> unit
+val register : string -> (Env.t -> event -> Step.t -> Rpc.value) -> unit
 (** [register class_name run] binds [run] to the class that [workero build]
     exports under [class_name]. Call it at module initialisation, once per
     class. [run env event step] runs in a fiber and may call {!Promise.await}.
@@ -155,7 +157,7 @@ module Instance : sig
   type state = {
     status : status;
     error : (string * string) option;  (** Error name and message. *)
-    output : Jsonkit.t option;
+    output : Rpc.value option;
         (** What the function of {!register} returned, once complete. *)
   }
 
@@ -171,7 +173,7 @@ module Instance : sig
   val restart : t -> unit
   (** Starts again from the beginning. *)
 
-  val send_event : t -> type_:string -> Jsonkit.t -> unit
+  val send_event : t -> type_:string -> Rpc.value -> unit
   (** [send_event i ~type_ payload] delivers an event to {!Step.wait_for_event}.
       The runtime raises {!Js_error} when the instance is not running.
 
@@ -179,7 +181,7 @@ module Instance : sig
       {!Step.wait_for_event}. *)
 end
 
-val create : ?id:string -> ?params:Jsonkit.t -> t -> Instance.t
+val create : ?id:string -> ?params:Rpc.value -> t -> Instance.t
 (** [create workflow] starts an instance. [id] defaults to a generated one;
     [params] is the [payload] of the {!event}. Raises {!Js_error} when [id] is
     in use, and [Invalid_argument] when [id] is longer than 100 characters. *)
@@ -187,7 +189,7 @@ val create : ?id:string -> ?params:Jsonkit.t -> t -> Instance.t
 type options
 (** The arguments of one instance in {!create_batch}. *)
 
-val options : ?id:string -> ?params:Jsonkit.t -> unit -> options
+val options : ?id:string -> ?params:Rpc.value -> unit -> options
 
 type batch_error = {
   index : int;

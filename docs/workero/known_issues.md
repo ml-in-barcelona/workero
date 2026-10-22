@@ -37,7 +37,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Entrypoint limits
 
-- [Entrypoints](./entrypoints.md): arguments and results are JSON values. `Uint8Array`, `Date`, `Map`, `BigInt`, streams and stubs do not cross the call. The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
+- [Entrypoints](./entrypoints.md): the `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
 - The runtime creates a new instance of an entrypoint for each call, so it keeps no state between calls.
 - An entrypoint and a Durable Object class cannot share a name.
 - A method declared in `~rpc` on a class whose handlers have no `rpc` fails on the first call, not at build time.
@@ -45,16 +45,16 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 ## Durable Object limits
 
 - The storage API requires a SQLite-backed class. A class listed in `new_classes` can build, but its key-value and SQL calls fail at runtime. See [Durable Objects](./durable_objects.md).
-- RPC methods on a stub: names are declared with `register ~rpc`. Arguments and results are JSON. `Date`, `Map`, `BigInt`, `Uint8Array`, streams, stubs and functions cannot cross the call. A method name cannot be `fetch`, `alarm`, `connect`, `constructor`, `prototype` or a `webSocket*` handler. See [Durable Objects](./durable_objects.md).
+- RPC methods on a stub: names are declared with `register ~rpc`. Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t). An `Error`, a typed array other than `Uint8Array`, a class instance and a `Symbol` cannot cross the call. A ``Function` argument is released when the call returns. A method name cannot be `fetch`, `alarm`, `connect`, `constructor`, `prototype` or a `webSocket*` handler. See [Durable Objects](./durable_objects.md).
 - Stored values are JSON. A `Date` that other code stores reads back as its ISO string and a `Map` as `{}`. A `BigInt` or a cyclic value raises `Invalid_argument`.
 - The function given to `register` cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Load stored values in `~init`. Keep per-object state in closures.
 - [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) must run when the module starts. A `register` call that a condition skips is not exported.
 - `workero build` needs `workerd`. The main module must be `index.js`.
 - A `block_concurrency_while` function that raises resets the object.
-- SQL: `Int` values are exact only within ±`2^53`; a larger integer can read back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. There is no asynchronous transaction. `Sql.run` returns only the number of rows written. [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) with `Invalid_argument` and rolls back.
+- SQL: `Int` values are exact only within ±`2^53`; a larger integer can read back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. `Sql.run` returns only the number of rows written. [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) with `Invalid_argument` and rolls back; use [`Workero.Durable_object.Storage.transaction`](./Workero-Durable_object-Storage.md#type-transaction) to await.
 - [WebSockets](./websockets.md): a socket accepted with [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate. Do not also call [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket) on that socket. A class without `websocket_message` can accept hibernatable sockets, but does not handle their messages.
 - The `workerd` tests cannot prove eviction and re-creation during hibernation, jurisdictions, or the tag and 2048-byte attachment limits. Test these in a deployed Worker.
-- [Containers](./durable_objects.md): [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) supports HTTP `fetch` only; raw TCP `connect`, `setInactivityTimeout` and outbound interception are not wrapped. The tests run `State.container` against `None` in `workerd` and against a JavaScript stub. A separate test, `test/worker-containers`, starts real containers in CI and prints `SKIP containers` where Docker or its images are missing. `workerd` runs containers only with Docker and an egress interceptor image.
+- [Containers](./durable_objects.md): [`Workero.Durable_object.Container`](./Workero-Durable_object-Container.md) does not wrap `interceptOutboundTcp`, `exec`, `inspect` or the snapshot functions. The tests run `State.container` against `None` in `workerd` and against a JavaScript stub. A separate test, `test/worker-containers`, starts real containers in CI and prints `SKIP containers` where Docker or its images are missing. Raw TCP connect and outbound interception run only there. `workerd` runs containers only with Docker and an egress interceptor image.
 
 ## Not supported yet
 

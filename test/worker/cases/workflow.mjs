@@ -66,7 +66,7 @@ export default async (env, failures) => {
   await check("Workflow: create without an id or params", failures, async (p) => {
     const id = await ok(env, "create");
     if (!String(id).startsWith("auto-")) p.push(`generated id ${id}`);
-    equal((await until(env, id, "complete")).output.payload, null, p);
+    equal((await until(env, id, "complete")).output.payload, { $undefined: true }, p);
   });
 
   await check("Workflow: sleep and sleep_until replay the run and do not repeat finished steps", failures, async (p) => {
@@ -123,6 +123,43 @@ export default async (env, failures) => {
     equal((await until(env, "event-1", "complete")).output, { approved: { ok: true } }, p);
     const inspected = await env.ENGINE.inspect("event-1");
     equal(inspected.log[0].options, { type: "approve" }, p, "options: ");
+  });
+
+  await check("Workflow: values with no JSON form survive a step result, an event payload and params", failures, async (p) => {
+    const rich = (extra) => ({
+      scenario: "rich",
+      when: { $date: 86400000 },
+      data: { $bytes: [0, 1, 255] },
+      big: { $bigint: "12345678901234567890" },
+      ...extra,
+    });
+    equal(await ok(env, "create?id=rich-1&rich=1"), "rich-1", p, "id: ");
+    await until(env, "rich-1", "waiting");
+    await ok(env, "send_event?id=rich-1&type=go&rich=1");
+    const done = await until(env, "rich-1", "complete");
+    equal(
+      done.output,
+      {
+        step: {
+          date: { $date: 172800000 },
+          bytes: { $bytes: [0, 255] },
+          map: { $map: [["k", { $set: [1] }]] },
+          undefined: { $undefined: true },
+        },
+        payload: rich(),
+        event: rich(),
+      },
+      p,
+    );
+  });
+
+  await check("Workflow: a top-level Undefined survives as a step result, an event payload and params", failures, async (p) => {
+    await create(env, "undef-1", { scenario: "undefined" });
+    await until(env, "undef-1", "waiting");
+    await ok(env, "send_event?id=undef-1&type=go&undefined=1");
+    equal((await until(env, "undef-1", "complete")).output, { step: { $undefined: true }, event: { $undefined: true } }, p, "step and event: ");
+    equal(await ok(env, "create?id=undef-2&undefined=1"), "undef-2", p, "id: ");
+    equal((await until(env, "undef-2", "complete")).output.payload, { $undefined: true }, p, "payload: ");
   });
 
   await check("Workflow: wait_for_event timeout is passed and raises Js_error", failures, async (p) => {

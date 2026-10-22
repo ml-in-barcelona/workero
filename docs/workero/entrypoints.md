@@ -26,7 +26,7 @@ let () =
 ```
 `workero build` runs the program once in `workerd` and exports every registered class from `index.js`. It reads the names in `~rpc` at that time, before the program has an [`Workero.Env.t`](./Workero-Env.md#type-t), so they are given apart from the handler. The `rpc` handler of [`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) gets the method name and the arguments, like the `rpc` handler of a Durable Object. A call to a declared name on a class whose handlers have no `rpc` fails with an error.
 
-The handler gets the arguments of the call as a list of JSON values and returns one JSON value. It runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the other bindings. An exception that the handler raises rejects the call. The caller sees an `Error` whose message is the exception.
+The handler gets the arguments of the call as a list of [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) values and returns one. They are JSON values and also bytes, dates, big integers, maps, sets, streams, stubs and functions; see [Durable Objects](./durable_objects.md). It runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the other bindings. An exception that the handler raises rejects the call. The caller sees an `Error` whose message is the exception.
 
 The runtime creates a new instance of the class for each call. The function given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) runs for each of them and gets the `env` and the `ctx`, so a method can call [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). Keep no state in it.
 
@@ -66,7 +66,7 @@ The callee may be an entrypoint written in OCaml or in JavaScript. [`Workero.Ent
 
 ## Limits
 
-- Arguments and results are JSON values. RPC also accepts `Uint8Array`, `Date`, `Map`, `BigInt`, streams and stubs, but [`Workero.Entrypoint.call`](./Workero-Entrypoint.md#val-call) and the handlers do not. A result with no JSON form raises `Invalid_argument`. A result of `undefined` is ``Null`.
+- A value with no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form, such as an `Error`, raises `Invalid_argument`. A result of `undefined` is ``Undefined`.
 - The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
 - A class cannot share its name with a Durable Object class, and the method names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
 - RPC methods on Durable Object stubs are not part of this page.

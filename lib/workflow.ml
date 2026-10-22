@@ -10,7 +10,8 @@ let () =
 
 let flushing f = Fun.protect ~finally:flush_all f
 let number n = Js.Unsafe.inject (Js.number_of_float (float_of_int n))
-let json_of_js v = if typeof v = "undefined" then `Null else Json_js.of_js v
+let value_of_js v = Rpc.to_value (Rpc.of_js v)
+let value_to_js (v : Rpc.value) = Rpc.to_js (v :> Rpc.t)
 
 let non_retryable message =
   let ctor = Js.Unsafe.get (Registry.root ()) "NonRetryableError" in
@@ -46,7 +47,7 @@ module Duration = struct
   let to_js (t : t) = number t
 end
 
-type event = { payload : Jsonkit.t; timestamp : float; instance_id : string }
+type event = { payload : Rpc.value; timestamp : float; instance_id : string }
 
 let time_of_js v =
   if typeof v = "number" then Js.float_of_number (Js.Unsafe.coerce v)
@@ -54,7 +55,7 @@ let time_of_js v =
 
 let event_of_js v =
   {
-    payload = json_of_js (Js.Unsafe.get v "payload");
+    payload = value_of_js (Js.Unsafe.get v "payload");
     timestamp = time_of_js (Js.Unsafe.get v "timestamp");
     instance_id = Decode.(field "instanceId" string) v;
   }
@@ -110,14 +111,14 @@ module Step = struct
           Async.run (fun () ->
               mapping_non_retryable (fun () ->
                   let attempt = Decode.(field "attempt" int) ctx in
-                  Json_js.to_js (f { attempt }))))
+                  value_to_js (f { attempt }))))
     in
     let args =
       match config ?retries ?timeout () with
       | [] -> [| str name; callback |]
       | fields -> [| str name; Binding.options fields; callback |]
     in
-    rpc_call ~decode:json_of_js t "do" (Array.to_list args)
+    rpc_call ~decode:value_of_js t "do" (Array.to_list args)
 
   let sleep t name duration =
     check_name ~who:"Workero.Workflow.Step.sleep" name;
@@ -153,8 +154,7 @@ module Step = struct
         | Some d -> [ ("timeout", Duration.to_js d) ]))
     in
     rpc_call
-      ~decode:(fun v ->
-        if is_nullish v then `Null else json_of_js (Js.Unsafe.get v "payload"))
+      ~decode:(fun v -> value_of_js (Js.Unsafe.get v "payload"))
       t "waitForEvent"
       [ str name; options ]
 
@@ -183,7 +183,7 @@ let register name run =
     Async.run (fun () ->
         flushing (fun () ->
             mapping_non_retryable (fun () ->
-                Json_js.to_js
+                value_to_js
                   (run (Env.of_js env) (event_of_js event) (Step.of_js step)))))
   in
   let run_fiber env event step : js =
@@ -216,7 +216,7 @@ module Instance = struct
   type state = {
     status : status;
     error : (string * string) option;
-    output : Jsonkit.t option;
+    output : Rpc.value option;
   }
 
   let id t = Decode.(field "id" string) t
@@ -244,7 +244,7 @@ module Instance = struct
              ( Decode.(field "name" string) error,
                Decode.(field "message" string) error ));
       output =
-        (if typeof output = "undefined" then None else Some (json_of_js output));
+        (if typeof output = "undefined" then None else Some (value_of_js output));
     }
 
   let status t = Binding.call ~decode:state_of_js t "status" [||]
@@ -258,7 +258,7 @@ module Instance = struct
     Binding.call ~decode:Decode.unit t "sendEvent"
       [|
         Binding.options
-          [ ("type", str type_); ("payload", Json_js.to_js payload) ];
+          [ ("type", str type_); ("payload", value_to_js payload) ];
       |]
 end
 
@@ -272,7 +272,7 @@ let options ?id ?params () =
   let field name f = Option.map (fun v -> (name, f v)) in
   Binding.options
     (List.filter_map Fun.id
-       [ field "id" str id; field "params" Json_js.to_js params ])
+       [ field "id" str id; field "params" value_to_js params ])
 
 let create ?id ?params t =
   Binding.call ~decode:Decode.js t "create" [| options ?id ?params () |]
