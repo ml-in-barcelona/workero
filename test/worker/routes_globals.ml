@@ -63,6 +63,8 @@ let globals path =
                 rejected (-1);
                 rejected 65537;
               ]))
+  | "/sys/sizes" ->
+      Some (Response.text (Printf.sprintf "%d,%d" Sys.word_size Sys.int_size))
   | "/console/log" ->
       Console.log "console log";
       Console.info "console info";

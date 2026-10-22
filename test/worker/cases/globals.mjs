@@ -48,6 +48,7 @@ const cases = [
     status: 200,
     body: "0,1,16,65536;differ=true;nonzero=true;invalid;invalid",
   },
+  { name: "Sys.word_size is 32 and Sys.int_size is 31", request: ["http://test/sys/sizes"], status: 200, body: "32,31" },
   { name: "Console.log levels do not throw", request: ["http://test/console/log"], status: 200, body: "logged" },
 ];
 
