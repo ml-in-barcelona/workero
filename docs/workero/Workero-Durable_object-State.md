@@ -9,9 +9,13 @@ The `ctx` of an object.
 ```ocaml
 val id : t -> Id.t
 ```
+The identity of the current object.
+
 ```ocaml
 val storage : t -> Storage.t
 ```
+The storage of the current object.
+
 ```ocaml
 val wait_until : t -> (unit -> unit) -> unit
 ```
@@ -45,6 +49,8 @@ The accepted sockets, or those with `tag`.
 ```ocaml
 val tags : t -> Websocket.t -> string list
 ```
+The tags that [`accept_websocket`](./#val-accept_websocket) gave to the socket.
+
 ```ocaml
 val set_websocket_auto_response : 
   t ->

@@ -39,12 +39,26 @@ let () = Workero.serve handler
 `~secure_transport:On` uses TLS from the first byte. For a protocol that starts in plain text, such as PostgreSQL, connect with `~secure_transport:Starttls`, exchange the opening messages, unlock the streams, then call [`Workero.Socket.start_tls`](./Workero-Socket.md#val-start_tls):
 
 ```ocaml
-let socket = Socket.connect ~secure_transport:Starttls ~host ~port:5432 () in
-let reader = Socket.reader socket and writer = Socket.writer socket in
-Stream.Reader.release reader;
-Stream.Writer.release writer;
-let secure = Socket.start_tls socket in
-let reader = Socket.reader secure and writer = Socket.writer secure in
+open Workero
+
+let handler _req _env _ctx =
+  let socket =
+    Socket.connect ~secure_transport:Starttls ~host:"db.example.com" ~port:5432
+      ()
+  in
+  Socket.opened socket;
+  let reader = Socket.reader socket and writer = Socket.writer socket in
+  Stream.Writer.write writer "plain text opening message";
+  ignore (Stream.Reader.read reader);
+  Stream.Reader.release reader;
+  Stream.Writer.release writer;
+  let secure = Socket.start_tls socket in
+  let writer = Socket.writer secure in
+  Stream.Writer.write writer "encrypted message";
+  Socket.close secure;
+  Response.text "done"
+
+let () = Workero.serve handler
 ```
 `start_tls` returns a new socket. The old socket stops working. The runtime fails the upgrade while a reader or writer still locks a stream, so release both first.
 
@@ -56,9 +70,9 @@ By default, when the server ends its side, the runtime also closes your write si
 
 ## Test
 
-`workerd` can run a `connect` handler in a Worker that is the `globalOutbound` of the Worker under test. That Worker then plays the TCP server. The tests of workero do this: see `test/worker/upstream.mjs`. With this setup, TLS cannot be tested: `~secure_transport:On` fails with "Incoming CONNECT with TLS not supported", and `start_tls` fails with "startTls() is not supported on this connection". Use `workerd` with a real network service for TLS.
+`workerd` can run a `connect` handler in a Worker that is the `globalOutbound` of the Worker under test. That Worker then plays the TCP server. The tests of workero do this: see `test/worker/upstream.mjs`. With this setup, TLS cannot be tested: `~secure_transport:On` fails with an error that mentions TLS, and `start_tls` fails with "startTls() is not supported on this connection". To test TLS, connect to a real network service.
 
 
 ## Limits
 
-See [Support and known issues](./known_issues.md).
+Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does. See [Support and known issues](./known_issues.md).

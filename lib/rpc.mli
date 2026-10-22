@@ -25,9 +25,11 @@
     v}
 
     A number with no fraction that fits in an OCaml [int] is read as [`Int], any
-    other number as [`Float]. [-0] is [`Float (-0.)]. An [Error], a typed array
-    other than [Uint8Array], a class instance and a [Symbol] have no
-    constructor: reading one raises [Invalid_argument].
+    other number as [`Float]. An [int] has 31 bits in a Worker, so a number
+    above 1073741823, such as [Date.now ()], is a [`Float]. [-0] is
+    [`Float (-0.)]. An [Error], a typed array other than [Uint8Array], a class
+    instance and a [Symbol] have no constructor: reading one raises
+    [Invalid_argument].
 
     A [`Stream] is consumed by the receiver. A [`Stub] stays valid as long as
     the runtime keeps it. A [`Function] sent in an argument can be called while
@@ -73,12 +75,14 @@ type value =
     {!to_value} converts back. *)
 
 val of_json : Jsonkit.t -> t
-(** The same value. The constructors of [Jsonkit.t] are also constructors of
-    {!t}, so a handler can often build a {!t} without calling this. *)
+(** The same value, as a {!t}. The constructors of [Jsonkit.t] are also
+    constructors of {!t}, so a handler can often build a {!t} without calling
+    this. *)
 
 val to_json : t -> Jsonkit.t
-(** Raises [Invalid_argument] when the value holds [`Undefined], [`Bytes],
-    [`Date], [`Bigint], [`Map], [`Set], [`Stream], [`Stub] or [`Function]. *)
+(** The same value, as a [Jsonkit.t]. Raises [Invalid_argument] when the value
+    holds [`Undefined], [`Bytes], [`Date], [`Bigint], [`Map], [`Set], [`Stream],
+    [`Stub] or [`Function]. *)
 
 val to_value : t -> value
 (** The same value, as a {!value}. Raises [Invalid_argument] when the value
@@ -89,8 +93,8 @@ val of_js : Js_of_ocaml.Js.Unsafe.any -> t
     constructor, and for a cyclic value. *)
 
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
-(** Raises [Invalid_argument] for a [`Bigint] that is not decimal digits with an
-    optional sign. *)
+(** Builds a JavaScript value. Raises [Invalid_argument] for a [`Bigint] that is
+    not decimal digits with an optional sign. *)
 
 val call : Fetcher.t -> string -> t list -> t
 (** [call stub name args] calls the RPC method [name] behind [stub], with

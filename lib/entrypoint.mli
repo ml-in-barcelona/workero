@@ -15,7 +15,8 @@
 
     Arguments and results are {!Rpc.t} values: JSON, and also bytes, [Date],
     [BigInt], [Map], [Set], streams, stubs and functions. A method that returns
-    nothing in JavaScript gives [`Undefined] to {!call}. *)
+    nothing in JavaScript gives [`Undefined] to {!call}. See {!Rpc.t} for the
+    type map. *)
 
 type t
 (** The handlers of one entrypoint instance. *)
@@ -40,7 +41,7 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
     [["add"]]. The build reads them by running the program in [workerd], before
     it has an {!Env.t}, so they are given here and answered by the [rpc] handler
     of {!make}. A call to a declared name on a class whose handlers have no
-    [rpc] fails.
+    [rpc] fails with an error on the first call, not at build time.
 
     [create] gets the [env] and the [ctx] of the instance, so a method can call
     {!Context.wait_until}. It runs for each call, as the runtime creates a new
@@ -50,8 +51,8 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
 
     Raises [Invalid_argument] when [class_name] is not a valid class name (see
     {!Durable_object.register}), when it is also the name of a Durable Object
-    class or of a Workflow or another entrypoint, or when [rpc] has a duplicate
-    or a name that is not a JavaScript identifier. The names [constructor],
+    class, a Workflow or another entrypoint, or when [rpc] has a duplicate or a
+    name that is not a JavaScript identifier. The names [constructor],
     [prototype], [__proto__], [then], [env], [ctx], [fetch], [scheduled],
     [queue], [email], [tail], [trace], [tailStream], [test], [connect] and [dup]
     are reserved. *)

@@ -1,7 +1,7 @@
 
 # Module `Workero.Crypto`
 
-The Web Crypto random functions of the global `crypto` object.
+The Web Crypto functions of the global `crypto` object: random values, and a subset of `crypto.subtle`. See [Timers, time, and randomness](./globals.md).
 
 ```ocaml
 val random_uuid : unit -> string
@@ -27,7 +27,7 @@ type hash =
   | Sha1
   | Sha256
   | Sha384
-  | Sha512 (* A hash algorithm of crypto.subtle. *)
+  | Sha512 (* A hash algorithm of crypto.subtle: Sha1 for SHA-1, Sha256 for SHA-256, Sha384 for SHA-384 and Sha512 for SHA-512. *)
 ```
 ```ocaml
 val digest : hash -> string -> string

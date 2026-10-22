@@ -1,8 +1,8 @@
 # workero
 
 Write Cloudflare Workers in OCaml. workero compiles OCaml to WebAssembly with
-wasm_of_ocaml and packages the result for Wrangler. Handlers run in direct style:
-`Workero.fetch` waits for a response while other requests can run.
+wasm_of_ocaml and packages the result for Wrangler. Handlers run in direct
+style: `Workero.fetch` waits for a response while other requests can run.
 
 ## Start a Worker
 
@@ -22,8 +22,8 @@ npx wrangler dev
 
 The source pin installs the library and CLI. `npm install` installs Wrangler,
 workerd, and binaryen's `wasm-opt`. The CLI uses workerd to check initialization
-and discover Durable Object classes. Wrangler prints the local URL, usually
-`http://127.0.0.1:8787`. In another terminal, run:
+and discover Durable Object, entrypoint, and Workflow classes. Wrangler prints
+the local URL, usually `http://127.0.0.1:8787`. In another terminal, run:
 
 ```sh
 curl http://127.0.0.1:8787/
@@ -46,7 +46,8 @@ Follow [Getting started](https://ml-in-barcelona.github.io/workero/workero/getti
 to edit the template and run it locally. The [Runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html)
 and [Bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html)
 guides cover requests, JSON, routing, scheduled handlers, sockets, email,
-entrypoints and RPC, Workflows, Queues, Durable Objects, SQL, and hibernating WebSockets.
+entrypoints and RPC, Workflows, Queues, Hyperdrive, Durable Objects, SQL,
+hibernating WebSockets, and Containers.
 See the [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html)
 for packaging and [CONTRIBUTING.md](CONTRIBUTING.md) for repository work.
 

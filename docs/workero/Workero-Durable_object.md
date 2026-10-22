@@ -3,7 +3,7 @@
 
 Durable Objects with SQLite-backed key-value and SQL storage.
 
-A Durable Object class is a function from its [`State`](./Workero-Durable_object-State.md) and the [`Env`](./Workero-Env.md) to the handlers of one object, built with [`make`](./#val-make) and bound to a name with [`register`](./#val-register). Declare the class in `wrangler.toml` with `[durable_objects]` and a migration with `new_sqlite_classes`, or with the `exports` map and `storage = "sqlite"`. `workero build` exports every registered class. [`Storage`](./Workero-Durable_object-Storage.md) requires a SQLite-backed class; its key-value and SQL methods fail on legacy storage. `fetch`, `alarm`, and hibernatable WebSocket event handlers are exported. Durable Object RPC methods are not exported.
+A Durable Object class is a function from its [`State`](./Workero-Durable_object-State.md) and the [`Env`](./Workero-Env.md) to the handlers of one object, built with [`make`](./#val-make) and bound to a name with [`register`](./#val-register). Declare the class in `wrangler.toml` with `[durable_objects]` and a migration with `new_sqlite_classes`, or with the `exports` map and `storage = "sqlite"`. `workero build` exports every registered class. [`Storage`](./Workero-Durable_object-Storage.md) requires a SQLite-backed class; its key-value and SQL methods fail on legacy storage. `fetch`, `alarm`, hibernatable WebSocket event handlers, and the RPC methods that you declare with `~rpc` in [`register`](./#val-register) are exported. See [Durable Objects](./durable_objects.md).
 
 Handlers on one object interleave only where they suspend, so a handler that uses only the synchronous key-value methods and never calls [`Promise.await`](./Workero-Promise.md#val-await) runs without interruption. Keep the state of an object in values created inside the function given to [`register`](./#val-register), never in module-level values: one isolate may host many objects, and the runtime may evict an object from memory and create it again later.
 
@@ -59,7 +59,7 @@ val make :
 ```ocaml
 val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 ```
-`register class_name create` binds `create` to the class that `workero build` exports under `class_name`. Call it at module initialisation, once per class. The build reads the names by running the program in `workerd`; a `register` call that a condition skips at initialisation is not exported.
+`register class_name create` binds `create` to the class that `workero build` exports under `class_name`. Call it at module initialization, once per class. The build reads the names by running the program in `workerd`; a `register` call that a condition skips at initialization is not exported.
 
 `create` runs each time the runtime creates the object, before the first event. It must not call [`Promise.await`](./Workero-Promise.md#val-await): that raises `Invalid_argument`. Load stored values in `~init` of [`make`](./#val-make). If `create` raises, the object fails to start and the request that needed it fails.
 

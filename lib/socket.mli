@@ -32,8 +32,8 @@ val connect :
     65535, and [Failure] when the runtime has no [cloudflare:sockets] (a program
     run outside a Worker, for example in Node.js).
     @raise Js_error
-      when the runtime refuses the address, for example a Cloudflare address or
-      port 25. *)
+      when the runtime refuses the address, for example a Cloudflare address, a
+      loopback address or port 25. *)
 
 val opened : t -> unit
 (** Waits until the connection is up. Suspends. Raises {!Js_error} when the
@@ -59,8 +59,9 @@ val close : t -> unit
 val start_tls : ?expected_server_hostname:string -> t -> t
 (** [start_tls socket] upgrades a socket made with [Starttls] and returns the
     secure socket. Release the reader and writer of [socket] before the call,
-    and use {!reader} and {!writer} of the result. [expected_server_hostname]
-    replaces the host name that the server certificate must match.
+    and use {!reader} and {!writer} of the result. The old [socket] stops
+    working. [expected_server_hostname] replaces the host name that the server
+    certificate must match.
 
     Raises {!Js_error} when [socket] was not made with [Starttls], or when the
     runtime rejects the upgrade. *)

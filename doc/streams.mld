@@ -61,11 +61,12 @@ let () = Workero.serve handler
 - The function runs through {!Workero.Context.wait_until}. While the client
   remains connected and receives the stream, the HTTP invocation stays active.
   After the response ends or the client disconnects, remaining [waitUntil]
-  work has a shared limit of 30 seconds. See {{!page-async}Async and background work}.
+  work has a shared limit of 30 seconds. See
+  {{!page-async}Async and background work}.
 
-To send a body and read another one at the same time, use
-{!Workero.Stream.pipe}. It gives a {!Workero.Stream.Writer.t} and the
-{!Workero.Stream.t} that reads what you write.
+To make a stream that you fill yourself, use {!Workero.Stream.pipe}. It gives a
+{!Workero.Stream.Writer.t} and the {!Workero.Stream.t} that reads what you
+write.
 
 {1 Pass a body through}
 
@@ -83,17 +84,16 @@ let handler _req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-To change only headers or status, pass [~headers] or [~status] to
-{!Workero.Response.copy}. It preserves the upstream status and headers when
-you omit those arguments. If you already have a {!Workero.Stream.t}, use
+To change the status or the headers, pass [~status] or [~headers] to
+{!Workero.Response.copy}. [~headers] replaces the whole upstream header list.
+Without these arguments, [copy] keeps the upstream status and headers. If you
+already have a {!Workero.Stream.t}, use
 {!Workero.Response.of_stream} with the intended status and headers. See
 {{!page-requests}Requests and responses}.
 
 {!Workero.Response.of_stream} and {!Workero.Response.copy} pass the existing
 body stream to the new response; they do not read it when they get the handle.
 The original and new responses then share a body that cannot be consumed twice.
-Call {!Workero.Response.clone} before either copy consumes the body if you
-need to read both.
 To read both, call {!Workero.Response.clone} before consuming either body.
 
 {1 Back-pressure}
@@ -123,6 +123,15 @@ let () = Workero.serve handler
 ]}
 
 A loop that does not write cannot see the disconnect.
+
+{1 Release a lock}
+
+{!Workero.Stream.reader} locks a stream, and a writer locks its writable side.
+{!Workero.Stream.Reader.release} and {!Workero.Stream.Writer.release} unlock
+it, and the reader or writer is unusable afterwards. {!Workero.Socket.start_tls}
+needs this: it fails while a reader or writer still locks a stream.
+{!Workero.Stream.Writer.of_js} wraps a JavaScript
+[WritableStreamDefaultWriter], for example from [writable.getWriter()].
 
 {1 Close and abort}
 

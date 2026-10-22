@@ -10,6 +10,8 @@ The host, user and password are valid only inside the running Worker. Treat [`pa
 ```ocaml
 type t
 ```
+A Hyperdrive binding. The accessors of this module raise `Invalid_argument`, with the expected and actual JavaScript type, when the binding has no such field.
+
 ```ocaml
 val of_env : Env.t -> string -> t
 ```
@@ -22,8 +24,6 @@ val connection_string : t -> string
 ```
 A connection string, such as `postgres://user:password@host:port/database`, for a database driver. It contains the password.
 
-The accessors of this module raise `Invalid_argument`, with the expected and actual JavaScript type, when the binding has no such field.
-
 ```ocaml
 val host : t -> string
 ```
@@ -32,9 +32,13 @@ A host name that is valid only inside this Worker.
 ```ocaml
 val port : t -> int
 ```
+The port of [`host`](./#val-host).
+
 ```ocaml
 val user : t -> string
 ```
+The database user.
+
 ```ocaml
 val password : t -> string
 ```
@@ -43,6 +47,8 @@ A password that is valid only inside this Worker.
 ```ocaml
 val database : t -> string
 ```
+The database name.
+
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 ```

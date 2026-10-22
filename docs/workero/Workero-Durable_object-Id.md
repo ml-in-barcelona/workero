@@ -19,6 +19,8 @@ The name given to [`Namespace.id_from_name`](./Workero-Durable_object-Namespace.
 ```ocaml
 val equal : t -> t -> bool
 ```
+`true` when both values are the same object identity.
+
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 ```

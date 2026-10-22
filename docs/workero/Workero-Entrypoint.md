@@ -13,7 +13,7 @@ An entrypoint class is a set of named methods that other Workers call through a 
 ```
 Another Worker, in JavaScript or OCaml, calls the methods of that binding. Use [`call`](./#val-call) from OCaml.
 
-Arguments and results are [`Rpc.t`](./Workero-Rpc.md#type-t) values: JSON, and also bytes, `Date`, `BigInt`, `Map`, `Set`, streams, stubs and functions. A method that returns nothing in JavaScript gives ``Undefined` to [`call`](./#val-call).
+Arguments and results are [`Rpc.t`](./Workero-Rpc.md#type-t) values: JSON, and also bytes, `Date`, `BigInt`, `Map`, `Set`, streams, stubs and functions. A method that returns nothing in JavaScript gives ``Undefined` to [`call`](./#val-call). See [`Rpc.t`](./Workero-Rpc.md#type-t) for the type map.
 
 ```ocaml
 type t
@@ -32,11 +32,11 @@ val make :
 ```ocaml
 val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
 ```
-`register ~rpc class_name create` binds `create` to the class that `workero build` exports under `class_name`. Call it at module initialisation, once per class. `rpc` lists the method names, for example `["add"]`. The build reads them by running the program in `workerd`, before it has an [`Env.t`](./Workero-Env.md#type-t), so they are given here and answered by the `rpc` handler of [`make`](./#val-make). A call to a declared name on a class whose handlers have no `rpc` fails.
+`register ~rpc class_name create` binds `create` to the class that `workero build` exports under `class_name`. Call it at module initialisation, once per class. `rpc` lists the method names, for example `["add"]`. The build reads them by running the program in `workerd`, before it has an [`Env.t`](./Workero-Env.md#type-t), so they are given here and answered by the `rpc` handler of [`make`](./#val-make). A call to a declared name on a class whose handlers have no `rpc` fails with an error on the first call, not at build time.
 
 `create` gets the `env` and the `ctx` of the instance, so a method can call [`Context.wait_until`](./Workero-Context.md#val-wait_until). It runs for each call, as the runtime creates a new instance of the class for each call. It must not call [`Promise.await`](./Workero-Promise.md#val-await): that raises `Invalid_argument`. Keep no state in the instance; two calls can run in different instances. If `create` raises, the call fails.
 
-Raises `Invalid_argument` when `class_name` is not a valid class name (see [`Durable_object.register`](./Workero-Durable_object.md#val-register)), when it is also the name of a Durable Object class or of a Workflow or another entrypoint, or when `rpc` has a duplicate or a name that is not a JavaScript identifier. The names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
+Raises `Invalid_argument` when `class_name` is not a valid class name (see [`Durable_object.register`](./Workero-Durable_object.md#val-register)), when it is also the name of a Durable Object class, a Workflow or another entrypoint, or when `rpc` has a duplicate or a name that is not a JavaScript identifier. The names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
 
 ```ocaml
 val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t

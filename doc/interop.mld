@@ -42,8 +42,8 @@ and {!Workero.Promise.await} re-raises that exception, for example
 
 {!Workero.Decode} has decoders for raw values: [js] (undecoded), [unit],
 [string], [int], [float], [bool], [bytes], [option], [list] and
-[field name decoder]. A decoder is a function from {!Workero.js_value}. It raises
-[Invalid_argument] with the expected and the actual JavaScript type when the
+[field name decoder]. A decoder is a function from {!Workero.js_value}. It
+raises [Invalid_argument] with the expected and the actual JavaScript type when the
 value does not fit. [int] also rejects a number with a fraction or outside the
 range of [int]. [bytes] rejects array elements outside 0..255. [field] reads
 one property of an object or a function:

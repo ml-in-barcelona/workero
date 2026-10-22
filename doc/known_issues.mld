@@ -69,26 +69,27 @@ not supported yet.
 
 {1 Workflow limits}
 
-- {{!page-workflows}Workflows}: workerd has no Workflows engine, so the tests run
-  the class and the binding against a small JavaScript engine. It calls the
+- {{!page-workflows}Workflows}: workerd has no Workflows engine, so the tests
+  run the class and the binding against a small JavaScript engine. It calls the
   OCaml class over RPC as Cloudflare's engine does, and it implements steps,
   retries, [sleep], [wait_for_event] and replay. The tests do not prove
   persistence, eviction, real retry timing, the Cloudflare limits or a
   deployment. Run a Workflow with [wrangler dev] or on Cloudflare before you
   rely on it.
-- Step results, event payloads, params and outputs are JSON values; integers
-  above 1073741823 do not parse (see {{!page-workflows}Workflows}).
+- Step results, event payloads, params and outputs are {!Workero.Rpc.value}s.
+  A number above 1073741823 reads as a [`Float], not an [`Int] (see
+  {{!page-workflows}Workflows}).
 - Not wrapped: [retention], [createBatch] with [count], [deleteBatch],
   [Instance.delete], [subscribe], [terminate] and [restart] options, rollback
-  handlers, the rest of the step context ([step], [config]), a function as [delay], the cron
-  [schedule] and the [workflowName] of the event. [wait_for_event] returns the
-  payload, not the event.
+  handlers, the rest of the step context ([step], [config]), a function as
+  [delay], the cron [schedule] and the [workflowName] of the event.
+  [wait_for_event] returns the payload, not the event.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.
 
 {1 Entrypoint limits}
 
-- {{!page-entrypoints}Entrypoints}: the [scheduled], [queue], [email] and [tail] handlers of a class are not
-  supported.
+- {{!page-entrypoints}Entrypoints}: the [scheduled], [queue], [email] and [tail]
+  handlers of a class are not supported.
 - The runtime creates a new instance of an entrypoint for each call, so it keeps
   no state between calls.
 - An entrypoint and a Durable Object class cannot share a name.
@@ -107,9 +108,13 @@ not supported yet.
   cannot be [fetch], [alarm], [connect], [constructor], [prototype] or a
   [webSocket*] handler. See
   {{!page-durable_objects}Durable Objects}.
-- Stored values are JSON. A [Date] that other code stores reads back as its ISO string and a [Map] as [{}]. A [BigInt] or a cyclic value raises [Invalid_argument].
-- The function given to [register] cannot call {!Workero.Promise.await}. Load stored values in [~init]. Keep per-object state in closures.
-- {!Workero.Durable_object.register} must run when the module starts. A [register] call that a condition skips is not exported.
+- Stored values are JSON. A [Date] that other code stores reads back as its ISO
+  string and a [Map] as [{}]. A [BigInt] or a cyclic value raises
+  [Invalid_argument].
+- The function given to [register] cannot call {!Workero.Promise.await}. Load
+  stored values in [~init]. Keep per-object state in closures.
+- {!Workero.Durable_object.register} must run when the module starts. A
+  [register] call that a condition skips is not exported.
 - [workero build] needs [workerd]. The main module must be [index.js].
 - A [block_concurrency_while] function that raises resets the object.
 - SQL: [Int] values are exact only within ±[2^53]; a larger integer can
@@ -117,7 +122,7 @@ not supported yet.
   [Int]. [Sql.run] returns only the number of rows written.
   {!Workero.Durable_object.Storage.transaction_sync} rejects
   {!Workero.Promise.await} with [Invalid_argument] and rolls back; use
-  {!Workero.Durable_object.Storage.transaction} to await.
+  {!Workero.Durable_object.Storage.val-transaction} to await.
 - {{!page-websockets}WebSockets}: a socket accepted with
   {!Workero.Websocket.accept} does not hibernate. Do not also call
   {!Workero.Durable_object.State.accept_websocket} on that socket. A class
@@ -152,7 +157,8 @@ not supported yet.
 - [Sys.word_size] is 32, and [int] has 31 bits.
 - There is no file system, except files that you embed. See
   {{!page-libraries}Supported libraries}.
-- The program has no threads, sockets or sub-processes.
+- The program has no threads or sub-processes. It can open only outbound TCP
+  connections, with {!Workero.Socket}.
 
 Successful compilation does not prove that a library's runtime dependencies
 are available in a Worker. See {{!page-libraries}Supported libraries} and

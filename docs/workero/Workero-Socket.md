@@ -31,7 +31,7 @@ val connect :
 
 Raises `Invalid_argument` when `host` is empty or `port` is outside 1 to 65535, and `Failure` when the runtime has no `cloudflare:sockets` (a program run outside a Worker, for example in Node.js).
 
-raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime refuses the address, for example a Cloudflare address or port 25.
+raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime refuses the address, for example a Cloudflare address, a loopback address or port 25.
 ```ocaml
 val opened : t -> unit
 ```
@@ -60,7 +60,7 @@ Closes both sides. Suspends.
 ```ocaml
 val start_tls : ?expected_server_hostname:string -> t -> t
 ```
-`start_tls socket` upgrades a socket made with `Starttls` and returns the secure socket. Release the reader and writer of `socket` before the call, and use [`reader`](./#val-reader) and [`writer`](./#val-writer) of the result. `expected_server_hostname` replaces the host name that the server certificate must match.
+`start_tls socket` upgrades a socket made with `Starttls` and returns the secure socket. Release the reader and writer of `socket` before the call, and use [`reader`](./#val-reader) and [`writer`](./#val-writer) of the result. The old `socket` stops working. `expected_server_hostname` replaces the host name that the server certificate must match.
 
 Raises [`Js_error`](./Workero.md#exception-Js_error) when `socket` was not made with `Starttls`, or when the runtime rejects the upgrade.
 

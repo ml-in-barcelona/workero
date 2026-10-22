@@ -40,7 +40,7 @@ let handler req env _ctx =
 
 let () = Workero.serve handler
 ```
-The `COUNTER` binding gives access to the namespace. `get_by_name` selects the same object for the same name; a different name selects a different object. `Fetcher.fetch` sends a request to its `~fetch` handler and waits for the response. The URL must be absolute. The stub selects the object, regardless of the URL's host. Here the handler ignores the request URL.
+The `COUNTER` binding gives access to the namespace. `get_by_name` selects the same object for the same name; a different name selects a different object. [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) sends a request to its `~fetch` handler and waits for the response. The URL must be absolute. The stub selects the object, regardless of the URL's host. Here the handler ignores the request URL.
 
 
 ### Configure Wrangler
@@ -100,6 +100,8 @@ With fresh local storage, the responses are `1`, `2`, and `1`, in that order. If
 A class can expose methods that callers invoke on the stub, such as `stub.increment()`, without building a request. Declare the method names with `~rpc` in [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register), and answer the calls with the `~rpc` handler of [`Workero.Durable_object.make`](./Workero-Durable_object.md#val-make):
 
 ```ocaml
+open Workero
+
 let () =
   Durable_object.register ~rpc:[ "increment"; "add" ] "Counter" (fun state _env ->
       let storage = Durable_object.State.storage state in
@@ -123,10 +125,16 @@ The names must be known before any object exists, because `workero build` adds t
 OCaml code calls a method with [`Workero.Durable_object.call`](./Workero-Durable_object.md#val-call):
 
 ```ocaml
-let stub = Durable_object.Namespace.get_by_name counters "main" in
-match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
-| `Int n -> n
-| _ -> failwith "unexpected result"
+open Workero
+
+let handler _req env _ctx =
+  let counters = Durable_object.Namespace.of_env env "COUNTER" in
+  let stub = Durable_object.Namespace.get_by_name counters "main" in
+  match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
+  | `Int n -> Response.text (string_of_int n)
+  | _ -> failwith "unexpected result"
+
+let () = Workero.serve handler
 ```
 A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error).
 
@@ -144,14 +152,22 @@ Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t): the JSON c
 - ``Stub` is a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t): a service binding or a Durable Object stub.
 - ``Function` is a function. The callee can call it while the call runs. A function in a result stays callable through its stub.
 ```ocaml
-match
-  Durable_object.call stub "touch"
-    [ `Date (Date.now ()); `Bytes "\000\001"; `Map [ (`String "k", `Set [ `Int 1 ]) ] ]
-with
-| `Date at -> at
-| _ -> failwith "unexpected result"
+open Workero
+
+let handler _req env _ctx =
+  let objects = Durable_object.Namespace.of_env env "COUNTER" in
+  let stub = Durable_object.Namespace.get_by_name objects "main" in
+  let args =
+    [ `Date (Date.now ()); `Bytes "\000\001";
+      `Map [ (`String "k", `Set [ `Int 1 ]) ] ]
+  in
+  match Durable_object.call stub "touch" args with
+  | `Date at -> Response.text (Date.to_iso_string at)
+  | _ -> failwith "unexpected result"
+
+let () = Workero.serve handler
 ```
-A handler written for JSON keeps working, because ``Int`, ``String` and the other JSON constructors are the same. [`Workero.Rpc.of_json`](./Workero-Rpc.md#val-of_json) and [`Workero.Rpc.to_json`](./Workero-Rpc.md#val-to_json) convert a `Jsonkit.t`. A call that used to give ``Null` for a JavaScript `undefined` now gives ``Undefined`.
+[`Workero.Rpc.of_json`](./Workero-Rpc.md#val-of_json) and [`Workero.Rpc.to_json`](./Workero-Rpc.md#val-to_json) convert a `Jsonkit.t`.
 
 [`Workero.Rpc.value`](./Workero-Rpc.md#type-value) is the subset without ``Stream`, ``Stub` and ``Function`: the values that `structuredClone` copies. `(v :> Workero.Rpc.t)` converts a value, and [`Workero.Rpc.to_value`](./Workero-Rpc.md#val-to_value) converts back.
 
@@ -205,11 +221,19 @@ For this separate Worker, use the `main`, `build`, and `compatibility_date` sett
 `Storage.transaction` does the same for a callback that awaits. The callback receives the transaction; writes through `storage` and its SQL handle belong to it. `Storage.rollback txn` undoes the writes so far, and the callback goes on running: later writes commit, so raise to stop. A nested `transaction` that raises rolls back alone.
 
 ```ocaml
-let two_steps storage =
-  Workero.Durable_object.Storage.transaction storage (fun _txn ->
-      Workero.Durable_object.Storage.put storage "step" (`Int 1);
-      Workero.Promise.await (Workero.Timer.sleep 10);
-      Workero.Durable_object.Storage.put storage "step" (`Int 2))
+open Workero
+
+let () =
+  Durable_object.register "Steps" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          Durable_object.Storage.transaction storage (fun _txn ->
+              Durable_object.Storage.put storage "step" (`Int 1);
+              Promise.await (Timer.sleep 10);
+              Durable_object.Storage.put storage "step" (`Int 2));
+          Response.text "done")
+        ())
 ```
 
 ## Handle hibernatable WebSockets
@@ -280,9 +304,19 @@ Add a `Reminder` binding and declare the class through `new_sqlite_classes` or `
 
 ## Containers
 
-A class can have a container, on Cloudflare Containers. Declare it in `wrangler.toml` with `[[containers]]` and the class name of the object. [`Workero.Durable_object.State.container`](./Workero-Durable_object-State.md#val-container) gives it, or `None` when the class has none. [`Workero.Durable_object.Container.start`](./Workero-Durable_object-Container.md#val-start) boots the container and returns at once. [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) gives a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t) for a port of the container, so `Fetcher.fetch` sends an HTTP request to the program in it:
+A class can have a container, on [Cloudflare Containers](https://developers.cloudflare.com/containers/). Declare it in `wrangler.toml` with `[[containers]]`, the class name of the object and an image. Keep the binding and the SQLite class declaration from above:
+
+```toml
+[[containers]]
+class_name = "Sandbox"
+image = "./Dockerfile"
+max_instances = 1
+```
+[`Workero.Durable_object.State.container`](./Workero-Durable_object-State.md#val-container) gives the container, or `None` when the class has none. [`Workero.Durable_object.Container.start`](./Workero-Durable_object-Container.md#val-start) boots the container and returns at once. [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) gives a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t) for a port of the container, so `Fetcher.fetch` sends an HTTP request to the program in it:
 
 ```ocaml
+open Workero
+
 let () =
   Durable_object.register "Sandbox" (fun state _env ->
       let container = Option.get (Durable_object.State.container state) in
@@ -299,16 +333,34 @@ The program in the container needs time to listen on its port. Until then `Fetch
 [`Workero.Durable_object.Container.connect`](./Workero-Durable_object-Container.md#val-connect) opens a raw TCP connection to a port and gives a [`Workero.Socket.t`](./Workero-Socket.md#type-t):
 
 ```ocaml
-let socket = Durable_object.Container.connect container ~port:9000 in
-Socket.opened socket;
-Stream.Writer.write (Socket.writer socket) "ping";
-let reply = Stream.Reader.read (Socket.reader socket)
+open Workero
+
+let () =
+  Durable_object.register "Sandbox" (fun state _env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          let socket =
+            Durable_object.Container.connect container ~port:9000
+          in
+          Socket.opened socket;
+          Stream.Writer.write (Socket.writer socket) "ping";
+          match Stream.Reader.read (Socket.reader socket) with
+          | Some reply -> Response.text reply
+          | None -> Response.text ~status:`Internal_Server_Error "no reply")
+        ())
 ```
 The `intercept_outbound_http`, `intercept_all_outbound_http` and `intercept_outbound_https` functions of [`Workero.Durable_object.Container`](./Workero-Durable_object-Container.md) send the outbound requests of the container to a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t), for example a service binding to the Worker. The target sees the original URL:
 
 ```ocaml
-Durable_object.Container.intercept_outbound_http container "api.example.com"
-  (Fetcher.of_env env "SELF")
+open Workero
+
+let () =
+  Durable_object.register "Sandbox" (fun state env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.Container.intercept_outbound_http container
+        "api.example.com" (Fetcher.of_env env "SELF");
+      Durable_object.make ())
 ```
 To run a container in `workerd`, give the namespace a `container` with an image, and give the config a `containerEngine` that uses the local Docker daemon:
 
@@ -322,7 +374,7 @@ containerEngine = (localDocker = (
   socketPath = "unix:/var/run/docker.sock",
   containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
 ```
-Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. Without `containerEgressInterceptorImage`, `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers".
+Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. CI pins the `proxy-everything` image to a digest. Without `containerEgressInterceptorImage`, `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers". See [Support and known issues](./known_issues.md) for what the tests cover.
 
 
 ## Control concurrency and background work

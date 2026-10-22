@@ -37,12 +37,13 @@ module Duration : sig
   (** A length of time, sent to the runtime in milliseconds. *)
 
   val ms : int -> t
+  (** [ms n], like {!seconds}, {!minutes}, {!hours} and {!days}, is [n] units of
+      time. These functions raise [Invalid_argument] for a negative count. *)
+
   val seconds : int -> t
   val minutes : int -> t
   val hours : int -> t
-
   val days : int -> t
-  (** Raise [Invalid_argument] for a negative count. *)
 end
 
 type event = {
@@ -88,8 +89,8 @@ module Step : sig
       {!context} of the attempt. The result is stored and a replay returns it
       without calling [f]. [name] identifies the step, so it must be the same on
       each replay. Without [retries] and [timeout], the runtime defaults apply:
-      5 retries, 10 seconds, exponential backoff and a timeout of 10 minutes per
-      attempt.
+      5 retries, a delay of 10 seconds, exponential backoff, and a timeout of 10
+      minutes for each attempt.
 
       [f] runs in its own fiber and may call {!Promise.await}. An exception
       raised by [f] fails the attempt; {!Non_retryable} stops the retries. When

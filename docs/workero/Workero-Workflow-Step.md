@@ -45,7 +45,7 @@ val do_ :
   (context -> Rpc.value) ->
   Rpc.value
 ```
-`do_ step name f` runs `f` as a step and returns its result. `f` gets the [`context`](./#type-context) of the attempt. The result is stored and a replay returns it without calling `f`. `name` identifies the step, so it must be the same on each replay. Without `retries` and `timeout`, the runtime defaults apply: 5 retries, 10 seconds, exponential backoff and a timeout of 10 minutes per attempt.
+`do_ step name f` runs `f` as a step and returns its result. `f` gets the [`context`](./#type-context) of the attempt. The result is stored and a replay returns it without calling `f`. `name` identifies the step, so it must be the same on each replay. Without `retries` and `timeout`, the runtime defaults apply: 5 retries, a delay of 10 seconds, exponential backoff, and a timeout of 10 minutes for each attempt.
 
 `f` runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). An exception raised by `f` fails the attempt; [`Non_retryable`](./Workero-Workflow.md#exception-Non_retryable) stops the retries. When the step fails for good, `do_` raises [`Js_error`](./Workero.md#exception-Js_error). Catch it to keep the instance running. A step cannot start another step.
 

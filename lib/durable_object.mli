@@ -6,8 +6,9 @@
     and a migration with [new_sqlite_classes], or with the [exports] map and
     [storage = "sqlite"]. [workero build] exports every registered class.
     {!Storage} requires a SQLite-backed class; its key-value and SQL methods
-    fail on legacy storage. [fetch], [alarm], and hibernatable WebSocket event
-    handlers are exported. Durable Object RPC methods are not exported.
+    fail on legacy storage. [fetch], [alarm], hibernatable WebSocket event
+    handlers, and the RPC methods that you declare with [~rpc] in {!register}
+    are exported. See {{!page-durable_objects}Durable Objects}.
 
     Handlers on one object interleave only where they suspend, so a handler that
     uses only the synchronous key-value methods and never calls {!Promise.await}
@@ -28,6 +29,8 @@ module Id : sig
       {!Namespace.unique_id} and when the runtime does not report it. *)
 
   val equal : t -> t -> bool
+  (** [true] when both values are the same object identity. *)
+
   val of_js : Js_of_ocaml.Js.Unsafe.any -> t
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 end
@@ -86,6 +89,7 @@ module Storage : sig
       is exclusive. *)
 
   val sql : t -> Sql.t
+  (** The SQL database of the object. *)
 
   val transaction_sync : t -> (unit -> 'a) -> 'a
   (** [transaction_sync storage f] runs [f] in a transaction and returns its
@@ -94,7 +98,7 @@ module Storage : sig
       to {!Promise.await} in it raises [Invalid_argument]. *)
 
   type transaction
-  (** The handle of a running {!transaction}. *)
+  (** The handle of a running {!val-transaction}. *)
 
   val transaction : t -> (transaction -> 'a) -> 'a
   (** [transaction storage f] runs [f] in a transaction and returns its result.
@@ -232,7 +236,10 @@ module State : sig
   (** The [ctx] of an object. *)
 
   val id : t -> Id.t
+  (** The identity of the current object. *)
+
   val storage : t -> Storage.t
+  (** The storage of the current object. *)
 
   val wait_until : t -> (unit -> unit) -> unit
   (** Like {!Context.wait_until}. *)
@@ -265,6 +272,7 @@ module State : sig
   (** The accepted sockets, or those with [tag]. *)
 
   val tags : t -> Websocket.t -> string list
+  (** The tags that {!accept_websocket} gave to the socket. *)
 
   val set_websocket_auto_response :
     t -> request:string -> response:string -> unit
@@ -308,9 +316,9 @@ val make :
 val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 (** [register class_name create] binds [create] to the class that
     [workero build] exports under [class_name]. Call it at module
-    initialisation, once per class. The build reads the names by running the
+    initialization, once per class. The build reads the names by running the
     program in [workerd]; a [register] call that a condition skips at
-    initialisation is not exported.
+    initialization is not exported.
 
     [create] runs each time the runtime creates the object, before the first
     event. It must not call {!Promise.await}: that raises [Invalid_argument].

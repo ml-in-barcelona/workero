@@ -19,10 +19,11 @@ look up bindings and check their methods.
   {!Workero.Sql_value} for SQL values.
 - {{!page-durable_objects}Durable Objects}:
   {!Workero.Durable_object.Namespace.of_env} looks up a namespace. Object
-  classes support key-value and SQL storage, alarms, and hibernating WebSockets.
-- {{!page-fetcher}Service bindings and static assets}:
-  {!Workero.Fetcher.of_env} looks up either fetch-capable binding. Durable Object
-  stubs from {!Workero.Durable_object.Namespace.get} are also fetchers.
+  classes support key-value and SQL storage, alarms, hibernating WebSockets,
+  RPC methods and Containers.
+- {{!page-fetcher}Service bindings and static assets}: {!Workero.Fetcher.of_env}
+  looks up either fetch-capable binding. Durable Object stubs from
+  {!Workero.Durable_object.Namespace.get} are also fetchers.
 - {{!page-queue}Queues}: {!Workero.Queue.of_env} looks up a producer; the
   {!Workero.queue} handler receives consumer batches, not an [of_env] binding.
 - {{!page-hyperdrive}Hyperdrive}: {!Workero.Hyperdrive.of_env} looks up a
@@ -33,6 +34,8 @@ look up bindings and check their methods.
 - {{!page-ai}Workers AI}: {!Workero.Ai.of_env} looks up a model binding.
 - {{!page-workflows}Workflows}: {!Workero.Workflow.of_env} looks up a Workflow
   binding; {!Workero.Workflow.create} starts an instance.
+- {{!page-entrypoints}Entrypoints}: a service binding to a Worker with an
+  entrypoint class. {!Workero.Entrypoint.call} calls its RPC methods.
 - {{!page-analytics_engine}Analytics Engine}:
   {!Workero.Analytics_engine.of_env} looks up a dataset.
 
@@ -86,9 +89,10 @@ binding page describes its own return values and limits.
 
 [wrangler dev] uses local resources by default for KV, R2, D1, Durable
 Objects, Queues, assets, Analytics Engine, Rate Limiting, and Secrets Store.
-Service bindings need the target Worker running with the caller. Workers AI
-always calls Cloudflare remotely and may incur usage charges. Local simulation
-does not prove remote writes or model results. See
+Service bindings need the target Worker running with the caller. Hyperdrive
+connects to the [localConnectionString] of its binding. Workers AI always calls
+Cloudflare remotely and may incur usage charges. Local simulation does not
+prove remote writes or model results. See
 {{:https://developers.cloudflare.com/workers/local-development/bindings-per-env/}Cloudflare's local binding support table}.
 
 To deploy KV, R2 or D1, create the remote resources first:

@@ -8,8 +8,8 @@ your Worker. See the
 
 {1 Configure}
 
-Declare the target Worker in [wrangler.toml]. [binding] is the name that you pass
-to [of_env]:
+Declare the target Worker in [wrangler.toml]. [binding] is the name that you
+pass to [of_env]:
 
 {@toml[
 [[services]]

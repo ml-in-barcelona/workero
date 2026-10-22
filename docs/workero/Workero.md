@@ -132,7 +132,7 @@ JavaScript `Date`. Times are milliseconds since the Unix epoch, as a `float`. In
 ```ocaml
 module Crypto : sig ... end
 ```
-The Web Crypto random functions of the global `crypto` object.
+The Web Crypto functions of the global `crypto` object: random values, and a subset of `crypto.subtle`. See [Timers, time, and randomness](./globals.md).
 
 ```ocaml
 module Console : sig ... end

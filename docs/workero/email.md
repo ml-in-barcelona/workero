@@ -52,7 +52,7 @@ The program holds the whole message in memory, and the bytes are copied once fro
 
 ## Reply
 
-[`Workero.Email.reply`](./Workero-Email.md#val-reply) sends a complete message, with headers, as the reply. The runtime accepts a reply only when the sender allows it, so the raw message needs a `Message-ID` header and an `In-Reply-To` header with the `Message-ID` of the incoming message:
+[`Workero.Email.reply`](./Workero-Email.md#val-reply) sends a complete message, with headers, as the reply. The runtime accepts a reply only when the sender allows it, so the raw message needs a `Message-ID` header and an `In-Reply-To` header with the `Message-ID` of the incoming message. `~from` must be an address of the Worker's domain, and `~to_` the sender:
 
 ```ocaml
 let () =

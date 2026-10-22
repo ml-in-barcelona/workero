@@ -72,7 +72,8 @@ from JavaScript into the memory of the wasm program. For a large message, read
 {!Workero.Email.reply} sends a complete message, with headers, as the reply. The
 runtime accepts a reply only when the sender allows it, so the raw message needs
 a [Message-ID] header and an [In-Reply-To] header with the [Message-ID] of the
-incoming message:
+incoming message. [~from] must be an address of the Worker's domain, and [~to_]
+the sender:
 
 {@ocaml[
 let () =
@@ -94,14 +95,14 @@ let () =
 ]}
 
 [reply] creates the [EmailMessage] from the [cloudflare:email] module when it is
-called. [workerd] does not provide that module. See {{!page-known_issues}Support
-and known issues}.
+called. [workerd] does not provide that module. See
+{{!page-known_issues}Support and known issues}.
 
 {1 Errors}
 
 An exception that escapes the handler rejects the event Promise, and Cloudflare
-treats the delivery as failed. Catch {!Workero.Js_error} from {!Workero.Email.forward}
-and {!Workero.Email.reply} to answer with {!Workero.Email.set_reject} instead.
+treats the delivery as failed. Catch {!Workero.Js_error} from {!Workero.Email.forward} and
+{!Workero.Email.reply} to answer with {!Workero.Email.set_reject} instead.
 
 {1 Testing}
 

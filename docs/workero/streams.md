@@ -45,7 +45,7 @@ let () = Workero.serve handler
 - If your function raises, the body ends with an error. The error goes to `console.error`.
 - `status` and `headers` work as in [`Workero.Response.text`](./Workero-Response.md#val-text).
 - The function runs through [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). While the client remains connected and receives the stream, the HTTP invocation stays active. After the response ends or the client disconnects, remaining `waitUntil` work has a shared limit of 30 seconds. See [Async and background work](./async.md).
-To send a body and read another one at the same time, use [`Workero.Stream.pipe`](./Workero-Stream.md#val-pipe). It gives a [`Workero.Stream.Writer.t`](./Workero-Stream-Writer.md#type-t) and the [`Workero.Stream.t`](./Workero-Stream.md#type-t) that reads what you write.
+To make a stream that you fill yourself, use [`Workero.Stream.pipe`](./Workero-Stream.md#val-pipe). It gives a [`Workero.Stream.Writer.t`](./Workero-Stream-Writer.md#type-t) and the [`Workero.Stream.t`](./Workero-Stream.md#type-t) that reads what you write.
 
 
 ## Pass a body through
@@ -60,9 +60,9 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-To change only headers or status, pass `~headers` or `~status` to [`Workero.Response.copy`](./Workero-Response.md#val-copy). It preserves the upstream status and headers when you omit those arguments. If you already have a [`Workero.Stream.t`](./Workero-Stream.md#type-t), use [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) with the intended status and headers. See [Requests and responses](./requests.md).
+To change the status or the headers, pass `~status` or `~headers` to [`Workero.Response.copy`](./Workero-Response.md#val-copy). `~headers` replaces the whole upstream header list. Without these arguments, `copy` keeps the upstream status and headers. If you already have a [`Workero.Stream.t`](./Workero-Stream.md#type-t), use [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) with the intended status and headers. See [Requests and responses](./requests.md).
 
-[`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) and [`Workero.Response.copy`](./Workero-Response.md#val-copy) pass the existing body stream to the new response; they do not read it when they get the handle. The original and new responses then share a body that cannot be consumed twice. Call [`Workero.Response.clone`](./Workero-Response.md#val-clone) before either copy consumes the body if you need to read both. To read both, call [`Workero.Response.clone`](./Workero-Response.md#val-clone) before consuming either body.
+[`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) and [`Workero.Response.copy`](./Workero-Response.md#val-copy) pass the existing body stream to the new response; they do not read it when they get the handle. The original and new responses then share a body that cannot be consumed twice. To read both, call [`Workero.Response.clone`](./Workero-Response.md#val-clone) before consuming either body.
 
 
 ## Back-pressure
@@ -88,6 +88,11 @@ let handler _req _env ctx =
 let () = Workero.serve handler
 ```
 A loop that does not write cannot see the disconnect.
+
+
+## Release a lock
+
+[`Workero.Stream.reader`](./Workero-Stream.md#val-reader) locks a stream, and a writer locks its writable side. [`Workero.Stream.Reader.release`](./Workero-Stream-Reader.md#val-release) and [`Workero.Stream.Writer.release`](./Workero-Stream-Writer.md#val-release) unlock it, and the reader or writer is unusable afterwards. [`Workero.Socket.start_tls`](./Workero-Socket.md#val-start_tls) needs this: it fails while a reader or writer still locks a stream. [`Workero.Stream.Writer.of_js`](./Workero-Stream-Writer.md#val-of_js) wraps a JavaScript `WritableStreamDefaultWriter`, for example from `writable.getWriter()`.
 
 
 ## Close and abort

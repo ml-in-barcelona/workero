@@ -34,6 +34,8 @@ Entries in key order (`reverse` flips it). `start` is inclusive and `end_` is ex
 ```ocaml
 val sql : t -> Sql.t
 ```
+The SQL database of the object.
+
 ```ocaml
 val transaction_sync : t -> (unit -> 'a) -> 'a
 ```

@@ -31,7 +31,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 ## Workflow limits
 
 - [Workflows](./workflows.md): workerd has no Workflows engine, so the tests run the class and the binding against a small JavaScript engine. It calls the OCaml class over RPC as Cloudflare's engine does, and it implements steps, retries, `sleep`, `wait_for_event` and replay. The tests do not prove persistence, eviction, real retry timing, the Cloudflare limits or a deployment. Run a Workflow with `wrangler dev` or on Cloudflare before you rely on it.
-- Step results, event payloads, params and outputs are JSON values; integers above 1073741823 do not parse (see [Workflows](./workflows.md)).
+- Step results, event payloads, params and outputs are [`Workero.Rpc.value`](./Workero-Rpc.md#type-value)s. A number above 1073741823 reads as a ``Float`, not an ``Int` (see [Workflows](./workflows.md)).
 - Not wrapped: `retention`, `createBatch` with `count`, `deleteBatch`, `Instance.delete`, `subscribe`, `terminate` and `restart` options, rollback handlers, the rest of the step context (`step`, `config`), a function as `delay`, the cron `schedule` and the `workflowName` of the event. `wait_for_event` returns the payload, not the event.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.
 
@@ -51,7 +51,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) must run when the module starts. A `register` call that a condition skips is not exported.
 - `workero build` needs `workerd`. The main module must be `index.js`.
 - A `block_concurrency_while` function that raises resets the object.
-- SQL: `Int` values are exact only within ±`2^53`; a larger integer can read back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. `Sql.run` returns only the number of rows written. [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) with `Invalid_argument` and rolls back; use [`Workero.Durable_object.Storage.transaction`](./Workero-Durable_object-Storage.md#type-transaction) to await.
+- SQL: `Int` values are exact only within ±`2^53`; a larger integer can read back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. `Sql.run` returns only the number of rows written. [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) with `Invalid_argument` and rolls back; use [`Workero.Durable_object.Storage.transaction`](./Workero-Durable_object-Storage.md#val-transaction) to await.
 - [WebSockets](./websockets.md): a socket accepted with [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate. Do not also call [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket) on that socket. A class without `websocket_message` can accept hibernatable sockets, but does not handle their messages.
 - The `workerd` tests cannot prove eviction and re-creation during hibernation, jurisdictions, or the tag and 2048-byte attachment limits. Test these in a deployed Worker.
 - [Containers](./durable_objects.md): [`Workero.Durable_object.Container`](./Workero-Durable_object-Container.md) does not wrap `interceptOutboundTcp`, `exec`, `inspect` or the snapshot functions. The tests run `State.container` against `None` in `workerd` and against a JavaScript stub. A separate test, `test/worker-containers`, starts real containers in CI and prints `SKIP containers` where Docker or its images are missing. Raw TCP connect and outbound interception run only there. `workerd` runs containers only with Docker and an egress interceptor image.
@@ -69,7 +69,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - `Sys.word_size` is 32, and `int` has 31 bits.
 - There is no file system, except files that you embed. See [Supported libraries](./libraries.md).
-- The program has no threads, sockets or sub-processes.
+- The program has no threads or sub-processes. It can open only outbound TCP connections, with [`Workero.Socket`](./Workero-Socket.md).
 Successful compilation does not prove that a library's runtime dependencies are available in a Worker. See [Supported libraries](./libraries.md) and [Testing a worker](./testing.md).
 
 

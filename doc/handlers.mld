@@ -4,7 +4,10 @@ Register the event handlers that your Worker needs at the top level of its
 OCaml program. {!Workero.serve} handles HTTP requests,
 {!Workero.scheduled} handles cron triggers, {!Workero.queue} consumes Queue
 messages and {!Workero.email} receives email. Each registration is independent:
-a cron-only or queue-only Worker does not need an HTTP handler.
+a cron-only or queue-only Worker does not need an HTTP handler. Classes for
+Durable Objects, entrypoints and Workflows are not event handlers. Register
+them with {!Workero.Durable_object.register}, {!Workero.Entrypoint.register}
+and {!Workero.Workflow.register}.
 
 {1 Handle HTTP requests}
 
@@ -99,8 +102,9 @@ Each event handler runs in a fiber. You can call {!Workero.fetch}, bindings
 and {!Workero.Promise.await} inside it while other events run. The build's
 [index.js] exports only the handlers registered at startup: [fetch],
 [scheduled], [queue] and/or [email]. A program with no event handlers and no
-{{!page-durable_objects}Durable Object classes} or
-{{!page-entrypoints}entrypoint classes} fails Worker initialization
+{{!page-durable_objects}Durable Object classes},
+{{!page-entrypoints}entrypoint classes} or
+{{!page-workflows}Workflow classes} fails Worker initialization
 with [workero: the OCaml program registered no handler].
 
 An uncaught HTTP handler exception rejects the response Promise, and the

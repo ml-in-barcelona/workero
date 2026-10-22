@@ -26,14 +26,14 @@ let () =
 ```
 `workero build` runs the program once in `workerd` and exports every registered class from `index.js`. It reads the names in `~rpc` at that time, before the program has an [`Workero.Env.t`](./Workero-Env.md#type-t), so they are given apart from the handler. The `rpc` handler of [`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) gets the method name and the arguments, like the `rpc` handler of a Durable Object. A call to a declared name on a class whose handlers have no `rpc` fails with an error.
 
-The handler gets the arguments of the call as a list of [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) values and returns one. They are JSON values and also bytes, dates, big integers, maps, sets, streams, stubs and functions; see [Durable Objects](./durable_objects.md). It runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the other bindings. An exception that the handler raises rejects the call. The caller sees an `Error` whose message is the exception.
+The handler gets the arguments of the call as a list of [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) values and returns one. They are JSON values and also bytes, dates, big integers, maps, sets, streams, stubs and functions. See [`Workero.Rpc`](./Workero-Rpc.md) for the full list. The handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the other bindings. An exception that the handler raises rejects the call. The caller sees an error whose message includes the exception.
 
-The runtime creates a new instance of the class for each call. The function given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) runs for each of them and gets the `env` and the `ctx`, so a method can call [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). Keep no state in it.
+The runtime creates a new instance of the class for each call. The function given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) runs for each of them and gets the `env` and the `ctx`, so a method can call [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). This function cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Keep no state in the instance: two calls can run in different instances.
 
 
 ## Call it from JavaScript
 
-Bind the class in the `wrangler.toml` of the caller. The caller may be this Worker or another one:
+Bind the class in the `wrangler.toml` of the caller. `service` is the name of the Worker that holds the class, and `entrypoint` is the name given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register). The caller may be this Worker or another one:
 
 ```toml
 [[services]]
@@ -43,30 +43,40 @@ entrypoint = "Math"
 ```
 ```javascript
 const sum = await env.MATH.add(2, 3); // 5
+const hello = await env.MATH.greet("Ana"); // "Hello, Ana"
 ```
+An OCaml method that returns ``Null` gives `null` in JavaScript, and one that returns ``Undefined` gives `undefined`.
+
 
 ## Call it from OCaml
 
 Read the binding with [`Workero.Fetcher.of_env`](./Workero-Fetcher.md#val-of_env) and call a method with [`Workero.Entrypoint.call`](./Workero-Entrypoint.md#val-call):
 
 ```ocaml
+open Workero
+
 let handler _req env _ctx =
   let math = Fetcher.of_env env "MATH" in
   match Entrypoint.call math "add" [ `Int 2; `Int 3 ] with
   | `Int sum -> Response.text (string_of_int sum)
   | _ -> Response.text ~status:`Bad_Gateway "unexpected result"
+
+let () = serve handler
 ```
-The callee may be an entrypoint written in OCaml or in JavaScript. [`Workero.Entrypoint.call`](./Workero-Entrypoint.md#val-call) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the method does not exist or raises, and when the runtime rejects the call.
+The response body is `5`.
+
+The callee may be an entrypoint written in OCaml or in JavaScript. [`Workero.Entrypoint.call`](./Workero-Entrypoint.md#val-call) suspends like [`Workero.Promise.await`](./Workero-Promise.md#val-await). It raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the method does not exist or raises, and when the runtime rejects the call. A method that returns `undefined` in JavaScript gives ``Undefined`.
 
 
 ## The fetch handler
 
-[`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) accepts a `~fetch` handler. It answers [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) on a binding of the class. Without it, such a request fails with an error.
+[`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) accepts a `~fetch` handler. It answers [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) on a binding of the class, like `env.MATH.fetch(request)` in JavaScript. Without it, such a request fails with an error.
 
 
 ## Limits
 
-- A value with no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form, such as an `Error`, raises `Invalid_argument`. A result of `undefined` is ``Undefined`.
+- A value with no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form, such as an `Error`, raises `Invalid_argument`.
 - The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
-- A class cannot share its name with a Durable Object class, and the method names `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup` are reserved.
-- RPC methods on Durable Object stubs are not part of this page.
+- [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) raises `Invalid_argument` when the class name is also the name of a Durable Object class, a Workflow or another entrypoint. It raises the same exception for a duplicate method name or one that is not a JavaScript identifier.
+- These method names are reserved: `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup`.
+- For RPC methods on Durable Object stubs, see [Durable Objects](./durable_objects.md).

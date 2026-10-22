@@ -37,11 +37,14 @@ durable multi-step programs.
 
 {1 Advanced}
 
-- {{!page-how_it_works}How Workero works}: compilation, effects, and the JavaScript entry point.
-- {{!page-interop}JavaScript interop}: call APIs without a typed Workero wrapper.
+- {{!page-how_it_works}How Workero works}: compilation, effects, and the
+  JavaScript entry point.
+- {{!page-interop}JavaScript interop}: call APIs without a typed Workero
+  wrapper.
 
 {1 OCaml API reference}
 
-The {!Workero} module reference lists types, functions, defaults, and exceptions.
+The {!Workero} module reference lists types, functions, defaults, and
+exceptions.
 
 {!modules: Workero}

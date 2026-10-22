@@ -11,6 +11,9 @@
     that this module raises contains them. *)
 
 type t
+(** A Hyperdrive binding. The accessors of this module raise [Invalid_argument],
+    with the expected and actual JavaScript type, when the binding has no such
+    field. *)
 
 val of_env : Env.t -> string -> t
 (** [of_env env name] is the Hyperdrive binding [name].
@@ -20,20 +23,22 @@ val of_env : Env.t -> string -> t
 
 val connection_string : t -> string
 (** A connection string, such as [postgres://user:password@host:port/database],
-    for a database driver. It contains the password.
-
-    The accessors of this module raise [Invalid_argument], with the expected and
-    actual JavaScript type, when the binding has no such field. *)
+    for a database driver. It contains the password. *)
 
 val host : t -> string
 (** A host name that is valid only inside this Worker. *)
 
 val port : t -> int
+(** The port of {!host}. *)
+
 val user : t -> string
+(** The database user. *)
 
 val password : t -> string
 (** A password that is valid only inside this Worker. *)
 
 val database : t -> string
+(** The database name. *)
+
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any

@@ -16,7 +16,7 @@ open Workero
 module Step = Workflow.Step
 
 let () =
-  Workflow.register "Greet" (fun env event step ->
+  Workflow.register "Greet" (fun _env event step ->
       let name =
         Step.do_ step "read name" (fun _ ->
             match event.Workflow.payload with
@@ -39,13 +39,16 @@ let () =
 ]}
 
 The function runs in a fiber and may call {!Workero.Promise.await}. Its result
-is the output of the instance. An exception that it raises fails the instance.
+is the output of the instance, an {!Workero.Rpc.value}. An exception that it
+raises fails the instance. The runtime creates a new instance of the class for
+each run.
 
 [workero build] runs the program once in [workerd] and exports every registered
 class from [index.js], like Durable Object and entrypoint classes. It writes
 [workflow.js] only when a Workflow is registered, so a Worker without Workflows
-imports nothing new. Declare the class in [wrangler.toml]; [class_name] is the
-name given to {!Workero.Workflow.register}:
+imports nothing new. Declare the class in [wrangler.toml]. [class_name] is the
+name given to {!Workero.Workflow.register}, and [binding] is the name that
+{!Workero.Workflow.of_env} reads:
 
 {@toml[
 [[workflows]]
@@ -71,19 +74,27 @@ already finished and does not call its callback. So:
 
 {1 Steps}
 
-- {!Workero.Workflow.Step.do_}: run a callback, store its {!Workero.Rpc.value} result. The
-  callback gets a {!Workero.Workflow.Step.context} with the [attempt] number: 1
-  on the first try, 2 on the first retry. [retries]
-  sets [limit], [delay] and [backoff] ([Constant], [Linear] or [Exponential]);
-  [timeout] applies to each attempt. Without them the runtime uses 5 retries, a
-  10 second delay, exponential backoff and a 10 minute timeout.
+- {!Workero.Workflow.Step.do_}: run a callback and store its
+  {!Workero.Rpc.value} result. The callback gets a
+  {!Workero.Workflow.Step.type-context} with the [attempt] number: 1 on the
+  first try, 2 on the first retry. {!Workero.Workflow.Step.val-retries} sets
+  [limit] (0 to 10000), [delay] and [backoff] ([Constant], [Linear] or
+  [Exponential]). [timeout] applies to each attempt. Without them the runtime
+  uses 5 retries, a 10 second delay, exponential backoff and a 10 minute
+  timeout. A step name has at most 256 characters.
 - {!Workero.Workflow.Step.sleep} and {!Workero.Workflow.Step.sleep_until}: wait
   for a {!Workero.Workflow.Duration.t} or until a time in milliseconds since the
   epoch, like {!Workero.Date.now}.
-- {!Workero.Workflow.Step.wait_for_event}: wait for an event of a given type,
-  sent with {!Workero.Workflow.Instance.send_event}, and return its payload.
-  It fails with {!Workero.Js_error} after the timeout (24 hours by default).
-  Catch the error to go on.
+- {!Workero.Workflow.Step.wait_for_event}: wait for an event of a given
+  [type_], sent with {!Workero.Workflow.Instance.send_event}, and return its
+  payload. The type has 1 to 100 letters, digits, [-] or [_]. It fails with
+  {!Workero.Js_error} after the timeout (24 hours by default). Catch the error
+  to go on.
+
+Build a {!Workero.Workflow.Duration.t} with {!Workero.Workflow.Duration.ms},
+{!Workero.Workflow.Duration.seconds}, {!Workero.Workflow.Duration.minutes},
+{!Workero.Workflow.Duration.hours} or {!Workero.Workflow.Duration.days}. A
+negative count raises [Invalid_argument].
 
 A callback that raises fails the attempt, and the runtime retries it. Raise
 {!Workero.Workflow.Non_retryable} to fail without retries; the runtime sees a
@@ -91,9 +102,10 @@ A callback that raises fails the attempt, and the runtime retries it. Raise
 {!Workero.Js_error} in the function; catch it to keep the instance running.
 
 Step results, event payloads, params and outputs are {!Workero.Rpc.value}s: the
-values that [structuredClone] copies. They hold JSON values and also [`Undefined],
-[`Bytes], [`Date], [`Bigint], [`Map] and [`Set]. A value converts to a
-{!Workero.Rpc.t} with [(v :> Rpc.t)], and {!Workero.Rpc.to_value} converts back.
+values that [structuredClone] copies. They hold JSON values and also
+[`Undefined], [`Bytes], [`Date], [`Bigint], [`Map] and [`Set]. A value
+converts to a {!Workero.Rpc.t} with [(v :> Rpc.t)], and
+{!Workero.Rpc.to_value} converts back.
 A number above 1073741823, such as [Date.now ()], is a [`Float]. A step result
 or payload that has no [Rpc.value] form raises [Invalid_argument].
 
@@ -102,7 +114,9 @@ or payload that has no [Rpc.value] form raises [Invalid_argument].
 Read the binding with {!Workero.Workflow.of_env}:
 
 {@ocaml[
-let handler req env _ctx =
+open Workero
+
+let handler _req env _ctx =
   let greet = Workflow.of_env env "GREET" in
   let instance =
     Workflow.create greet ~params:(`Assoc [ ("name", `String "Ana") ])
@@ -113,17 +127,36 @@ let handler req env _ctx =
     ^ (match state.status with
       | Workflow.Instance.Complete -> " complete"
       | _ -> " running"))
+
+let () = serve handler
 ]}
 
-{!Workero.Workflow.create} takes an optional [id] and [params]; the params are
-the [payload] of the event. {!Workero.Workflow.create_batch} starts up to 100
-instances and returns the instances and the errors, for example for an [id] in
-use. {!Workero.Workflow.get} finds an instance by id. An instance has
-{!Workero.Workflow.Instance.val-status}, [pause], [resume], [terminate], [restart]
-and {!Workero.Workflow.Instance.send_event}. The calls raise
-{!Workero.Js_error} when the runtime rejects them: a missing instance, an [id]
-in use, [resume] of an instance that runs, [send_event] to an instance that is
-not running.
+The response body is the instance id followed by [ running]. The first sleep
+of the instance lasts 10 seconds, so it has not completed.
+
+{!Workero.Workflow.create} takes an optional [id] and [params]. The params are
+the [payload] of the event. {!Workero.Workflow.create_batch} takes a list of
+{!Workero.Workflow.val-options}, starts up to 100 instances, and returns the
+instances and the errors, for example for an [id] in use.
+{!Workero.Workflow.get} finds an instance by id.
+
+An instance has {!Workero.Workflow.Instance.id},
+{!Workero.Workflow.Instance.val-status}, {!Workero.Workflow.Instance.pause},
+{!Workero.Workflow.Instance.resume}, {!Workero.Workflow.Instance.terminate},
+{!Workero.Workflow.Instance.restart} and
+{!Workero.Workflow.Instance.send_event}. The calls suspend like
+{!Workero.Promise.await}. They raise {!Workero.Js_error} when the runtime
+rejects them, for example for a missing instance, an [id] in use, or a
+[send_event] to an instance that is not running. {!Workero.Workflow.create},
+{!Workero.Workflow.val-options} and [send_event] raise [Invalid_argument] for an
+[id] over 100 characters or an invalid event type.
+
+{!Workero.Workflow.Instance.val-status} returns a
+{!Workero.Workflow.Instance.state}: the [status], the [error] as a name and a
+message, and the [output] once the instance completes.
+
+To use a Workflow of another Worker, add [script_name] to the
+[[[workflows]]] entry in the [wrangler.toml] of the caller.
 
 {1 Limits}
 
