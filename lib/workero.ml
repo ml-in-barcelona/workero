@@ -31,6 +31,7 @@ module Date = Date
 module Crypto = Crypto
 module Console = Console
 module Secret_store = Secret_store
+module Hyperdrive = Hyperdrive
 module Fetcher = Fetcher
 module Queue = Queue
 module Rate_limiter = Rate_limiter

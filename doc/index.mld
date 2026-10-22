@@ -28,8 +28,8 @@ The pages follow the order of a Worker project.
   background work.
 - {{!page-bindings}Bindings}: {{!page-kv}KV}, {{!page-cache}Cache}, {{!page-r2}R2} and
   {{!page-d1}D1}, {{!page-fetcher}Fetcher}, {{!page-queue}Queue},
-  {{!page-rate_limiter}Rate limiting}, {{!page-ai}Workers AI} and
-  {{!page-analytics_engine}Analytics Engine}.
+  {{!page-rate_limiter}Rate limiting}, {{!page-hyperdrive}Hyperdrive},
+  {{!page-ai}Workers AI} and {{!page-analytics_engine}Analytics Engine}.
 - {{!page-durable_objects}Durable Objects}: classes, stubs, storage and alarms.
 - {{!page-logging}Logging}: output and [Workero.Console].
 - {{!page-globals}JavaScript globals}: timers, [Date], [crypto].

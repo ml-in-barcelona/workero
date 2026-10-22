@@ -52,6 +52,8 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "STORE_BROKEN", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "fail")])),'
   echo '        (name = "JOBS", queue = "queue-sink"),'
   echo '        (name = "LIMITER", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "limit"), (name = "TARGET", service = (name = "limiter", entrypoint = "Limiter"))])),'
+  echo '        (name = "HYPERDRIVE", hyperdrive = (designator = "db-proxy", database = "app", user = "alice", password = "s3cret", scheme = "postgresql")),'
+  printf '%s\n' '        (name = "HYPERDRIVE_BAD", json = "{\"port\":\"leak-me-port\",\"password\":42}"),'
   echo '        (name = "AI", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "run"), (name = "TARGET", service = (name = "ai", entrypoint = "Ai"))])),'
   echo '        (name = "ANALYTICS", wrapped = (moduleName = "workero-test:analytics", innerBindings = [])),'
   echo '        (name = "ANALYTICS_BROKEN", wrapped = (moduleName = "workero-test:analytics-broken", innerBindings = [])),'
@@ -69,7 +71,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache backend queue-sink limiter ai; do
+  for svc in kv r2 cache backend queue-sink limiter ai db-proxy; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"

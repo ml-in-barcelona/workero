@@ -4,6 +4,7 @@
 
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
+- `Workero.Hyperdrive` (`of_env`, `connection_string`, `host`, `port`, `user`, `password`, `database`): the connection details of a Hyperdrive binding. It has no query driver; that needs TCP sockets.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).
 - `Workero.Durable_object`: Durable Objects with SQLite storage. `register` binds a class, `make` builds its handlers (`init`, `fetch`, `alarm`), `Namespace` opens a binding and gives stubs (a `Fetcher.t`), `Id`, `State` and `Storage` (synchronous key-value, alarms, `sync`, `delete_all`).
 - `Durable_object.Sql` (`query`, `run`, `database_size`) with `Storage.sql`, `Storage.transaction_sync` (rolls back and re-raises the original exception; `Promise.await` inside raises `Invalid_argument`), and hibernatable WebSockets: `make ~websocket_message ~websocket_close ~websocket_error`, `State.accept_websocket`, `websockets`, `tags`, `set_websocket_auto_response`, and `Websocket.serialize_attachment` / `deserialize_attachment`.

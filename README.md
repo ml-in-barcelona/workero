@@ -101,9 +101,10 @@ let () =
         (Workero.Queue.Batch.messages batch))
 ```
 
-`Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
-model with JSON input and output, and `Analytics_engine.write` records a data
-point:
+`Hyperdrive` gives the connection details of a database (it has no query
+driver yet), `Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a
+Workers AI model with JSON input and output, and `Analytics_engine.write`
+records a data point:
 
 ```ocaml
 let handler req env _ctx =

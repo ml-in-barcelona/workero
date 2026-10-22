@@ -138,6 +138,11 @@ module Secret_store : sig ... end
 A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. The value is plain text: do not log it. For a secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
 
 ```ocaml
+module Hyperdrive : sig ... end
+```
+A Hyperdrive binding, declared in `wrangler.toml` with `[[hyperdrive]]`. Hyperdrive pools and caches connections to a PostgreSQL or MySQL database.
+
+```ocaml
 module Fetcher : sig ... end
 ```
 A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Bind it in `wrangler.toml` with `[[services]]` or `[assets]`. The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.

@@ -15,6 +15,8 @@ name in [env], and you open it with [of_env].
 - {{!page-queue}Queue}: {!Workero.Queue}, producers and consumers of Cloudflare
   Queues.
 - {{!page-rate_limiter}Rate limiting}: {!Workero.Rate_limiter}.
+- {{!page-hyperdrive}Hyperdrive}: {!Workero.Hyperdrive}, connection details for
+  a database (no query driver yet).
 - {{!page-ai}Workers AI}: {!Workero.Ai}.
 - {{!page-analytics_engine}Analytics Engine}: {!Workero.Analytics_engine}.
 - {{!page-env}Secrets Store}: {!Workero.Secret_store}, secrets that Workers
