@@ -30,7 +30,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Entrypoint limits
 
-- [Entrypoints](./entrypoints.md): arguments and results are JSON values. `Uint8Array`, `Date`, `Map`, `BigInt`, streams and stubs do not cross the call. The `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
+- [Entrypoints](./entrypoints.md): the `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
 - The runtime creates a new instance of an entrypoint for each call, so it keeps no state between calls.
 - An entrypoint and a Durable Object class cannot share a name.
 - A method declared in `~rpc` on a class whose handlers have no `rpc` fails on the first call, not at build time.
@@ -38,7 +38,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 ## Durable Object limits
 
 - The storage API requires a SQLite-backed class. A class listed in `new_classes` can build, but its key-value and SQL calls fail at runtime. See [Durable Objects](./durable_objects.md).
-- RPC methods on a stub: names are declared with `register ~rpc`. Arguments and results are JSON. `Date`, `Map`, `BigInt`, `Uint8Array`, streams, stubs and functions cannot cross the call. A method name cannot be `fetch`, `alarm`, `connect`, `constructor`, `prototype` or a `webSocket*` handler. See [Durable Objects](./durable_objects.md).
+- RPC methods on a stub: names are declared with `register ~rpc`. Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t). An `Error`, a typed array other than `Uint8Array`, a class instance and a `Symbol` cannot cross the call. A ``Function` argument is released when the call returns. A method name cannot be `fetch`, `alarm`, `connect`, `constructor`, `prototype` or a `webSocket*` handler. See [Durable Objects](./durable_objects.md).
 - Stored values are JSON. A `Date` that other code stores reads back as its ISO string and a `Map` as `{}`. A `BigInt` or a cyclic value raises `Invalid_argument`.
 - The function given to `register` cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Load stored values in `~init`. Keep per-object state in closures.
 - [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) must run when the module starts. A `register` call that a condition skips is not exported.

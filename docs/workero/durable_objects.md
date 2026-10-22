@@ -118,7 +118,7 @@ let () =
           | _ -> invalid_arg ("bad call to " ^ name))
         ())
 ```
-The names must be known before any object exists, because `workero build` adds them to the exported class. `rpc` receives the name and the arguments as `Jsonkit.t`, and returns the result as JSON. A JavaScript caller sees a promise for the result: `await stub.add(1, 2)`. An exception in the handler rejects the call with its message. A handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
+The names must be known before any object exists, because `workero build` adds them to the exported class. `rpc` receives the name and the arguments as [`Workero.Rpc.t`](./Workero-Rpc.md#type-t), and returns one. A JavaScript caller sees a promise for the result: `await stub.add(1, 2)`. An exception in the handler rejects the call with its message. A handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
 
 OCaml code calls a method with [`Workero.Durable_object.call`](./Workero-Durable_object.md#val-call):
 
@@ -128,7 +128,32 @@ match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
 | `Int n -> n
 | _ -> failwith "unexpected result"
 ```
-A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error). Arguments and results are JSON: values that JSON cannot carry, such as `Date`, `Map`, `BigInt`, streams and other stubs, are not supported. A JavaScript `undefined` argument or result becomes ``Null`.
+A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error).
+
+
+### Values
+
+Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t): the JSON constructors (``Null`, ``Bool`, ``Int`, ``Float`, ``String`, ``List`, ``Assoc`) and the other values that RPC carries, in both directions and at any depth:
+
+- ``Undefined` is `undefined`; ``Null` is `null`.
+- ``Bytes` is a `Uint8Array`. A JavaScript `ArrayBuffer` arrives as ``Bytes`.
+- ``Date` holds milliseconds since the epoch.
+- ``Bigint` holds decimal digits, so it has no size limit.
+- ``Map` and ``Set` keep their order.
+- ``Stream` is a [`Workero.Stream.t`](./Workero-Stream.md#type-t). The receiver consumes it.
+- ``Stub` is a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t): a service binding or a Durable Object stub.
+- ``Function` is a function. The callee can call it while the call runs. A function in a result stays callable through its stub.
+```ocaml
+match
+  Durable_object.call stub "touch"
+    [ `Date (Date.now ()); `Bytes "\000\001"; `Map [ (`String "k", `Set [ `Int 1 ]) ] ]
+with
+| `Date at -> at
+| _ -> failwith "unexpected result"
+```
+A handler written for JSON keeps working, because ``Int`, ``String` and the other JSON constructors are the same. [`Workero.Rpc.of_json`](./Workero-Rpc.md#val-of_json) and [`Workero.Rpc.to_json`](./Workero-Rpc.md#val-to_json) convert a `Jsonkit.t`. A call that used to give ``Null` for a JavaScript `undefined` now gives ``Undefined`.
+
+An `Error`, a typed array other than `Uint8Array`, a class instance and a `Symbol` have no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form. Reading one raises `Invalid_argument`.
 
 
 ## Use storage and IDs

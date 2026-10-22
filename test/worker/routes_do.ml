@@ -416,7 +416,7 @@ let rooms ~hibernating state _env =
              Websocket.close ~code:1000 ws))
     ()
 
-let rpc_counter state _env =
+let rpc_counter state env =
   let storage = D.State.storage state in
   let get () = count_of (D.Storage.get storage "n") in
   D.make
@@ -434,12 +434,22 @@ let rpc_counter state _env =
       | "slow", [] ->
           Promise.await (Timer.sleep 20);
           `String "slept"
-      | _ -> invalid_arg ("bad RPC call " ^ name))
+      | _ -> (
+          match
+            Rpc_values.answer
+              ~stub:(fun () -> Fetcher.of_env env "BACKEND")
+              ~spawn:(D.State.wait_until state) name args
+          with
+          | Some v -> v
+          | None -> invalid_arg ("bad RPC call " ^ name)))
+    ~fetch:(fun _ -> Response.text "rpc object")
     ()
 
 let () =
   D.register
-    ~rpc:[ "increment"; "add"; "get"; "echo"; "nothing"; "fail"; "slow" ]
+    ~rpc:
+      ([ "increment"; "add"; "get"; "echo"; "nothing"; "fail"; "slow" ]
+      @ Rpc_values.methods)
     "Rpc" rpc_counter;
   D.register ~rpc:[ "ping" ] "RpcNoHandler" (fun _ _ -> D.make ());
   D.register "Sqlite" sqlite;
@@ -631,11 +641,11 @@ let handle req env _ctx =
         | None -> []
         | Some text -> (
             match Jsonkit.of_string text with
-            | `List l -> l
+            | `List l -> List.map Rpc.of_json l
             | _ -> invalid_arg "args must be a JSON array")
       in
       match D.call stub meth args with
-      | v -> Some (Response.text (Jsonkit.to_string v))
+      | v -> Some (Response.text (Rpc_values.text v))
       | exception Js_error e ->
           Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
   | [ ""; "do-ws"; binding; name; op ] ->
