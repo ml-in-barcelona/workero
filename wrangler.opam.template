@@ -1,15 +1,4 @@
-opam-version: "2.0"
 version: "4.151.3"
-synopsis: "Wrangler, the Cloudflare Workers command line tool"
-description:
-  "Wrangler builds, runs and deploys Cloudflare Workers. This package installs a bundle of Wrangler and its JavaScript dependencies. It uses the workerd package as its runtime. It needs Node.js 22 or later."
-license: "MIT OR Apache-2.0"
-homepage: "https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler"
-maintainer: ["David Sancho <dsnxmoreno@gmail.com>"]
-authors: ["Cloudflare, Inc."]
-bug-reports: "https://github.com/ml-in-barcelona/workero/issues"
-dev-repo: "git+https://github.com/ml-in-barcelona/workero.git"
-x-maintenance-intent: ["(latest)"]
 available: [ (os = "linux" | os = "macos") & (arch = "x86_64" | arch = "arm64") ]
 depends: [
   "conf-npm"

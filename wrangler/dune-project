@@ -1,7 +1,0 @@
-(lang dune 3.24)
-
-(name wrangler)
-
-(package
- (name wrangler)
- (synopsis "Wrangler, the Cloudflare Workers command line tool"))

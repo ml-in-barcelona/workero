@@ -30,7 +30,7 @@ opam can select a download for one platform only with a package, not with a filt
 
 ## Versions
 
-The version of the opam package is the version of the npm package `workerd`, for example `1.20261019.1`. The date in the version is the workerd release date. The file `CHANGES.md` in the `workerd` directory of the repository lists the releases.
+The version of the opam package is the version of the npm package `workerd`, for example `1.20261019.1`. The date in the version is the workerd release date. The file `CHANGES-workerd.md` in the repository lists the releases.
 
 The package `wrangler` needs the exact workerd version that its npm package pins. For this reason, you may need an older workerd than the latest one.
 
@@ -47,4 +47,4 @@ Each platform package downloads one tarball from the npm registry, from the pack
 
 ## Release
 
-The maintainers release `workerd` separately from `workero`. Tag `workerd-<version>` starts the release. See `CONTRIBUTING.md` in the repository.
+A CI job checks the npm registry every day. For a new `workerd` version, it releases the package without manual steps: the tag is `workerd-<version>`. See `CONTRIBUTING.md` in the repository.

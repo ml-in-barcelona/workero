@@ -1,7 +1,0 @@
-(lang dune 3.24)
-
-(name workerd)
-
-(package
- (name workerd)
- (synopsis "The workerd runtime for Cloudflare Workers"))

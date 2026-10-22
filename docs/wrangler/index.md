@@ -29,7 +29,7 @@ The bundle has these differences from `npm install wrangler`:
 
 ## Versions
 
-The version of the opam package is the version of the npm package `wrangler`, for example `4.151.3`. The file `CHANGES.md` in the `wrangler` directory of the repository lists the releases.
+The version of the opam package is the version of the npm package `wrangler`, for example `4.151.3`. The file `CHANGES-wrangler.md` in the repository lists the releases.
 
 
 ## Use with workero
@@ -39,4 +39,4 @@ A workero project can use `wrangler dev` and `wrangler deploy` with the `wrangle
 
 ## Release
 
-The maintainers release `wrangler` separately from `workero`. Tag `wrangler-<version>` starts the release. See `CONTRIBUTING.md` in the repository.
+A CI job checks the npm registry every day. For a new `wrangler` version, it releases the package without manual steps: the tag is `wrangler-<version>`. See `CONTRIBUTING.md` in the repository.

@@ -1,0 +1,11 @@
+version: "1.20261019.1"
+available: os = "linux" & arch = "x86_64"
+depends: []
+build: []
+install: [
+  ["install" "-m" "755" "bin/workerd" "%{bin}%/workerd"]
+]
+url {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-linux-64/-/workerd-linux-64-1.20261019.1.tgz"
+  checksum: "sha512=e3ef95462f6f91044e62aae96583a2c4826e5439ae8e4c2b4f892ccecc4d165bdc9ac5fa32bd86ba6bf120dde0222c52def25487752676d92d86a8f95f44b75f"
+}

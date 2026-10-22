@@ -1,5 +1,4 @@
 project_name = workero
-doc_packages = workero workerd wrangler
 
 DUNE = opam exec -- dune
 
@@ -56,7 +55,7 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 	rm -rf docs
 	mkdir docs
 	cp _build/default/_doc/_markdown/index.md docs/
-	for p in $(doc_packages); do cp -R _build/default/_doc/_markdown/$$p docs/; done
+	for p in $(basename $(wildcard *.opam)); do cp -R _build/default/_doc/_markdown/$$p docs/; done
 	chmod -R u+w docs
 
 .PHONY: clean

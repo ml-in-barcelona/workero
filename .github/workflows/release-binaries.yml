@@ -5,22 +5,30 @@ on:
     tags:
       - 'workerd-[0-9]*'
       - 'wrangler-[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, for example workerd-1.20261019.1'
+        required: true
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   release:
-    name: Release ${{ github.ref_name }}
+    name: Release ${{ inputs.tag || github.ref_name }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       - uses: actions/setup-node@v4
         with:
@@ -28,15 +36,19 @@ jobs:
 
       - name: Read the tag
         run: |
-          echo "PACKAGE=${GITHUB_REF_NAME%%-*}" >> "$GITHUB_ENV"
-          echo "VERSION=${GITHUB_REF_NAME#*-}" >> "$GITHUB_ENV"
+          case "$TAG" in
+            workerd-[0-9]*.[0-9]*.[0-9]* | wrangler-[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Not a release tag: $TAG" >&2; exit 1 ;;
+          esac
+          echo "PACKAGE=${TAG%%-*}" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#*-}" >> "$GITHUB_ENV"
 
       - name: Check the version and the changelog
         run: |
-          grep -qx "version: \"$VERSION\"" "$PACKAGE/$PACKAGE.opam"
-          grep -qx "## $VERSION" "$PACKAGE/CHANGES.md"
+          grep -qx "version: \"$VERSION\"" "$PACKAGE.opam"
+          grep -qx "## $VERSION" "CHANGES-$PACKAGE.md"
           awk -v v="## $VERSION" '$0 == v { found = 1; next } /^## / { found = 0 } found' \
-            "$PACKAGE/CHANGES.md" > "$RUNNER_TEMP/notes.md"
+            "CHANGES-$PACKAGE.md" > "$RUNNER_TEMP/notes.md"
 
       - name: Build the wrangler bundle
         if: env.PACKAGE == 'wrangler'
@@ -46,13 +58,13 @@ jobs:
 
       - name: Create the GitHub release
         run: |
-          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             if [ -n "${ARCHIVE:-}" ]; then
-              gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
                 --pattern "$(basename "$ARCHIVE")" --output "$ARCHIVE" --clobber
             fi
           else
-            gh release create "$GITHUB_REF_NAME" ${ARCHIVE:-} \
+            gh release create "$TAG" ${ARCHIVE:+"$ARCHIVE"} \
               --repo "$GITHUB_REPOSITORY" \
               --title "$PACKAGE $VERSION" \
               --notes-file "$RUNNER_TEMP/notes.md" \
@@ -63,13 +75,13 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/packages"
           if [ "$PACKAGE" = wrangler ]; then
-            url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/wrangler-$VERSION.tgz"
+            url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/wrangler-$VERSION.tgz"
             sum=$(sha512sum "$ARCHIVE" | cut -d' ' -f1)
             mkdir -p "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION"
-            scripts/opam-repo-file.sh wrangler/wrangler.opam "$url" "$sum" \
+            scripts/opam-repo-file.sh wrangler.opam "$url" "$sum" \
               > "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION/opam"
           else
-            for f in workerd/workerd.opam workerd/platform/*.opam; do
+            for f in workerd.opam workerd-*.opam; do
               name=$(basename "$f" .opam)
               mkdir -p "$RUNNER_TEMP/packages/$name/$name.$VERSION"
               scripts/opam-repo-file.sh "$f" > "$RUNNER_TEMP/packages/$name/$name.$VERSION/opam"

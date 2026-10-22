@@ -1,0 +1,9 @@
+version: "1.20261019.1"
+available: [ os = "linux" | os = "macos" ]
+depends: [
+  "workerd-linux-64" {= version & os = "linux" & arch = "x86_64"}
+  "workerd-linux-arm64" {= version & os = "linux" & arch = "arm64"}
+  "workerd-darwin-64" {= version & os = "macos" & arch = "x86_64"}
+  "workerd-darwin-arm64" {= version & os = "macos" & arch = "arm64"}
+]
+build: []

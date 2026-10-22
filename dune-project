@@ -47,6 +47,65 @@
     :with-dev-setup
     (= 0.29.0)))))
 
+(package
+ (name workerd)
+ (synopsis "The workerd runtime for Cloudflare Workers")
+ (description
+  "Installs the prebuilt workerd binary from Cloudflare for your platform: Linux or macOS, x86_64 or arm64. Linux needs glibc 2.35 or later.")
+ (license Apache-2.0)
+ (authors "Cloudflare, Inc.")
+ (homepage "https://github.com/cloudflare/workerd"))
+
+(package
+ (name wrangler)
+ (synopsis "Wrangler, the Cloudflare Workers command line tool")
+ (description
+  "Wrangler builds, runs and deploys Cloudflare Workers. This package installs a bundle of Wrangler and its JavaScript dependencies. It uses the workerd package as its runtime. It needs Node.js 22 or later.")
+ (license "MIT OR Apache-2.0")
+ (authors "Cloudflare, Inc.")
+ (homepage
+  "https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler"))
+
+(package
+ (name workerd-linux-64)
+ (allow_empty)
+ (synopsis "The workerd binary for Linux x86_64")
+ (description
+  "The prebuilt workerd binary from Cloudflare for Linux x86_64. Install the workerd package instead; it selects this one.")
+ (license Apache-2.0)
+ (authors "Cloudflare, Inc.")
+ (homepage "https://github.com/cloudflare/workerd"))
+
+(package
+ (name workerd-linux-arm64)
+ (allow_empty)
+ (synopsis "The workerd binary for Linux arm64")
+ (description
+  "The prebuilt workerd binary from Cloudflare for Linux arm64. Install the workerd package instead; it selects this one.")
+ (license Apache-2.0)
+ (authors "Cloudflare, Inc.")
+ (homepage "https://github.com/cloudflare/workerd"))
+
+(package
+ (name workerd-darwin-64)
+ (allow_empty)
+ (synopsis "The workerd binary for macOS x86_64")
+ (description
+  "The prebuilt workerd binary from Cloudflare for macOS x86_64. Install the workerd package instead; it selects this one.")
+ (license Apache-2.0)
+ (authors "Cloudflare, Inc.")
+ (homepage "https://github.com/cloudflare/workerd"))
+
+(package
+ (name workerd-darwin-arm64)
+ (allow_empty)
+ (synopsis "The workerd binary for macOS arm64")
+ (description
+  "The prebuilt workerd binary from Cloudflare for macOS arm64. Install the workerd package instead; it selects this one.")
+ (license Apache-2.0)
+ (authors "Cloudflare, Inc.")
+ (homepage "https://github.com/cloudflare/workerd"))
+
 (dialect
  (name mlx)
  (implementation

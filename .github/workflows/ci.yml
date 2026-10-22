@@ -52,8 +52,13 @@ jobs:
       - name: Check formatting
         run: opam exec -- dune build @fmt
 
-      - name: Lint workerd and wrangler
-        run: opam lint workerd/workerd.opam workerd/platform/*.opam wrangler/wrangler.opam
+      - name: Check the opam files
+        run: |
+          opam exec -- dune build @install
+          opam lint ./*.opam
+
+      - name: Check the shell scripts
+        run: shellcheck scripts/*.sh
 
       - name: Check the release scripts
         working-directory: scripts
