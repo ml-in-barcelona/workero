@@ -45,9 +45,9 @@ jobs:
       - name: Install workerd
         run: npm install -g workerd
 
-      - name: Pull container test images
+      - name: Prepare container test images
         run: |
-          docker pull alpine:3.22
+          docker build -t workero-test-httpd:1 test/worker-containers
           docker pull cloudflare/proxy-everything@sha256:0e2e951e947d3ec57f29afdb873dde0530fdf3f719bdca2a6a4d65b8e7fe0a41
           docker tag cloudflare/proxy-everything@sha256:0e2e951e947d3ec57f29afdb873dde0530fdf3f719bdca2a6a4d65b8e7fe0a41 cloudflare/proxy-everything:510e5ce
 

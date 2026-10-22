@@ -5,7 +5,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 out="$root/_worker-containers-test"
 dune=${DUNE:-dune}
 workerd=${WORKERD:-workerd}
-app_image=alpine:3.22
+app_image=workero-test-httpd:1
 proxy_image=cloudflare/proxy-everything:510e5ce
 
 skip() {
@@ -20,7 +20,7 @@ skip() {
 command -v docker >/dev/null 2>&1 || skip "docker is not installed"
 docker info >/dev/null 2>&1 || skip "the Docker daemon is not usable"
 for image in "$app_image" "$proxy_image"; do
-  docker image inspect "$image" >/dev/null 2>&1 || skip "the image $image is not present; run docker pull $image"
+  docker image inspect "$image" >/dev/null 2>&1 || skip "the image $image is not present; see the docker build and docker pull steps in .github/workflows/ci.yml"
 done
 
 cd "$root"
