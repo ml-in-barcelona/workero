@@ -15,13 +15,16 @@ result while the runtime handles other requests.
 {1 Runtime APIs}
 
 Use {{!page-runtime_apis}Runtime APIs} to register handlers, route HTTP
-requests, return responses, stream data, and run background work.
+requests, return responses, stream data, open TCP connections, receive email,
+and run background work.
 
 {1 Bindings}
 
 {{!page-bindings}Bindings} expose configuration and Cloudflare resources through
 your handler's [env] argument. Use them for storage, Durable Objects, Queues,
-other Workers, static assets, AI, analytics, and rate limiting.
+other Workers, static assets, databases through Hyperdrive, AI, analytics, and
+rate limiting. {{!page-entrypoints}Entrypoints} expose RPC methods that other
+Workers call through a service binding.
 
 {1 Development and deployment}
 

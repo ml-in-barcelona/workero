@@ -129,6 +129,54 @@ waits. A hibernating socket's [~websocket_message], [~websocket_close], and
 [~websocket_error] handlers also run when its events arrive. An object with no
 [~fetch] handler cannot answer a stub fetch.
 
+{1 RPC methods}
+
+A class can expose methods that callers invoke on the stub, such as
+[stub.increment()], without building a request. Declare the method names with
+[~rpc] in {!Workero.Durable_object.register}, and answer the calls with the
+[~rpc] handler of {!Workero.Durable_object.make}:
+
+{@ocaml[
+let () =
+  Durable_object.register ~rpc:[ "increment"; "add" ] "Counter" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~rpc:(fun name args ->
+          match (name, args) with
+          | "increment", [] ->
+              let n =
+                match Durable_object.Storage.get storage "count" with
+                | Some (`Int n) -> n + 1
+                | _ -> 1
+              in
+              Durable_object.Storage.put storage "count" (`Int n);
+              `Int n
+          | "add", [ `Int a; `Int b ] -> `Int (a + b)
+          | _ -> invalid_arg ("bad call to " ^ name))
+        ())
+]}
+
+The names must be known before any object exists, because [workero build] adds
+them to the exported class. [rpc] receives the name and the arguments as
+[Jsonkit.t], and returns the result as JSON. A JavaScript caller sees
+a promise for the result: [await stub.add(1, 2)]. An exception in the handler
+rejects the call with its message. A handler runs in its own fiber and may call
+{!Workero.Promise.await}.
+
+OCaml code calls a method with {!Workero.Durable_object.call}:
+
+{@ocaml[
+let stub = Durable_object.Namespace.get_by_name counters "main" in
+match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
+| `Int n -> n
+| _ -> failwith "unexpected result"
+]}
+
+A call to a missing method, or to a method that raises, raises
+{!Workero.Js_error}. Arguments and results are JSON: values that JSON cannot
+carry, such as [Date], [Map], [BigInt], streams and other stubs, are not
+supported. A JavaScript [undefined] argument or result becomes [`Null].
+
 {1 Use storage and IDs}
 
 {!Workero.Durable_object.Storage} exposes [get], [put], [delete], [list], and
@@ -301,6 +349,54 @@ If [~alarm] raises, the runtime retries it with a growing delay and a larger
 without an [~alarm] handler still succeeds, but the alarm fails and retries
 until the runtime gives up.
 
+{1 Containers}
+
+A class can have a container, on Cloudflare Containers. Declare it in
+[wrangler.toml] with [[[containers]]] and the class name of the object.
+{!Workero.Durable_object.State.container} gives it, or [None] when the class has
+none. {!Workero.Durable_object.Container.start} boots the container and returns
+at once. {!Workero.Durable_object.Container.get_tcp_port} gives a
+{!Workero.Fetcher.t} for a port of the container, so [Fetcher.fetch] sends an
+HTTP request to the program in it:
+
+{@ocaml[
+let () =
+  Durable_object.register "Sandbox" (fun state _env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          if not (Durable_object.Container.running container) then
+            Durable_object.Container.start ~enable_internet:false container;
+          let port = Durable_object.Container.get_tcp_port container 8080 in
+          Fetcher.fetch port "http://container/")
+        ())
+]}
+
+The program in the container needs time to listen on its port. Until then
+[Fetcher.fetch] raises {!Workero.Js_error}: retry.
+{!Workero.Durable_object.Container.monitor}
+waits until the container exits, {!Workero.Durable_object.Container.signal}
+sends a Unix signal, and {!Workero.Durable_object.Container.destroy} stops it.
+
+To run a container in [workerd], give the namespace a [container] with an image,
+and give the config a [containerEngine] that uses the local Docker daemon:
+
+{@capnp[
+durableObjectNamespaces = [
+  (className = "Sandbox", uniqueKey = "sandbox", enableSql = true,
+   container = (imageName = "alpine:3.22")),
+],
+...
+containerEngine = (localDocker = (
+  socketPath = "unix:/var/run/docker.sock",
+  containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
+]}
+
+Run [workerd] with [--experimental]. Docker and both images must exist on the
+machine. [test/worker-containers/run.sh] shows a full setup. Without
+[containerEgressInterceptorImage], [workerd] fails the first request with "containerEgressInterceptorImage must be configured for
+containers".
+
 {1 Control concurrency and background work}
 
 [State.block_concurrency_while state f] runs [f] while no other event can
@@ -314,8 +410,8 @@ event while it runs.
 
 {1 Know the interface boundary}
 
-This binding exports [fetch], [alarm], and hibernatable WebSocket event
-handlers. It does not export Durable Object RPC methods. See
+This binding exports [fetch], [alarm], hibernatable WebSocket event handlers,
+and the RPC methods that you declare with [~rpc]. See
 {!Workero.Durable_object} for signatures and {{!page-cli}the CLI guide} for
 build details. For a direct [workerd test] setup, see [test/worker/run.sh]:
 it declares the namespace and SQL-enabled class on the Worker service, uses

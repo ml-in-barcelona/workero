@@ -21,6 +21,33 @@ let test_register_twice () =
     (Invalid_argument (who ^ ": class \"Twice\" is already registered"))
     (fun () -> Durable_object.register "Twice" create)
 
+let test_register_rpc () =
+  Durable_object.register ~rpc:[ "increment"; "get_2" ] "WithRpc" create;
+  List.iter
+    (fun name ->
+      Alcotest.check_raises name
+        (Invalid_argument
+           (Printf.sprintf "%s: %S is not a valid RPC method name" who name))
+        (fun () -> Durable_object.register ~rpc:[ name ] "BadRpc" create))
+    [
+      "";
+      "2fast";
+      "has space";
+      "fetch";
+      "alarm";
+      "connect";
+      "constructor";
+      "prototype";
+      "webSocketMessage";
+      "webSocketClose";
+      "webSocketError";
+    ];
+  Alcotest.check_raises "repeated method"
+    (Invalid_argument
+       (who ^ ": RPC method \"go\" is declared twice in class \"BadRpc\""))
+    (fun () -> Durable_object.register ~rpc:[ "go"; "go" ] "BadRpc" create);
+  Durable_object.register "BadRpc" create
+
 let test_namespace_of_env () =
   let env =
     Workero.Env.of_js
@@ -52,6 +79,8 @@ let () =
           Alcotest.test_case "register validates names" `Quick
             test_register_names;
           Alcotest.test_case "register twice" `Quick test_register_twice;
+          Alcotest.test_case "register validates rpc names" `Quick
+            test_register_rpc;
           Alcotest.test_case "Namespace.of_env" `Quick test_namespace_of_env;
         ] );
     ]

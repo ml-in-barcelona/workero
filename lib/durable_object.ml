@@ -134,12 +134,64 @@ module Storage = struct
   let to_js (t : t) : js = t
 end
 
+module Container = struct
+  type t = js
+
+  let running t = to_bool (Js.Unsafe.get t "running")
+
+  let start ?entrypoint ?env ?enable_internet t =
+    let strings l =
+      Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string l)))
+    in
+    let field name f = Option.map (fun v -> (name, f v)) in
+    let options =
+      Binding.options
+        (List.filter_map Fun.id
+           [
+             field "entrypoint" strings entrypoint;
+             field "env"
+               (fun kvs ->
+                 Binding.options (List.map (fun (k, v) -> (k, str v)) kvs))
+               env;
+             field "enableInternet" bool_js enable_internet;
+           ])
+    in
+    ignore (Binding.invoke t "start" [| options |])
+
+  let monitor t = Binding.call ~decode:Decode.unit t "monitor" [||]
+
+  let destroy ?message t =
+    let args =
+      match message with
+      | None -> [||]
+      | Some m -> [| Js.Unsafe.new_obj (global "Error") [| str m |] |]
+    in
+    Binding.call ~decode:Decode.unit t "destroy" args
+
+  let signal t signo =
+    ignore
+      (Binding.invoke t "signal"
+         [| Js.Unsafe.inject (Js.number_of_float (float_of_int signo)) |])
+
+  let get_tcp_port t port =
+    Fetcher.of_js
+      (Binding.invoke t "getTcpPort"
+         [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |])
+
+  let of_js (v : js) : t = v
+  let to_js (t : t) : js = t
+end
+
 module State = struct
   type t = js
 
   let id t = Id.of_js (Js.Unsafe.get t "id")
   let storage t = Storage.of_js (Js.Unsafe.get t "storage")
   let wait_until t f = Context.wait_until (Context.of_js t) f
+
+  let container t =
+    let c = Js.Unsafe.get t "container" in
+    if is_nullish c then None else Some (Container.of_js c)
 
   let block_concurrency_while t f =
     let result = ref None in
@@ -190,11 +242,22 @@ type t = {
   websocket_close :
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) option;
   websocket_error : (Websocket.t -> string -> unit) option;
+  rpc : (string -> Jsonkit.t list -> Jsonkit.t) option;
 }
 
 let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
-    ?websocket_error () =
-  { init; fetch; alarm; websocket_message; websocket_close; websocket_error }
+    ?websocket_error ?rpc () =
+  {
+    init;
+    fetch;
+    alarm;
+    websocket_message;
+    websocket_close;
+    websocket_error;
+    rpc;
+  }
+
+let json_of_js v = if typeof v = "undefined" then `Null else Json_js.of_js v
 
 let alarm_info_of_js info =
   if typeof info <> "object" || is_nullish info then
@@ -270,6 +333,14 @@ let handlers_js t =
                      handler (Websocket.of_js ws) message;
                      undefined)))
            t.websocket_error);
+      field "rpc"
+        (Option.map
+           (fun rpc name args : js ->
+             Async.run (fun () ->
+                 flushing (fun () ->
+                     let args = List.map json_of_js (Decode.(list js) args) in
+                     Json_js.to_js (rpc (Decode.string name) args))))
+           t.rpc);
     ]
   in
   Js.Unsafe.obj (Array.of_list (List.filter_map Fun.id fields))
@@ -283,16 +354,38 @@ let is_class_name name =
          | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '$' -> true | _ -> false)
        name
 
+let rpc_reserved =
+  [
+    "fetch";
+    "alarm";
+    "connect";
+    "constructor";
+    "prototype";
+    "webSocketMessage";
+    "webSocketClose";
+    "webSocketError";
+  ]
+
 let classes () =
   let root = Registry.root () in
   if typeof (Js.Unsafe.get root "durable_objects") = "undefined" then
     Js.Unsafe.set root "durable_objects" (Js.Unsafe.obj [||]);
   Js.Unsafe.get root "durable_objects"
 
-let register name create =
+let register ?(rpc = []) name create =
   let who = "Workero.Durable_object.register" in
   if not (is_class_name name) then
     invalid_arg (Printf.sprintf "%s: %S is not a valid class name" who name);
+  List.iteri
+    (fun i m ->
+      if (not (is_class_name m)) || List.mem m rpc_reserved then
+        invalid_arg
+          (Printf.sprintf "%s: %S is not a valid RPC method name" who m);
+      if List.exists (( = ) m) (List.filteri (fun j _ -> j < i) rpc) then
+        invalid_arg
+          (Printf.sprintf "%s: RPC method %S is declared twice in class %S" who
+             m name))
+    rpc;
   let classes = classes () in
   if has_own classes name then
     invalid_arg (Printf.sprintf "%s: class %S is already registered" who name);
@@ -307,7 +400,10 @@ let register name create =
           (Printf.sprintf "workero: creating Durable Object %s failed: %s" name
              (Printexc.to_string e))
   in
-  Js.Unsafe.set classes name (Js.Unsafe.inject (Js.wrap_callback factory))
+  let factory = Js.Unsafe.inject (Js.wrap_callback factory) in
+  Js.Unsafe.set factory "rpc"
+    (Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string rpc))));
+  Js.Unsafe.set classes name factory
 
 module Namespace = struct
   type t = js
@@ -356,3 +452,13 @@ module Namespace = struct
   let get_by_name ?location_hint ns name =
     get ?location_hint ns (id_from_name ns name)
 end
+
+let call stub name args =
+  let stub = Fetcher.to_js stub in
+  let args =
+    Js.Unsafe.inject (Js.array (Array.of_list (List.map Json_js.to_js args)))
+  in
+  Promise.await
+    (Promise.of_js ~decode:json_of_js
+       (Binding.invoke (global "Reflect") "apply"
+          [| Js.Unsafe.get stub name; stub; args |]))

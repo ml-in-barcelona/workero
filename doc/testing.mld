@@ -19,6 +19,8 @@ deploying the worker. See {{!page-limits}Limits} for Cloudflare platform limits.
   --experimental config.capnp].
 + Run [workerd test config.capnp] for fetch and scheduled tests.
 
+[workerd] cannot run the email handler this way. See {{!page-email}Email}.
+
 [test/worker/run.sh] shows a working config generator. It builds
 [test/worker/main.ml], then runs the suites imported by
 [test/worker/tests.mjs]. Worker routes live in [test/worker/routes_*.ml]; cases

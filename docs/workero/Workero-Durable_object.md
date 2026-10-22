@@ -21,6 +21,11 @@ module Storage : sig ... end
 The storage of one object. `get`, `put`, `delete`, and `list` do not suspend; `delete_all`, `sync`, and the alarm methods do. Values are JSON, converted with `JSON.stringify` and `JSON.parse`. A `Date` stored by JavaScript code reads as its ISO string and a `Map` as `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. The functions raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws, for example on a class that is not backed by SQLite.
 
 ```ocaml
+module Container : sig ... end
+```
+The container attached to an object, on Cloudflare Containers. Declare it in `wrangler.toml` with `[[containers]]` and the class name of the object. The container starts only when [`start`](./Workero-Durable_object-Container.md#val-start) runs. The functions raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws or rejects, for example when no image is configured or the container is not running.
+
+```ocaml
 module State : sig ... end
 ```
 ```ocaml
@@ -45,19 +50,27 @@ val make :
   ?websocket_close:
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
   ?websocket_error:(Websocket.t -> string -> unit) ->
+  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
   unit ->
   t
 ```
-`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. The `websocket_*` handlers get the events of sockets accepted with [`State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket); `websocket_error` gets the error message. Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
+`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. The `websocket_*` handlers get the events of sockets accepted with [`State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket); `websocket_error` gets the error message. `rpc` answers the calls of the methods that [`register`](./#val-register) declared: `rpc name args` gets the method name and the arguments as JSON, and returns the result as JSON. See [`register`](./#val-register). Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
 
 ```ocaml
-val register : string -> (State.t -> Env.t -> t) -> unit
+val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 ```
 `register class_name create` binds `create` to the class that `workero build` exports under `class_name`. Call it at module initialisation, once per class. The build reads the names by running the program in `workerd`; a `register` call that a condition skips at initialisation is not exported.
 
 `create` runs each time the runtime creates the object, before the first event. It must not call [`Promise.await`](./Workero-Promise.md#val-await): that raises `Invalid_argument`. Load stored values in `~init` of [`make`](./#val-make). If `create` raises, the object fails to start and the request that needed it fails.
 
-Raises `Invalid_argument` when `class_name` is empty, starts with a digit, has a character other than an ASCII letter, a digit, `"_"` or `"$"`, is `"default"`, `"then"` or `"__proto__"`, or is already registered. Reserved words such as `"class"` are accepted: the generated module exports the class under that name without declaring a variable of it.
+`rpc` names the RPC methods of the class, for example `["increment"]`. The build adds each name as a method of the exported class, so JavaScript code calls `stub.increment(...)` and OCaml code calls [`call`](./#val-call). The `rpc` handler of [`make`](./#val-make) runs each call. A name must follow the rules of `class_name`, must be unique in the class, and must not be `fetch`, `alarm`, `connect`, `constructor`, `prototype`, `webSocketMessage`, `webSocketClose` or `webSocketError`. Declare the names here, not in `create`: the build reads them before any object exists. A call to a declared name on a class whose handlers have no `rpc` fails.
+
+Raises `Invalid_argument` when `class_name` is empty, starts with a digit, has a character other than an ASCII letter, a digit, `"_"` or `"$"`, is `"default"`, `"then"` or `"__proto__"`, or is already registered. Reserved words such as `"class"` are accepted: the generated module exports the class under that name without declaring a variable of it. It also raises `Invalid_argument` for an invalid or repeated name in `rpc`.
+
+```ocaml
+val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+```
+`call stub name args` calls the RPC method `name` of the object that `stub` reaches, with `args`, and waits for the result. Arguments and result are JSON, converted like [`Storage`](./Workero-Durable_object-Storage.md) values: a JavaScript `undefined` result reads as ``Null`, and a value that `JSON.stringify` rejects raises `Invalid_argument`. The runtime creates the object on the first call. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the method is missing or when it raises or rejects; the error message is that of the remote exception.
 
 ```ocaml
 module Namespace : sig ... end
