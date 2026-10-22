@@ -6,10 +6,11 @@ type t = js
 let method_ r = Method.of_string (Js.to_string (Js.Unsafe.get r "method"))
 
 let url r =
-  let s = Js.to_string (Js.Unsafe.get r "url") in
-  match Url.of_string s with
+  let v = Js.Unsafe.get r "url" in
+  match Url.make v with
   | Some u -> u
-  | None -> invalid_arg ("Workero.Request.url: " ^ s)
+  | None ->
+      invalid_arg ("Workero.Request.url: " ^ Js.to_string (Js.Unsafe.coerce v))
 
 let js_url r = Js.Unsafe.new_obj (global "URL") [| Js.Unsafe.get r "url" |]
 let path r = Js.to_string (Js.Unsafe.get (js_url r) "pathname")

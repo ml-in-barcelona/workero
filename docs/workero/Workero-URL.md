@@ -12,6 +12,11 @@ val of_string : string -> t option
 `None` when the string is not an `http` or `https` URL.
 
 ```ocaml
+val make : Js_of_ocaml.Js.Unsafe.any -> t option
+```
+`make v` builds a URL from a JavaScript value, such as a URL string, with `new URL(v)`. `None` when it is not an `http` or `https` URL.
+
+```ocaml
 val to_string : t -> string
 ```
 ```ocaml
