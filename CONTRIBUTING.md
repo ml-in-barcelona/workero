@@ -6,22 +6,23 @@ worker, worker-init, worker-exports, and CLI tests.
 
 ## Tests
 
-- Unit tests in `test/unit/` are alcotest executables built with `(modes js)`
-  and run by Node through `dune test` (`make test-unit`). They cover code that
-  does not await, such as `Workero.URL`. Alcotest has no wasm runtime, and Node
-  22 has no JSPI, so code that uses `Promise.await` cannot run here. To add a
-  test, write a function in `test/unit/test_workero.ml` and list it in
-  `Alcotest.run`. A new file needs its own `(test (name ...) (modules ...)
-  (modes js) (libraries workero alcotest))` stanza.
+- Unit tests in `test/unit/` are Alcotest executables built with `(modes js)`
+  and run by Node through `dune test` (`make test-unit`). Add a case to the
+  relevant `test/unit/test_*.ml` file and its `Alcotest.run` list. Add new test
+  modules in `test/unit/dune`. These unit tests do not exercise Wasm or the
+  worker runtime; put code that awaits a Promise in a worker test.
 - Worker tests in `test/worker/` run with `make test-worker`. This builds
   `test/worker/main.ml` with `workero build` and runs `test/worker/tests.mjs`
   in `workerd test` without a port. The worker is bound as `env.WORKER`, with
-  `GREETING` set. To add a test, add a route to `test/worker/main.ml` and a
-  case to `cases` in `tests.mjs`. Check `status`, `body`, `headers`, or `throws`
+  `GREETING` set. Add a route to the matching `test/worker/routes_*.ml`
+  module (or `main.ml`) and a case to `test/worker/cases/*.mjs`.
+  `tests.mjs` imports those suites. Check `status`, `body`, `headers`, or `throws`
   for a handler that raises. A service binding rethrows where HTTP answers
   500. `workerd` must be on `PATH`; `npm install workerd` or `wrangler`
   provides it. KV, R2, and Cache bindings point at small JS services in
-  `test/worker/services/`. D1 is a `wrapped` binding over SQLite there. The
+  `test/worker/services/`. D1 uses a wrapped test adapter backed by Durable
+  Object SQLite. These substitutes test the binding interface, not Cloudflare
+  production storage. The
   Queue producer binding points at an HTTP service that records what the
   runtime sends. Rate limiter, AI and Analytics Engine are `wrapped` stubs.
   Durable Object classes are registered in `test/worker/routes_do.ml`; the config
@@ -31,13 +32,13 @@ worker, worker-init, worker-exports, and CLI tests.
   `service_binding_extra_handlers` compatibility flag, which changes how
   `scheduled` reports a failure, and `workerd test --experimental`.
 - Init tests in `test/worker-init/` run with `make test-worker-init`. They build
-  a worker whose toplevel raises and expect the build to fail with the OCaml
-  exception. `workero build` runs the program in `workerd` to find its Durable
-  Object classes, so an initialisation error stops the build.
+  a worker whose toplevel raises and expect the build-time `workerd` probe to
+  fail with the OCaml exception.
 - Worker export tests in `test/worker-exports/` run with
   `make test-worker-exports`. They check which handlers each worker exports.
 - CLI tests in `test/cli/` run with `make test-cli`. They check `workero build`
-  and `workero package`, including arguments, output, and errors. Fixtures
+  and `workero package`, including arguments, output, class discovery,
+  initialization timeouts, and errors. Fixtures
   with missing wasm implementations must fail to build, with and without
   `--pretty`, unless `--allow-missing-primitives` is set.
 

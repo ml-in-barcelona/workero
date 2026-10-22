@@ -1,9 +1,9 @@
 
 # JavaScript interop
 
-Every workero type that wraps a JavaScript object has two conversions: `of_js` and `to_js`. The types are [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Context`](./Workero-Context.md), [`Workero.Scheduled`](./Workero-Scheduled.md), [`Workero.Cf`](./Workero-Cf.md), [`Workero.KV`](./Workero-KV.md), [`Workero.R2`](./Workero-R2.md), [`Workero.D1`](./Workero-D1.md) and [`Workero.Promise`](./Workero-Promise.md). They let you call a JavaScript API that workero does not wrap.
+Use `of_js` and `to_js` to cross the JavaScript boundary. For example, [`Workero.Request`](./Workero-Request.md), [`Workero.Response`](./Workero-Response.md), [`Workero.Stream`](./Workero-Stream.md), [`Workero.Env`](./Workero-Env.md), [`Workero.Fetcher`](./Workero-Fetcher.md), [`Workero.Queue`](./Workero-Queue.md), [`Workero.Durable_object.State`](./Workero-Durable_object-State.md) and [`Workero.Durable_object.Sql`](./Workero-Durable_object-Sql.md) wrap raw JavaScript values. Check each linked module's signature for the conversion types. [`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) needs a decoder; [`Workero.URL`](./Workero-URL.md) parses strings and has no `of_js`/`to_js` pair.
 
-[`Workero.js_value`](./Workero.md#type-js_value) is the type of a raw, unchecked JavaScript value. It is the same type as `Js_of_ocaml.Js.Unsafe.any`. Module signatures show the jsoo name. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings. Workero already wraps timers, `Date`, `crypto` and `console`. See [JavaScript globals](./globals.md).
+[`Workero.js_value`](./Workero.md#type-js_value) is the type of a raw, unchecked JavaScript value. It is the same type as `Js_of_ocaml.Js.Unsafe.any`. Module signatures show the jsoo name. Use `Js_of_ocaml.Js` to read fields, call methods and convert strings. Workero already wraps timers, `Date`, random-value functions, and `console`. See [Timers, time, and randomness](./globals.md) and [Logging](./logging.md).
 
 ```ocaml
 open Js_of_ocaml
@@ -54,3 +54,17 @@ let handler _req _env _ctx =
 let () = Workero.serve handler
 ```
 Add `js_of_ocaml` to `libraries` next to `workero`.
+
+
+## JSON values and environment bindings
+
+[`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) converts a JavaScript value to `Jsonkit.t` using `JSON.stringify`. [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) converts a `Jsonkit.t` back using `JSON.parse`. These conversions copy JSON data; they do not keep the original object. `of_js` rejects values that cannot be serialized, such as a cyclic object or `BigInt`. `to_js` rejects non-JSON floats such as `nan`.
+
+[`Workero.Env.to_js`](./Workero-Env.md#val-to_js) exposes the raw binding object if you need an API that workero does not wrap. For ordinary bindings use the typed `of_env` functions. [`Workero.Env.var`](./Workero-Env.md#val-var) returns a string or `None`, [`Workero.Env.secret`](./Workero-Env.md#val-secret) requires a string and raises `Invalid_argument` if it is absent or has another type, and [`Workero.Env.json`](./Workero-Env.md#val-json) returns an object or array as `Jsonkit.t` (or `None` for a non-object or missing value). See [Variables and secrets](./env.md).
+
+
+## Durable Object sockets and SQL
+
+[`Workero.Websocket.serialize_attachment`](./Workero-Websocket.md#val-serialize_attachment) converts a `Jsonkit.t` to a raw JavaScript value and attaches it to a socket accepted through [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket). The attachment survives hibernation. [`Workero.Websocket.deserialize_attachment`](./Workero-Websocket.md#val-deserialize_attachment) converts it back to `Jsonkit.t option`. `serialize_attachment` raises [`Workero.Js_error`](./Workero.md#exception-Js_error) on a socket accepted with [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept); that socket cannot hibernate. See [Durable Objects](./durable_objects.md) for the socket lifecycle.
+
+[`Workero.Durable_object.Storage.sql`](./Workero-Durable_object-Storage.md#val-sql) provides synchronous SQLite access on a Durable Object. [`Workero.Sql_value.to_js`](./Workero-Sql_value.md#val-to_js) and [`Workero.Sql_value.of_js`](./Workero-Sql_value.md#val-of_js) convert individual SQL values to and from raw JavaScript values. They are not JSON conversions: binary values use `Uint8Array`, and JavaScript numbers can lose integer precision. Check the linked signatures before passing raw values to an external SQL API.

@@ -28,9 +28,9 @@ val write :
   t ->
   unit
 ```
-`write dataset` records one data point. `index` is the sampling key. The runtime accepts one index, up to 20 `doubles` and up to 20 `blobs`. It does not wait: the runtime writes the point after the handler continues, and `write` returns at once, without a result.
+`write dataset` submits one data point. `index` is the sampling key. The runtime accepts one index, up to 20 `doubles` and up to 20 `blobs`. This call does not wait for persistence and returns `unit` immediately.
 
-raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects the data point.
+raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws during the call.
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 ```

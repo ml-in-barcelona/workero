@@ -1,50 +1,51 @@
-{0 JavaScript globals}
+{0 Timers, time, and randomness}
 
-Workero has typed bindings for four JavaScript globals. You do not need
-[Js_of_ocaml] to use them.
-
-{1 Timer}
-
-{!Workero.Timer} wraps [setTimeout] and [setInterval]. Delays are in
-milliseconds.
+Use {!Workero.Timer} to wait in a handler, {!Workero.Date} to read the wall
+clock, and {!Workero.Crypto} to generate random values. This handler waits
+before returning a random UUID.
 
 {@ocaml[
 let handler _req _env _ctx =
   let open Workero in
   Promise.await (Timer.sleep 100);
-  let ticks = ref 0 in
-  let interval = Timer.set_interval (fun () -> incr ticks) 20 in
-  Promise.await (Timer.sleep 110);
-  Timer.clear_interval interval;
-  Response.text (Printf.sprintf "ticks: %d\n" !ticks)
+  Response.text (Crypto.random_uuid () ^ "\n")
 
 let () = Workero.serve handler
 ]}
 
-Call timers only from a handler or from {!Workero.Context.wait_until}. The
-Workers runtime refuses timers at startup. A callback runs outside the
-handler, so it cannot call {!Workero.Promise.await}.
+Run [npx wrangler dev] in one terminal and [curl http://localhost:8787/] in a
+second terminal. The response is a version 4 UUID.
 
-{1 Date}
+{1 Timers}
+
+{!Workero.Timer.sleep}, {!Workero.Timer.set_timeout}, and
+{!Workero.Timer.set_interval} take delays in milliseconds. Use
+{!Workero.Timer.clear_timeout} or {!Workero.Timer.clear_interval} to stop a
+timer. Call timers from a handler or {!Workero.Context.wait_until}, not at
+startup. A timer callback cannot call {!Workero.Promise.await}; use
+{!Workero.Timer.sleep} inside a handler when you need to wait.
+
+{1 Time}
 
 {!Workero.Date.now} is [Date.now()]. {!Workero.Date.to_iso_string} is
 [new Date(t).toISOString()]. Times are milliseconds since the Unix epoch, as a
 [float]. In Workers the clock moves only after I/O. It does not measure CPU
 time.
 
-{1 Crypto}
+{1 Randomness}
 
 {!Workero.Crypto.random_uuid} returns a random version 4 UUID.
 {!Workero.Crypto.random_bytes} returns cryptographically random bytes. It
-accepts at most 65536 bytes per call.
+accepts at most 65536 bytes per call and raises [Invalid_argument] for a
+negative size or a larger request.
 
-{2 Subtle crypto}
+{1 Subtle crypto}
 
-{!Workero.Crypto} wraps a first subset of [crypto.subtle]. Data goes in and out
-as OCaml strings that hold raw bytes. The functions suspend the request while
-the runtime works, so call them inside a handler.
+{!Workero.Crypto} also wraps a first subset of [crypto.subtle]. Data goes in and
+out as OCaml strings that hold raw bytes. The functions wait for the runtime, so
+call them inside a handler.
 
-{[
+{@ocaml[
 let sign_and_check secret body =
   let key = Crypto.Key.import_hmac Crypto.Sha256 secret in
   let signature = Crypto.hmac_sign key body in
@@ -65,8 +66,6 @@ the compiler rejects an HMAC key in an AES-GCM function. Bad arguments that the
 library can check raise [Invalid_argument]. A rejection from the runtime raises
 {!Workero.Js_error}. Deployed Workers allow at most 100000 PBKDF2 iterations.
 
-{1 Console}
-
-{!Workero.Console} writes log entries. See {{!page-logging}Logging}.
-
-For other globals, use raw interop. See {{!page-interop}JavaScript interop}.
+For logging, use {{!page-logging}Console or standard output}. For other
+globals, see {{!page-interop}JavaScript interop} and
+{{:https://developers.cloudflare.com/workers/runtime-apis/web-standards/}supported web standards}.

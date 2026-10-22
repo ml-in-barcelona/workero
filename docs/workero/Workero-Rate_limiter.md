@@ -1,7 +1,7 @@
 
 # Module `Workero.Rate_limiter`
 
-A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The limit and its period come from the binding, not from the code.
+A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The binding's `name` is passed to [`of_env`](./#val-of_env); the limit and its period come from the binding, not from the code.
 
 ```ocaml
 type t

@@ -1,7 +1,8 @@
 {0 Forms and file uploads}
 
-{!Workero.Request.form_data} reads a [multipart/form-data] or
-[application/x-www-form-urlencoded] body. It gives a {!Workero.Form_data.t}.
+Use {!Workero.Request.form_data} to read [multipart/form-data] uploads or
+[application/x-www-form-urlencoded] fields. This handler checks for an [avatar]
+file and returns its name and size.
 
 {@ocaml[
 let handler req _env _ctx =
@@ -20,10 +21,18 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-{!Workero.Request.form_data} raises {!Workero.Js_error} when the content type is
-neither of the two, or when the body is malformed.
+Run [npx wrangler dev] in one terminal. In a second terminal, send a file:
 
-{1 Values}
+{@sh[
+printf 'hello' > avatar.txt
+curl -F avatar=@avatar.txt http://localhost:8787/
+]}
+
+The response is [avatar.txt: 5 bytes]. A missing [avatar] or a non-file value
+gets a 400 response. {!Workero.Request.form_data} raises {!Workero.Js_error}
+for an unsupported content type or a malformed form body.
+
+{1 Read fields}
 
 A field is a {!Workero.Form_data.value}: [Text of string] or [File of file].
 
@@ -32,18 +41,20 @@ A field is a {!Workero.Form_data.value}: [Text of string] or [File of file].
 - {!Workero.Form_data.to_list} gives all entries in the order sent. Duplicate
   names stay.
 
-{1 Files}
+{1 Read files}
 
 - {!Workero.Form_data.file_name} is the file name that the client sent.
 - {!Workero.Form_data.file_type} is the [content-type] of the part, or [""].
 - {!Workero.Form_data.file_size} is the size in bytes.
 - {!Workero.Form_data.file_bytes} reads the whole file into a [string].
 - {!Workero.Form_data.file_stream} gives the file as a {!Workero.Stream.t}.
-  Use it to write a large file to {{!page-r2}R2} without loading it.
+  Reading it in chunks avoids creating another whole-file OCaml [string].
 
-{1 Limit}
+{1 Multipart memory limit}
 
-The runtime parses the whole body before it gives you the form, so an upload is
-in memory. {!Workero.Form_data.file_stream} only reads from that copy. To handle
-an upload that does not fit in memory, read {!Workero.Request.body} in chunks.
-See {{!page-streams}Streams}.
+The platform parses the entire multipart body before {!Workero.Request.form_data}
+returns. {!Workero.Form_data.file_stream} does not avoid that buffering.
+{{!page-r2}R2} {!Workero.R2.put} accepts a [string], not a stream. To process a
+body in chunks, use {!Workero.Request.body} instead of form parsing. See
+{{!page-streams}Streams} and
+{{:https://developers.cloudflare.com/workers/platform/limits/#memory}Workers memory limits}.

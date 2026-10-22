@@ -1,7 +1,7 @@
 
 # Module `Workero.Env`
 
-The `env` argument of a Worker handler: its variables, secrets and bindings.
+The `env` argument of a Worker handler: string and JSON-shaped variables, Worker secrets, and resource bindings. See [Variables and secrets](./env.md).
 
 ```ocaml
 type t
@@ -21,7 +21,7 @@ Raises `Invalid_argument` when `env` has no `name`, or when it is not a string. 
 ```ocaml
 val json : t -> string -> Jsonkit.t option
 ```
-An object or array variable, such as `X = { foo = 42 }` in `[vars]`, or a `json` binding. `None` when the name does not exist or holds a string, a number, a boolean or `null`. [`var`](./#val-var) returns `None` for these values.
+An object or array variable, such as `X = { foo = 42 }` in `[vars]`. `None` when the name does not exist or holds a string, a number, a boolean or `null`. [`var`](./#val-var) returns `None` for these values.
 
 Raises `Invalid_argument` when the value has no JSON form, as in [`JSON.of_js`](./Workero-JSON.md#val-of_js).
 

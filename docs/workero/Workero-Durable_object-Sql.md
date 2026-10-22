@@ -1,7 +1,7 @@
 
 # Module `Durable_object.Sql`
 
-The SQLite database of an object. Calls are synchronous: they never suspend. An SQL error raises [`Js_error`](./Workero.md#exception-Js_error). Numbers are JavaScript numbers, so an `Int` is exact only within ±253; see [`Sql_value`](./Workero-Sql_value.md).
+The SQLite database of an object. Calls are synchronous: they never suspend. An SQL error raises [`Js_error`](./Workero.md#exception-Js_error). Numbers are JavaScript numbers, so an `Int` is exact only within ±`2^53`; see [`Sql_value`](./Workero-Sql_value.md).
 
 ```ocaml
 type t

@@ -22,22 +22,25 @@ let () = Workero.serve handler
 ]}
 
 {!Workero.Stream.iter} calls your function on each chunk. It waits for the next
-chunk like {!Workero.Promise.await}. The memory use stays small, whatever the
-size of the body.
+chunk like {!Workero.Promise.await}. Process chunks as they arrive instead of
+collecting the whole body in memory.
 
 For more control, lock the stream with {!Workero.Stream.reader}.
 {!Workero.Stream.Reader.read} gives [Some chunk], or [None] at the end.
 {!Workero.Stream.Reader.cancel} tells the source to stop. A stream has one
 reader: a second {!Workero.Stream.reader} raises {!Workero.Js_error}.
 
-Read the body only once. {!Workero.Request.text}, {!Workero.Request.bytes} and
-{!Workero.Request.body} all use it up. To read it twice, call
-{!Workero.Request.clone} first.
+Getting a handle with {!Workero.Request.body} does not read or lock the body.
+The body is consumed when you read its stream or call a body reader such as
+{!Workero.Request.text}, {!Workero.Request.bytes} or
+{!Workero.Request.form_data}. Do not use two readers on the same body. To read
+it twice, call {!Workero.Request.clone} before consuming either copy.
 
 {1 Send a body in steps}
 
-{!Workero.Response.stream} answers at once. Your function runs in its own
-fiber and writes the body.
+{!Workero.Response.stream} returns a response with a streaming body. Your
+function starts immediately in its own fiber and writes the body. Synchronous
+work before its first suspension can delay the response.
 
 {@ocaml[
 let handler _req _env ctx =
@@ -45,21 +48,20 @@ let handler _req _env ctx =
   Response.stream ctx (fun writer ->
       for i = 1 to 5 do
         Stream.Writer.write writer (Printf.sprintf "chunk %d\n" i);
-        Promise.await (sleep 1000)
+        Promise.await (Timer.sleep 1000)
       done)
 
 let () = Workero.serve handler
 ]}
 
-([sleep] stands for any function that gives a {!Workero.Promise.t}.)
-
 - The body ends when your function returns.
 - If your function raises, the body ends with an error. The error goes to
   [console.error].
 - [status] and [headers] work as in {!Workero.Response.text}.
-- The function runs through {!Workero.Context.wait_until}, so the runtime keeps
-  the Worker alive until it ends. A stream that writes for 60 seconds was
-  tested on Cloudflare.
+- The function runs through {!Workero.Context.wait_until}. While the client
+  remains connected and receives the stream, the HTTP invocation stays active.
+  After the response ends or the client disconnects, remaining [waitUntil]
+  work has a shared limit of 30 seconds. See {{!page-async}Async and background work}.
 
 To send a body and read another one at the same time, use
 {!Workero.Stream.pipe}. It gives a {!Workero.Stream.Writer.t} and the
@@ -67,26 +69,32 @@ To send a body and read another one at the same time, use
 
 {1 Pass a body through}
 
-{!Workero.Response.of_stream} sends a stream as the body. Use it with the body
-of a {!Workero.fetch} result. Nothing is copied.
+{!Workero.Response.of_stream} sends a stream as the body without buffering it.
+It creates a new response with status 200 and the headers you pass. If you
+want to forward an upstream response without changing its status or headers,
+use {!Workero.Response.copy} instead:
 
 {@ocaml[
 let handler _req _env _ctx =
   let open Workero in
   let upstream = fetch "https://example.com/big-file" in
-  match Response.body upstream with
-  | Some body -> Response.of_stream ~headers:[ ("x-via", "workero") ] body
-  | None -> Response.empty `Bad_Gateway
+  Response.copy upstream
 
 let () = Workero.serve handler
 ]}
 
-To change only the headers or the status of a response, use
-{!Workero.Response.copy}. See {{!page-requests}Requests and responses}.
+To change only headers or status, pass [~headers] or [~status] to
+{!Workero.Response.copy}. It preserves the upstream status and headers when
+you omit those arguments. If you already have a {!Workero.Stream.t}, use
+{!Workero.Response.of_stream} with the intended status and headers. See
+{{!page-requests}Requests and responses}.
 
-{!Workero.Response.of_stream} and {!Workero.Response.copy} move the body. The
-original response is used up after the call. To keep it, call
-{!Workero.Response.clone} first.
+{!Workero.Response.of_stream} and {!Workero.Response.copy} pass the existing
+body stream to the new response; they do not read it when they get the handle.
+The original and new responses then share a body that cannot be consumed twice.
+Call {!Workero.Response.clone} before either copy consumes the body if you
+need to read both.
+To read both, call {!Workero.Response.clone} before consuming either body.
 
 {1 Back-pressure}
 
@@ -96,9 +104,9 @@ that nobody has read.
 
 {1 Client disconnect}
 
-The Worker gets no event when the client leaves. The next
-{!Workero.Stream.Writer.write} raises {!Workero.Js_error}. Catch it to clean
-up.
+The Worker gets no disconnect event when the client leaves. A later
+{!Workero.Stream.Writer.write} can raise {!Workero.Js_error}. Catch it to
+clean up.
 
 {@ocaml[
 let handler _req _env ctx =
@@ -107,7 +115,7 @@ let handler _req _env ctx =
       try
         while true do
           Stream.Writer.write writer "tick\n";
-          Promise.await (sleep 1000)
+          Promise.await (Timer.sleep 1000)
         done
       with Js_error _ -> ())
 

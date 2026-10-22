@@ -1,72 +1,56 @@
 
 # Router
 
-[`Workero.Router`](./Workero-Router.md) picks a handler from the method and the path of a request. It adds path parameters, catch-all paths and `405` answers to a plain `match` on [`Workero.Request.method_`](./Workero-Request.md#val-method_) and [`Workero.Request.path`](./Workero-Request.md#val-path).
+Use [`Workero.Router`](./Workero-Router.md) to dispatch HTTP requests by method and path. A route handler receives path parameters, the request, `env` and `ctx`, in that order. Use [`Workero.serve`](./Workero.md#val-serve) to register the finished router.
+
+
+## Route requests
+
+Put this in `src/main.ml` of a [Worker project](./getting_started.md):
 
 ```ocaml
 open Workero
 
 let router =
   Router.make
-    [
-      Router.get "/" (fun _ _ _ _ -> Response.text "home\n");
-      Router.get "/users/:id<int>" (fun params _ _ _ ->
-          Response.text ("user " ^ Router.param_exn params "id" ^ "\n"));
-      Router.get "/files/:path<string...>" (fun params _ _ _ ->
-          Response.text ("file " ^ Router.param_exn params "path" ^ "\n"));
-      Router.post "/echo" (fun _ req _ _ -> Response.text (Request.text req));
-    ]
+    (Router.scope "/api"
+       [
+         Router.get "/users/me" (fun _ _ _ _ -> Response.text "me\n");
+         Router.get "/users/:id<int>" (fun params _ _ _ ->
+             Response.text ("user " ^ Router.param_exn params "id" ^ "\n"));
+         Router.post "/users/:id<int>" (fun params req _ _ ->
+             Response.text
+               (Router.param_exn params "id" ^ ": " ^ Request.text req));
+         Router.get "/files/:rest<string...>" (fun params _ _ _ ->
+             Response.text ("file " ^ Router.param_exn params "rest" ^ "\n"));
+       ])
 
 let () = Workero.serve (Router.to_handler router)
 ```
-A handler takes the parameters, the request, the environment and the context. Read a parameter with [`Workero.Router.param`](./Workero-Router.md#val-param) or [`Workero.Router.param_exn`](./Workero-Router.md#val-param_exn).
+Run `npx wrangler dev` in the project, then try these requests:
 
-
-## Routes
-
-[`Workero.Router.get`](./Workero-Router.md#val-get), [`Workero.Router.post`](./Workero-Router.md#val-post), [`Workero.Router.put`](./Workero-Router.md#val-put), [`Workero.Router.patch`](./Workero-Router.md#val-patch), [`Workero.Router.delete`](./Workero-Router.md#val-delete), [`Workero.Router.head`](./Workero-Router.md#val-head) and [`Workero.Router.options`](./Workero-Router.md#val-options) make a route for one method. [`Workero.Router.any`](./Workero-Router.md#val-any) makes a route for every method; it is tried after the routes of the request method.
-
-[`Workero.Router.scope`](./Workero-Router.md#val-scope) adds a prefix to a list of routes. [`Workero.Router.wrap`](./Workero-Router.md#val-wrap) applies a function on handlers to each route, for example to add a header:
-
-```ocaml
-let with_cors handler params req env ctx =
-  let res = handler params req env ctx in
-  Response.copy res
-    ~headers:(("access-control-allow-origin", "*") :: Response.headers res)
-
-let routes =
-  Router.scope "/api"
-    (Router.wrap with_cors [ Router.get "/ping" (fun _ _ _ _ -> Response.text "pong") ])
+```sh
+curl http://localhost:8787/api/users/me
+curl http://localhost:8787/api/users/42
+curl -d hello http://localhost:8787/api/users/42
+curl http://localhost:8787/api/files/a/b%20c
 ```
-
-## Patterns
-
-The pattern syntax is the one of the path patterns of [server-reason-react](https://github.com/ml-in-barcelona/server-reason-react) routes. A pattern is `/`, or segments that each start with `/`.
-
-| Segment | Matches |
-| --- | --- |
-| `users` | The decoded segment `users`. Allowed characters are letters, digits, `- . _ ~ ! $ & ' ( ) * + , ; = : @` and bytes from 0x80, so `café` matches `caf%C3%A9`. `.` and `..` are not allowed. |
-| `:id<string>` | One segment. |
-| `:id<int>` | One segment of plain decimal digits, with an optional leading `-`. |
-| `:ok<bool>` | `true` or `false`. |
-| `:id<Note_id.t>` | One segment. A module path ending in `.t` is accepted and matches like `string`. |
-| `:rest<string...>` | At least one segment, up to the end of the path. It must be the last segment. The value is the decoded segments joined with `/`. |
-A parameter name starts with a lower case letter or `_` and continues with letters, digits, `_` and `'`. A value that does not parse as an `int` or a `bool` gives `400`. There are no optional segments, and a pattern has no trailing slash.
+The response bodies are `me`, `user 42`, `42: hello` and `file a/b c`, respectively. The first route wins over the parameter route because a static segment is more specific. [`Workero.Router.param`](./Workero-Router.md#val-param) returns `None` for a missing name. [`Workero.Router.param_exn`](./Workero-Router.md#val-param_exn) raises `Invalid_argument` instead.
 
 
-## Matching
+## Match paths and methods
 
-The router splits the raw path first and decodes each segment after, so `%2F` never splits a segment. A path with an encoded slash, a malformed escape, a dot segment such as `%2e%2e`, a control character or invalid UTF-8 gets `400`. `+` stays `+`.
+- A static segment matches decoded text. For example, `/café` matches `/caf%C3%A9`.
+- `:id<string>` matches one segment. `:id<int>` accepts decimal integers, including a leading minus sign. `:ok<bool>` accepts `true` or `false`. A module path ending in `.t`, such as `:id<Note_id.t>`, matches like `string`. These parameters still return strings.
+- `:rest<string...>` matches one or more remaining segments and must be last. Its value joins the decoded segments with `/`. It does not match `/files` in the example.
+- [`Workero.Router.get`](./Workero-Router.md#val-get), [`Workero.Router.post`](./Workero-Router.md#val-post), [`Workero.Router.put`](./Workero-Router.md#val-put), [`Workero.Router.patch`](./Workero-Router.md#val-patch), [`Workero.Router.delete`](./Workero-Router.md#val-delete), [`Workero.Router.head`](./Workero-Router.md#val-head) and [`Workero.Router.options`](./Workero-Router.md#val-options) match their named method. [`Workero.Router.any`](./Workero-Router.md#val-any) matches any method only if no route for that method matches the path. `HEAD` does not use a `GET` route as a fallback.
+[`Workero.Router.scope`](./Workero-Router.md#val-scope) prefixes every route. A child route at `/` under the `/api` scope matches `/api`, not `/api/`. Nest `scope` calls to mount route groups under longer prefixes. Use [`Workero.Router.wrap`](./Workero-Router.md#val-wrap) to apply a function of type `[Router.handler -> Router.handler]` to every route in a group.
 
-When several routes match, the most specific wins: a static segment beats a parameter, and a pattern without a catch-all beats a catch-all pattern with the same number of static segments. [`Workero.Router.make`](./Workero-Router.md#val-make) raises `Invalid_argument` when a pattern is invalid, when a method and pattern appear twice, and when two patterns of one method could match the same path with the same specificity, such as `/:a<string>/x` and `/x/:b<string>`. The same rules hold in server-reason-react.
 
+## Handle misses and invalid paths
 
-## Answers
+[`Workero.Router.to_handler`](./Workero-Router.md#val-to_handler) sends `404 Not Found` when no route matches. For a path that belongs to another method, it sends `405 Method Not Allowed` with an `Allow` header, except for `HEAD`, `OPTIONS` and `TRACE`, which get `404`. A bad path or a value that does not parse for the selected typed route gets `400`. The router rejects an encoded slash (`%2F`), invalid UTF-8, malformed escapes, dot segments and control characters. A plus sign remains `+`.
 
-[`Workero.Router.to_handler`](./Workero-Router.md#val-to_handler) answers these cases itself:
+By default, a request for `/api/users/42/?q=1` gets a `308` redirect to `/api/users/42?q=1`. Set `~trailing_slash:`Reject` on [`Workero.Router.make`](./Workero-Router.md#val-make) to use `404` instead. Supply `~not_found` to use your own handler for misses. [`Workero.Router.make`](./Workero-Router.md#val-make) raises `Invalid_argument` for invalid, duplicate or equally specific overlapping routes. It does not choose one based on declaration order.
 
-- No route matches: `404` `Not Found`, or the handler of `~not_found`.
-- The path matches a route of another method: `405` with an `Allow` header. It is not sent for `HEAD`, `OPTIONS` and `TRACE`. `HEAD` does not fall back to `GET`.
-- A bad path or parameter: `400`.
-- A path with trailing slashes: `308` to the path without them, with the query kept. `~trailing_slash:`Reject` answers `not_found` instead.
-[`Workero.Router.find`](./Workero-Router.md#val-find) does the lookup alone, without a request. Use it to test your routes or to dispatch yourself.
+For a lookup without an HTTP response, use [`Workero.Router.find`](./Workero-Router.md#val-find) with a raw, percent-encoded path without a query. Unlike `to_handler`, `find` does not redirect trailing slashes. See the [`Workero.Router`](./Workero-Router.md) reference for pattern syntax, result variants and router options.

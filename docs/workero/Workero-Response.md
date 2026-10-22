@@ -100,7 +100,7 @@ val copy :
   t ->
   t
 ```
-`copy res` is `new Response(res.body, init)`: the same body, moved, so `res` is used up. `status` and `headers` replace those of `res`. Use it to edit the headers of a `fetch` result, which may be frozen.
+`copy res` builds a response with the same body stream. `res` and its copy share that stream; only one can consume it. Use [`clone`](./#val-clone) first if you need two independently readable bodies. `status` replaces the original status; `headers` replaces the entire original header list. Without them, the original status and headers are kept. Use `copy` to edit the headers of a `fetch` result, which may be read-only.
 
 ```ocaml
 val body_text : t -> string

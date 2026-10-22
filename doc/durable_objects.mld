@@ -1,16 +1,20 @@
 {0 Durable Objects}
 
-A {{:https://developers.cloudflare.com/durable-objects/}Durable Object} is a
-small stateful server. Every object has an id. Requests for the same id reach
-the same object, wherever they start, and the object keeps its state in
-storage. {!Workero.Durable_object} supports objects with SQLite storage. It
-covers storage keys, SQL, transactions, alarms, hibernatable WebSockets and
-requests through a stub.
+Use a {{:https://developers.cloudflare.com/durable-objects/}Durable Object} when
+requests for the same name must reach the same object identity. Each object
+has its own storage. Its OCaml values live only while an instance is in
+memory; write values that must survive eviction to storage. This guide
+builds a counter that keeps a separate count for each name.
 
-{1 Declare a class}
+{1 Build a counter}
 
-Write the class as a function, register it under a name at module
-initialisation, and give the name to Wrangler:
+Start with a Worker project that has a [src/dune] executable using [(modes
+wasm)] and [(libraries workero)]. See {{!page-getting_started}Getting started}
+for the project setup.
+
+{2 Write src/main.ml}
+
+Put this code in [src/main.ml]:
 
 {@ocaml[
 open Workero
@@ -40,8 +44,24 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ]}
 
+The [COUNTER] binding gives access to the namespace. [get_by_name] selects the
+same object for the same name; a different name selects a different object.
+[Fetcher.fetch] sends a request to its [~fetch] handler and waits for the
+response. The URL must be absolute. The stub selects the object, regardless
+of the URL's host. Here the handler ignores the request URL.
+
+{2 Configure Wrangler}
+
+Add the binding, SQLite migration, and build command to [wrangler.toml]:
+
 {@toml[
+name = "counter-worker"
 main = "_worker/index.js"
+compatibility_date = "2026-10-01"
+
+[build]
+command = "workero build src/main.bc.wasm.js"
+watch_dir = "src"
 
 [[durable_objects.bindings]]
 name = "COUNTER"
@@ -52,61 +72,62 @@ tag = "v1"
 new_sqlite_classes = ["Counter"]
 ]}
 
-Cloudflare also accepts the newer [exports] map in place of [migrations]. Use
-[storage = "sqlite"] there. Classes with the older key-value storage are not
-supported.
+The class name must match [register]. Use a new migration tag when you add
+another class; do not replace an already deployed migration. The generated
+entry point exports [Counter] as a JavaScript class. [workero build] runs the
+OCaml program in [workerd] to discover registrations, so register each class
+at module initialization. It needs [workerd] on [PATH], in a parent
+[node_modules/.bin], or at [WORKERD]. The build prints
+[workero: Durable Object classes: Counter] when it finds this class. See
+{{!page-cli}The workero CLI} for build options and failure cases.
 
-The function given to {!Workero.Durable_object.register} runs each time the
-runtime creates the object. It returns the handlers of that object with
-{!Workero.Durable_object.make}. Keep the state of the object in values that the
-function creates, as [count] above. Never keep it in a module-level value: one
-isolate can host several objects, and the runtime can remove an idle object
-from memory and create it again later.
+For a new Worker, Wrangler also supports [exports] in place of [migrations]:
 
-The function cannot call {!Workero.Promise.await}: the runtime needs the object
-at once. Such a call raises [Invalid_argument], and the object fails to start.
-Work that waits belongs in [~init]. The runtime runs [init] before the first
-event, each time it creates the object, and queues other events until [init]
-returns. Use it to read stored values, as [count] above does.
+{@toml[
+[exports.Counter]
+type = "durable-object"
+storage = "sqlite"
+]}
 
-Handlers are optional. [fetch] answers the requests of a stub. A call on an
-object without a [fetch] handler fails. Each handler runs in its own fiber and
-may call {!Workero.Promise.await}. Two events on one object interleave only
-where one of them waits. Storage keys are synchronous, so a handler that does
-not wait runs without interruption.
+Keep the binding in either case. Do not combine the two class declarations;
+once a Worker deploys with [exports], it cannot return to [migrations]. See
+{{:https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/}Cloudflare's
+class lifecycle guide} before changing an existing deployment.
 
-{1 Build}
+{2 Test locally}
 
-[workero build] needs to know the class names, because a JavaScript module
-exports classes by static name. It runs the program once in [workerd], reads
-the names that [register] collected, and exports one class for each. Put
-[register] calls at the top level of the program. A call that depends on a
-condition at initialisation is exported only when the condition holds in
-[workerd]. Any name made of ASCII letters, digits, [_] and [$] works, except
-[default], [then], [__proto__] and names that start with a digit. The build
-exports each class under its name without declaring a variable of that name,
-so a name cannot clash with the generated code.
+Run [npx wrangler dev] and send requests in another terminal:
 
-The build fails, and prints the error of the program, when the program raises
-during initialisation. It also fails when the program does not finish
-initialising in 30 seconds; set [WORKERO_PROBE_TIMEOUT] to a number of seconds
-to change the limit. [workerd] must be installed: [npm install workerd], or
-[wrangler], provides it. [workero build] looks for it on [PATH], then in
-[node_modules/.bin] of the current directory and its parents. Set [WORKERD] to
-a path, or to a name that [PATH] resolves, to use another binary. See {{!page-cli}CLI}.
+{@sh[
+curl 'http://localhost:8787/?name=alice'
+curl 'http://localhost:8787/?name=alice'
+curl 'http://localhost:8787/?name=bob'
+]}
 
-{1 Reach an object}
+With fresh local storage, the responses are [1], [2], and [1], in that order.
+If you have already used either name, its stored count continues instead.
+[wrangler dev] uses local Durable Object storage; these requests do not access
+a deployed object.
 
-{!Workero.Durable_object.Namespace.of_env} opens the binding. An id comes from
-a name ([id_from_name]), from a string that [Id.to_string] wrote
-([id_from_string]), or at random ([unique_id]). {!Workero.Durable_object.Namespace.get}
-gives the stub of an id, and [get_by_name] does both steps. The stub is a
-{!Workero.Fetcher.t}. Its [fetch] reaches the [fetch] handler of the object,
-with the path and the query of the URL. The host is ignored.
+{1 Understand the object lifecycle}
 
-{!Workero.Durable_object.Id.name} gives the name of an id made with
-[id_from_name]. {!Workero.Durable_object.State.id} gives the id of the running
-object.
+[register] supplies a constructor function for each object instance. The
+runtime calls it when the object starts, including after eviction. Keep
+per-object values such as [count] inside that function, not at module scope:
+one isolate can host several objects. The constructor must return handlers
+immediately. Calling {!Workero.Promise.await} there raises [Invalid_argument]
+and prevents the object from starting.
+
+[~init] runs before the first event each time an instance starts. It can
+await asynchronous work and blocks other events until it finishes. Reload
+stored values there. The [~fetch] handler receives a {!Workero.Request.t} and
+returns a {!Workero.Response.t}; it runs when a stub sends a request. The
+[~alarm] handler receives {!Workero.Durable_object.alarm_info} when a scheduled
+alarm fires, even if the instance was evicted. All these handlers run in
+fibers and may await. Events for the same object can interleave when a handler
+waits. A hibernating socket's [~websocket_message], [~websocket_close], and
+[~websocket_error] handlers also run when its events arrive. An object with no
+[~fetch] handler cannot answer a stub fetch.
 
 {1 RPC methods}
 
@@ -156,120 +177,177 @@ A call to a missing method, or to a method that raises, raises
 carry, such as [Date], [Map], [BigInt], streams and other stubs, are not
 supported. A JavaScript [undefined] argument or result becomes [`Null].
 
-{1 Storage}
+{1 Use storage and IDs}
 
-{!Workero.Durable_object.Storage} reads and writes keys without suspending.
-Values are [Jsonkit.t]. They go through [JSON.stringify] and [JSON.parse]
-around the runtime's own storage. A value written by JavaScript code reads as
-its JSON form: a [Date] is its ISO string and a [Map] is [{}]. [get] and
-[list] raise [Invalid_argument] for a stored value that [JSON.stringify]
-rejects, such as a [BigInt] or a cyclic object.
-{!Workero.Durable_object.Storage.list} takes [prefix], [start], [end_],
-[reverse] and [limit].
+{!Workero.Durable_object.Storage} exposes [get], [put], [delete], [list], and
+[delete_all] for keys in the object's SQLite-backed storage. [get], [put],
+[delete], and [list] do not suspend. Values use [Jsonkit.t], converted through
+[JSON.stringify] and [JSON.parse]. JavaScript values without a JSON form do
+not round-trip: a [Date] reads as an ISO string, a [Map] as [{}], and [get]
+or [list] raises [Invalid_argument] for a [BigInt] or cyclic object.
+[list] supports prefix, inclusive start, exclusive end, reverse order, and a
+limit. [delete_all] suspends and removes keys but not the alarm; [sync]
+suspends until earlier writes are durable. The key-value methods require a
+SQLite-backed class. For SQL on the same object, use [Storage.sql] below;
+{!Workero.D1} is a separate database binding.
 
-{1 SQL}
+[Namespace.id_from_name] maps a name to a stable ID. [Namespace.unique_id]
+creates a random ID. [Namespace.get] takes an ID and returns its stub;
+[Namespace.get_by_name] combines [id_from_name] and [get]. Use
+[Id.to_string] and [Namespace.id_from_string] to serialize and restore an ID
+in its namespace. [State.id] identifies the current object, and [Id.name]
+returns its name when available. A location hint on [get] matters only when
+the object is first created. [workerd] does not implement jurisdictions, so
+[unique_id ~jurisdiction] raises [Js_error] in local [workerd].
 
-{!Workero.Durable_object.Storage.sql} gives the SQLite database of the object.
-{!Workero.Durable_object.Sql.query} returns rows as {!Workero.Sql_value.row},
-{!Workero.Durable_object.Sql.run} returns the rows written, and parameters bind
-to the [?] marks:
+{1 Query SQL and use transactions}
 
-{@ocaml[
-let sql = Durable_object.Storage.sql storage in
-ignore
-  (Durable_object.Sql.run sql
-     "CREATE TABLE IF NOT EXISTS visits (at INTEGER, path TEXT)");
-ignore
-  (Durable_object.Sql.run
-     ~params:[ Int (Int64.of_float (Date.now ())); Text "/home" ]
-     sql "INSERT INTO visits VALUES (?, ?)");
-let rows = Durable_object.Sql.query sql "SELECT path FROM visits"
-]}
-
-Calls are synchronous and never suspend. An SQL error raises
-{!Workero.Js_error}. The runtime returns numbers as JavaScript numbers. A
-[REAL] that holds [2.0] reads as [Int 2L], and an [INTEGER] beyond 2{^ 53}
-reads as a rounded [Float]; an [Int] you write is exact only within ±2{^ 53}.
-See {!Workero.Sql_value}.
-
-{!Workero.Durable_object.Storage.transaction_sync} runs a function in a
-transaction. If the function raises, the runtime rolls back the writes to SQL
-and to storage keys, and the same exception reaches the caller. The function
-cannot wait: a call to {!Workero.Promise.await} in it raises [Invalid_argument]
-and rolls the transaction back. The asynchronous [transaction] of JavaScript
-has no equivalent.
-
-{1 Hibernatable WebSockets}
-
-A socket accepted with {!Workero.Durable_object.State.accept_websocket} stays
-connected while the object is evicted from memory, so an idle chat room costs
-nothing. The runtime creates the object again when a message arrives and calls
-its [websocket_message], [websocket_close] or [websocket_error] handler:
+{!Workero.Durable_object.Storage.sql} opens the object's SQLite database.
+This separate class creates a table, inserts one visit per request, and
+returns the total:
 
 {@ocaml[
-Durable_object.register "Room" (fun state _env ->
-    Durable_object.make
-      ~fetch:(fun _req ->
-        let { Websocket.client; server } = Websocket.pair () in
-        Durable_object.State.accept_websocket ~tags:[ "room" ] state server;
-        Websocket.response client)
-      ~websocket_message:(fun ws message ->
-        match message with
-        | Websocket.Text text ->
-            List.iter
-              (fun peer -> Websocket.send peer (Text text))
-              (Durable_object.State.websockets ~tag:"room" state)
-        | Binary _ -> ())
-      ~websocket_close:(fun ws ~code ~reason ~was_clean:_ ->
-        Websocket.close ~code ~reason ws)
-      ())
+let () =
+  let open Workero in
+  Durable_object.register "Visits" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      let sql = Durable_object.Storage.sql storage in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          ignore
+            (Durable_object.Sql.run sql
+               "CREATE TABLE IF NOT EXISTS visits (path TEXT)");
+          Durable_object.Storage.transaction_sync storage (fun () ->
+              ignore
+                (Durable_object.Sql.run ~params:[ Sql_value.Text "/home" ] sql
+                   "INSERT INTO visits (path) VALUES (?)");
+              Durable_object.Storage.put storage "last" (`String "/home"));
+          match Durable_object.Sql.query sql "SELECT count(*) AS n FROM visits" with
+          | [ [ ("n", Sql_value.Int n) ] ] -> Response.text (Int64.to_string n)
+          | _ -> Response.text ~status:`Internal_Server_Error "unexpected row")
+        ())
+
+let handler _req env _ctx =
+  let open Workero in
+  let visits = Durable_object.Namespace.of_env env "VISITS" in
+  let stub = Durable_object.Namespace.get_by_name visits "main" in
+  Fetcher.fetch stub "http://visits/add"
+
+let () = Workero.serve handler
 ]}
 
-Per-socket state in memory is lost when the object hibernates. Keep it with
-{!Workero.Websocket.serialize_attachment}, which holds at most 2048 bytes, and
-read it with {!Workero.Websocket.deserialize_attachment}.
-{!Workero.Durable_object.State.set_websocket_auto_response} answers a fixed text
-message, such as a ping, without waking the object. A socket that was accepted
-with {!Workero.Websocket.accept} does not hibernate and does not reach these
-handlers.
+For this separate Worker, use the [main], [build], and [compatibility_date]
+settings above. Bind [VISITS] to [Visits] and declare [Visits] in
+[new_sqlite_classes] (or [exports.Visits] with [storage = "sqlite"]). With
+fresh local storage, two requests to the Worker return [1] and [2].
+{!Workero.Durable_object.Sql.query} returns named rows as
+{!Workero.Sql_value.row}; [Sql.run] returns the number of rows written, and
+parameters bind to [?] in order. Both calls are synchronous. An SQL error
+raises {!Workero.Js_error}. [Sql.database_size] reports bytes used.
 
-A class without a [websocket_message] handler still accepts hibernatable
-sockets, and the runtime drops their messages without a reply.
+[Storage.transaction_sync] commits writes to SQL and storage keys together.
+If its callback raises, the runtime rolls back both and re-raises the error.
+The callback cannot await: {!Workero.Promise.await} raises [Invalid_argument]
+there and rolls back. JavaScript's asynchronous storage transaction has no
+OCaml equivalent here. SQL numbers cross the JavaScript number boundary:
+[REAL] [2.0] can read as [Sql_value.Int 2L], and integers outside ±[2^53]
+cannot round-trip exactly. See {!Workero.Sql_value}.
 
-{1 Alarms}
+{1 Handle hibernatable WebSockets}
 
-An object has one alarm. The runtime calls the [alarm] handler of the object
-when the alarm is due, also when the object left memory:
+Use {!Workero.Durable_object.State.accept_websocket} on the server end of a
+{!Workero.Websocket.val-pair}. The runtime keeps the connection when it evicts an
+idle object, then creates an instance again to handle its next message. This
+separate Worker replies with a per-socket message count:
 
 {@ocaml[
-Durable_object.register "Reminder" (fun state _env ->
-    let storage = Durable_object.State.storage state in
-    Durable_object.make
-      ~fetch:(fun _req ->
-        Durable_object.Storage.set_alarm_after storage ~ms:60_000.;
-        Response.text "reminder set")
-      ~alarm:(fun info ->
-        Console.log (Printf.sprintf "alarm, attempt %d" (info.retry_count + 1)))
-      ())
+open Workero
+
+let () =
+  Durable_object.register "Room" (fun state _env ->
+      Durable_object.State.set_websocket_auto_response state
+        ~request:"ping" ~response:"pong";
+      Durable_object.make
+        ~fetch:(fun _req ->
+          let { Websocket.client; server } = Websocket.pair () in
+          Durable_object.State.accept_websocket ~tags:[ "room" ] state server;
+          Websocket.response client)
+        ~websocket_message:(fun ws message ->
+          match message with
+          | Websocket.Text text ->
+              let n =
+                match Websocket.deserialize_attachment ws with
+                | Some (`Int n) -> n + 1
+                | _ -> 1
+              in
+              Websocket.serialize_attachment ws (`Int n);
+              Websocket.send ws (Websocket.Text (Printf.sprintf "%d:%s" n text))
+          | Websocket.Binary bytes -> Websocket.send ws (Websocket.Binary bytes))
+        ~websocket_close:(fun ws ~code ~reason ~was_clean:_ ->
+          Websocket.close ~code ~reason ws)
+        ())
+
+let handler req env _ctx =
+  match Request.header req "upgrade" with
+  | Some value when String.lowercase_ascii value = "websocket" ->
+      let rooms = Durable_object.Namespace.of_env env "ROOM" in
+      let stub = Durable_object.Namespace.get_by_name rooms "main" in
+      Fetcher.fetch_request stub req
+  | _ -> Response.text ~status:`Upgrade_Required "WebSocket upgrade required\n"
+
+let () = Workero.serve handler
 ]}
 
-{!Workero.Durable_object.Storage.set_alarm} takes a time in milliseconds since
-the Unix epoch. {!Workero.Durable_object.Storage.get_alarm} reads it and
-{!Workero.Durable_object.Storage.delete_alarm} cancels it. If the handler
-raises, the runtime runs it again with a growing delay and a larger
-[retry_count]. The runtime stops after a few tries. A class without an [alarm]
-handler still accepts [set_alarm], and the alarm then fails and retries.
+For this separate Worker, use the [main], [build], and [compatibility_date]
+settings above, with [ROOM] bound to [Room] and [Room] declared in
+[new_sqlite_classes] (or [exports.Room] with [storage = "sqlite"]). Send a
+WebSocket upgrade to the Worker. Its stub forwards the upgrade to [~fetch],
+which returns a [101] response. Text [hello] receives [1:hello], then
+[2:hello] on the next message; [ping] receives [pong] without waking the
+handler. A new connection starts at [1]. An HTTP request without an upgrade
+receives status 426. Use the browser client in {{!page-websockets}WebSockets}
+to connect locally.
 
-{1 Other state functions}
+The [~websocket_message], [~websocket_close], and optional [~websocket_error]
+handlers receive events for sockets accepted this way. [~websocket_error]
+receives an error string. Do not call [Websocket.accept] on the same socket:
+that API attaches Worker-side listeners and does not hibernate. In-memory
+per-socket values do not survive hibernation; [serialize_attachment] stores a
+JSON value of at most 2048 serialized bytes on the socket, and
+[deserialize_attachment] reads it after wake-up. [State.websockets] lists
+accepted sockets, optionally filtered by tag; [State.tags] reads a socket's
+tags. You may give up to 10 tags, each at most 256 characters. A class
+without [~websocket_message] can accept sockets, but their messages get no
+reply. See {{!page-websockets}WebSockets} for non-hibernating Worker sockets.
 
-- {!Workero.Durable_object.State.wait_until} keeps the object alive for
-  background work after the response.
-- {!Workero.Durable_object.State.block_concurrency_while} runs a function while
-  no other event reaches the object. If the function raises, the runtime resets
-  the object and fails the running requests; the next request creates the object
-  again.
-- {!Workero.Durable_object.Storage.sync} waits until earlier writes are
-  durable, and {!Workero.Durable_object.Storage.delete_all} removes every key.
+{1 Schedule an alarm}
+
+Each object can have one alarm. Add an [~alarm] handler and schedule it from a
+[~fetch] handler, for example:
+
+{@ocaml[
+let () =
+  let open Workero in
+  Durable_object.register "Reminder" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          Durable_object.Storage.set_alarm_after storage ~ms:60_000.;
+          Response.text "reminder set")
+        ~alarm:(fun info ->
+          Console.log (Printf.sprintf "alarm, attempt %d" (info.retry_count + 1)))
+        ())
+]}
+
+Add a [Reminder] binding and declare the class through [new_sqlite_classes] or
+[exports.Reminder] before using this separate class. [set_alarm_after] measures
+milliseconds from now;
+[set_alarm ~at] takes milliseconds since the Unix epoch. [get_alarm] reads
+the scheduled time and [delete_alarm] cancels it. These operations suspend.
+If [~alarm] raises, the runtime retries it with a growing delay and a larger
+[retry_count]; the first attempt has [retry_count = 0]. Scheduling an alarm
+without an [~alarm] handler still succeeds, but the alarm fails and retries
+until the runtime gives up.
 
 {1 Containers}
 
@@ -295,7 +373,8 @@ let () =
 ]}
 
 The program in the container needs time to listen on its port. Until then
-[Fetcher.fetch] raises {!Workero.Js_error}: retry. {!Workero.Durable_object.Container.monitor}
+[Fetcher.fetch] raises {!Workero.Js_error}: retry.
+{!Workero.Durable_object.Container.monitor}
 waits until the container exits, {!Workero.Durable_object.Container.signal}
 sends a Unix signal, and {!Workero.Durable_object.Container.destroy} stops it.
 
@@ -314,28 +393,26 @@ containerEngine = (localDocker = (
 ]}
 
 Run [workerd] with [--experimental]. Docker and both images must exist on the
-machine. [test/worker-containers/run.sh] shows a full setup. Without [containerEgressInterceptorImage] [workerd] fails the first
-request with "containerEgressInterceptorImage must be configured for
+machine. [test/worker-containers/run.sh] shows a full setup. Without
+[containerEgressInterceptorImage], [workerd] fails the first request with "containerEgressInterceptorImage must be configured for
 containers".
 
-{1 Test locally}
+{1 Control concurrency and background work}
 
-[wrangler dev] runs Durable Objects. In a [workerd] config for [workerd test],
-declare the classes on the Worker service, bind the namespace, and give the
-service {e on-disk} storage. SQLite storage needs it; [inMemory] storage does
-not support it:
+[State.block_concurrency_while state f] runs [f] while no other event can
+enter the object. It can await, but call it from a handler, not the
+constructor. If [f] raises, the runtime resets the object and fails running
+requests; the next request starts a new instance. [State.wait_until state f]
+starts [f] in its own fiber and registers its Promise with the object's context.
+Synchronous work in [f] runs before [wait_until] returns; a suspension lets the
+caller continue. A handler without an await does not interleave with another
+event while it runs.
 
-{@capnp[
-(name = "worker", worker = (
-  compatibilityDate = "2025-06-01",
-  modules = [ ... ],
-  bindings = [(name = "COUNTER", durableObjectNamespace = "Counter")],
-  durableObjectNamespaces = [(className = "Counter", uniqueKey = "counter", enableSql = true)],
-  durableObjectStorage = (localDisk = "disk"),
-)),
-(name = "disk", disk = (path = "do-data", writable = true)),
-]}
+{1 Know the interface boundary}
 
-The first module of the Worker must be [index.js], which exports the classes.
-[test/worker/run.sh] shows the full setup. [workerd] does not implement
-jurisdictions: [unique_id ~jurisdiction] raises [Js_error] there.
+This binding exports [fetch], [alarm], hibernatable WebSocket event handlers,
+and the RPC methods that you declare with [~rpc]. See
+{!Workero.Durable_object} for signatures and {{!page-cli}the CLI guide} for
+build details. For a direct [workerd test] setup, see [test/worker/run.sh]:
+it declares the namespace and SQL-enabled class on the Worker service, uses
+on-disk storage, and lists [index.js] first among its modules.

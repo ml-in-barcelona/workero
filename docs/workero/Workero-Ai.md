@@ -1,7 +1,7 @@
 
 # Module `Workero.Ai`
 
-A Workers AI binding, declared in `wrangler.toml` with `[ai]`. Workers AI runs models and bills your account, also in `wrangler dev`.
+A Workers AI binding, declared in `wrangler.toml` with `[ai]`. Models run remotely, including under `wrangler dev`, and consume account usage.
 
 ```ocaml
 type t

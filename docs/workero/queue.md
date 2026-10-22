@@ -1,18 +1,13 @@
 
 # Queue
 
-[`Workero.Queue`](./Workero-Queue.md) sends messages to a [Cloudflare Queue](https://developers.cloudflare.com/queues/). The handler that [`Workero.queue`](./Workero.md#val-queue) registers receives them in batches.
-
-**Name.** Under `open Workero`, `Queue` hides `Stdlib.Queue`. Write `Stdlib.Queue` when you need the standard one.
+Use a [`Workero.Queue`](./Workero-Queue.md) producer binding to send a message to a [Cloudflare Queue](https://developers.cloudflare.com/queues/). Register [`Workero.queue`](./Workero.md#val-queue) to consume delivered batches. The producer is a binding in `env`. The consumer is an event handler, not a binding. A Worker can do both.
 
 
-## Configure
+## Configure a producer and consumer
 
-Create the queue, then bind it as a producer and as a consumer in `wrangler.toml`. `binding` is the name that you pass to `of_env`. One Worker can be the producer and the consumer of the same queue:
+Add both roles to your project's `wrangler.toml`. Keep the existing `name`, `main`, `compatibility_date` and `build` settings from the [project template](./getting_started.md):
 
-```sh
-npx wrangler queues create jobs
-```
 ```toml
 [[queues.producers]]
 binding = "JOBS"
@@ -23,76 +18,68 @@ queue = "jobs"
 max_batch_size = 10
 max_retries = 3
 ```
+Wrangler creates a local queue for development from this configuration. The producer's `binding` is the name passed to [`Workero.Queue.of_env`](./Workero-Queue.md#val-of_env). The consumer subscribes to the `queue` name. Put these tables in different Workers if you want the sender and receiver to run separately.
 
-## Send
 
-A message body is a [`Workero.Queue.body`](./Workero-Queue.md#type-body). The constructor sets the content type, so a body and its content type cannot disagree:
+## Send and receive a job
 
-- `Json json` sends a [`Workero.JSON`](./Workero-JSON.md) value, as content type `json`.
-- `Text s` sends a string, as content type `text`.
-- `Bytes s` sends the bytes of `s`, as content type `bytes`.
+Replace `src/main.ml` with this complete Worker:
+
 ```ocaml
-let handler req env _ctx =
-  let open Workero in
-  let jobs = Queue.of_env env "JOBS" in
-  match URL.path (Request.url req) with
-  | "/enqueue" ->
+open Workero
+
+let send req env _ctx =
+  match (Request.method_ req, URL.path (Request.url req)) with
+  | POST, "/jobs" ->
+      let jobs = Queue.of_env env "JOBS" in
       Queue.send jobs (Queue.Json (`Assoc [ ("id", `Int 7) ]));
-      Response.text "queued\n"
-  | "/later" ->
-      Queue.send ~delay_seconds:60 jobs (Queue.Text "tidy up");
-      Response.text "queued\n"
-  | "/many" ->
-      Queue.send_batch jobs
-        [
-          Queue.message (Queue.Text "first");
-          Queue.message ~delay_seconds:30 (Queue.Bytes "\x00\x01");
-        ];
       Response.text "queued\n"
   | _ -> Response.text ~status:`Not_Found "not found\n"
 
-let () = Workero.serve handler
-```
-- [`Workero.Queue.of_env`](./Workero-Queue.md#val-of_env) opens the producer. It raises `Invalid_argument` when there is no such binding, or when the binding is not a queue producer.
-- [`Workero.Queue.send`](./Workero-Queue.md#val-send) adds one message and waits until the queue accepts it.
-- [`Workero.Queue.send_batch`](./Workero-Queue.md#val-send_batch) adds several messages in one call. The batch `delay_seconds` applies to the messages that set none with [`Workero.Queue.message`](./Workero-Queue.md#val-message).
-- `delay_seconds` is 0 to 86400\. Other values raise `Invalid_argument` before anything is sent.
-If the queue rejects a message, for example because it is too large, the call raises [`Workero.Js_error`](./Workero.md#exception-Js_error). See the [Queues limits](https://developers.cloudflare.com/queues/platform/limits/).
+let consume batch _env _ctx =
+  List.iter
+    (fun message ->
+      match Queue.Message.body_json message with
+      | `Assoc [ ("id", `Int id) ] ->
+          Printf.printf "processed job %d\n%!" id;
+          Queue.Message.ack message
+      | _ -> failwith "unexpected job body")
+    (Queue.Batch.messages batch)
 
-
-## Receive
-
-[`Workero.queue`](./Workero.md#val-queue) registers the consumer. It gets a [`Workero.Queue.Batch.t`](./Workero-Queue-Batch.md#type-t), the `env` and the `ctx`, and returns `unit`. It runs in a fiber, so it can call [`Workero.Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the bindings.
-
-```ocaml
 let () =
-  Workero.queue (fun batch env _ctx ->
-      let open Workero in
-      let store = KV.of_env env "KV" in
-      List.iter
-        (fun message ->
-          match Queue.Message.body_json message with
-          | `Assoc [ ("id", `Int id) ] ->
-              KV.put store ("job:" ^ string_of_int id) "done";
-              Queue.Message.ack message
-          | _ -> Queue.Message.retry ~delay_seconds:30 message)
-        (Queue.Batch.messages batch))
+  Workero.serve send;
+  Workero.queue consume
 ```
-A worker can register [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue), or any combination.
+Run `npx wrangler dev` in one terminal. In a second terminal, send a job:
 
-Read a body with the function that matches how the producer sent it: [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json), [`Workero.Queue.Message.body_text`](./Workero-Queue-Message.md#val-body_text) or [`Workero.Queue.Message.body_bytes`](./Workero-Queue-Message.md#val-body_bytes). The runtime gives the consumer the body, not its content type. A `Text` body read with `body_json` is a JSON string. A reader that does not fit the body raises `Invalid_argument`. A message that another producer sent with the `v8` content type is available through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js).
-
-[`Workero.Queue.Message.id`](./Workero-Queue-Message.md#val-id), [`Workero.Queue.Message.timestamp`](./Workero-Queue-Message.md#val-timestamp) (milliseconds since the Unix epoch) and [`Workero.Queue.Message.attempts`](./Workero-Queue-Message.md#val-attempts) (1 on the first delivery) describe the delivery.
-
-
-### Acknowledge and retry
-
-- [`Workero.Queue.Message.ack`](./Workero-Queue-Message.md#val-ack) marks one message as delivered.
-- [`Workero.Queue.Message.retry`](./Workero-Queue-Message.md#val-retry) asks for another delivery, after `?delay_seconds` when given.
-- [`Workero.Queue.Batch.ack_all`](./Workero-Queue-Batch.md#val-ack_all) and [`Workero.Queue.Batch.retry_all`](./Workero-Queue-Batch.md#val-retry_all) do the same for the whole batch.
-If the handler returns without any of these, the runtime counts the batch as delivered. If the handler raises, the event fails and Cloudflare delivers again the messages that the handler did not ack, up to `max_retries`. An [`Workero.Queue.Message.ack`](./Workero-Queue-Message.md#val-ack) called before the exception still counts. See [Batching and retries](https://developers.cloudflare.com/queues/configuration/batching-retries/).
+```sh
+curl -X POST http://localhost:8787/jobs
+```
+The HTTP response is `queued`. When the consumer receives the job, the Worker logs `processed job 7`. Delivery is asynchronous, so the log may appear after the HTTP response. A queue-only Worker can omit `Workero.serve`.
 
 
-## Test
+## Choose a body and delivery delay
 
-`wrangler dev` runs producers and consumers on your machine. In `workerd test`, `env.WORKER.queue(name, messages)` runs the consumer and returns which messages were acked or retried. It needs the `service_binding_extra_handlers` compatibility flag on the calling worker and `workerd test --experimental`. The producer binding can point at a small HTTP service that records what the runtime sends. `test/worker/run.sh` shows both.
+`Queue.Json` sends a `Jsonkit.t` value as content type `json`. `Queue.Text` sends a string as `text`. `Queue.Bytes` sends raw string bytes as `bytes`. The constructor sets the content type. Use [`Workero.Queue.send`](./Workero-Queue.md#val-send) for one message and [`Workero.Queue.send_batch`](./Workero-Queue.md#val-send_batch) with [`Workero.Queue.message`](./Workero-Queue.md#val-message) for several. Both wait for the queue to accept the send. A `~delay_seconds` of 0 to 86400 delays delivery; a batch delay applies only to messages without their own delay. Other values raise `Invalid_argument`. Queue rejections raise [`Workero.Js_error`](./Workero.md#exception-Js_error). See the [Queues limits](https://developers.cloudflare.com/queues/platform/limits/).
+
+Use [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json), [`Workero.Queue.Message.body_text`](./Workero-Queue-Message.md#val-body_text) or [`Workero.Queue.Message.body_bytes`](./Workero-Queue-Message.md#val-body_bytes) to read the delivered body. The consumer does not receive a content-type field. A `Text` body also reads as a JSON string, and a reader that cannot decode the body raises `Invalid_argument`. For a `v8` message sent by another producer, use [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js). This library does not expose every JavaScript Queues API feature. The [`Workero.Queue`](./Workero-Queue.md) reference lists the supported calls.
+
+
+## Acknowledge or retry a delivery
+
+The example calls [`Workero.Queue.Message.ack`](./Workero-Queue-Message.md#val-ack) after processing each message. Use [`Workero.Queue.Message.retry`](./Workero-Queue-Message.md#val-retry) to request another delivery of one message, optionally with `~delay_seconds`. [`Workero.Queue.Batch.ack_all`](./Workero-Queue-Batch.md#val-ack_all) and [`Workero.Queue.Batch.retry_all`](./Workero-Queue-Batch.md#val-retry_all) act on the whole batch.
+
+If the handler returns without an explicit acknowledgement or retry, Cloudflare treats the remaining messages as delivered. If it raises, the event fails and Cloudflare retries messages not already acknowledged, subject to `max_retries`. An earlier `ack` remains effective. Make processing safe for repeated delivery, and acknowledge only after the work succeeds. See [Batching and retries](https://developers.cloudflare.com/queues/configuration/batching-retries/).
+
+[`Workero.Queue.Message.id`](./Workero-Queue-Message.md#val-id), [`Workero.Queue.Message.timestamp`](./Workero-Queue-Message.md#val-timestamp) (milliseconds since the Unix epoch) and [`Workero.Queue.Message.attempts`](./Workero-Queue-Message.md#val-attempts) (starting at 1\) identify a delivery. [`Workero.Queue.Batch.queue`](./Workero-Queue-Batch.md#val-queue) identifies its source queue. The consumer runs in a fiber, so it can use [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await). Under `open Workero`, `Queue` shadows `Stdlib.Queue`; use the qualified standard-library name when needed.
+
+
+## Deploy
+
+Create the remote queue with an authenticated Wrangler, then deploy the Worker:
+
+```sh
+npx wrangler queues create jobs
+npx wrangler deploy
+```
+See [Getting started](./getting_started.md) for authentication. If the producer and consumer use separate Workers, deploy both with the same queue name.
