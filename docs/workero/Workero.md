@@ -52,12 +52,17 @@ HTTP status codes as polymorphic variants, with the names and groups of Dream. `
 ```ocaml
 module Env : sig ... end
 ```
-The `env` argument of a Worker handler: its variables, secrets and bindings.
+The `env` argument of a Worker handler: string and JSON-shaped variables, Worker secrets, and resource bindings. See [Variables and secrets](./env.md).
 
 ```ocaml
 module Context : sig ... end
 ```
 The `ctx` argument of a Worker handler.
+
+```ocaml
+module Router : sig ... end
+```
+Dispatch requests by method and decoded path. See [Router](./router.md) for a complete Worker and expected responses.
 
 ```ocaml
 module Scheduled : sig ... end
@@ -72,22 +77,22 @@ JSON requests and responses for workero (`Workero.JSON`).
 ```ocaml
 module KV : sig ... end
 ```
-A Workers KV namespace, bound in `wrangler.toml` with `[[kv_namespaces]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects.
+Text values in a Workers KV namespace, bound with `[[kv_namespaces]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects. KV is eventually consistent across locations; 60 seconds is not a guaranteed visibility bound.
 
 ```ocaml
 module Cache : sig ... end
 ```
-The Cache API of the data center that runs the Worker (`caches.default`). Entries are keyed by URL, and each data center has its own cache. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects.
+The global `caches.default` runtime API, not an `env` binding. Entries are keyed by URL string in the data center that runs the Worker. Operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects.
 
 ```ocaml
 module R2 : sig ... end
 ```
-A Cloudflare R2 bucket, bound in `wrangler.toml` with `[[r2_buckets]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
+Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
 
 ```ocaml
 module D1 : sig ... end
 ```
-A Cloudflare D1 database, bound in `wrangler.toml` with `[[d1_databases]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./#exception-Js_error) when the runtime rejects, for example on an SQL error.
+Basic SQL queries on a Cloudflare D1 database, bound with `[[d1_databases]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects, for example on an SQL error.
 
 ```ocaml
 module Sql_value : sig ... end
@@ -130,6 +135,41 @@ module Console : sig ... end
 The global `console`. Each call writes one entry to the Workers logs, with its level. Unlike `print_string`, it needs no flush.
 
 ```ocaml
+module Secret_store : sig ... end
+```
+A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. Local `wrangler dev` requires a local Secrets Store secret; it cannot read the remote one. The value is plain text: do not log it. For a Worker secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
+
+```ocaml
+module Fetcher : sig ... end
+```
+A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Configure service and assets bindings in `wrangler.toml` with `[[services]]` or `[assets]`. A Durable Object stub comes from [`Durable_object.Namespace.get`](./Workero-Durable_object-Namespace.md#val-get). The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
+
+```ocaml
+module Queue : sig ... end
+```
+Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages through a producer binding in `wrangler.toml` (`[[queues.producers]]`). A [`Workero.queue`](./#val-queue) handler consumes batches from a queue configured under `[[queues.consumers]]`, not through a producer binding. See [Queue](./queue.md) for a complete Worker.
+
+```ocaml
+module Rate_limiter : sig ... end
+```
+A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The binding's `name` is passed to [`of_env`](./Workero-Rate_limiter.md#val-of_env); the limit and its period come from the binding, not from the code.
+
+```ocaml
+module Ai : sig ... end
+```
+A Workers AI binding, declared in `wrangler.toml` with `[ai]`. Models run remotely, including under `wrangler dev`, and consume account usage.
+
+```ocaml
+module Analytics_engine : sig ... end
+```
+A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
+
+```ocaml
+module Durable_object : sig ... end
+```
+Durable Objects with SQLite-backed key-value and SQL storage.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
@@ -138,6 +178,11 @@ val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
 ```
 `scheduled handler` registers the cron trigger handler, like `scheduled(controller, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve); a Worker may register either or both. An exception raised by the handler rejects the event Promise, so Cloudflare records the run as failed.
+
+```ocaml
+val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
+```
+`queue handler` registers the queue consumer, like `queue(batch, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve) and [`scheduled`](./#val-scheduled). An exception raised by the handler rejects the event Promise, so the runtime retries the messages that the handler did not ack.
 
 ```ocaml
 val fetch : 

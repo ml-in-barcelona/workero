@@ -1,40 +1,34 @@
 {0 The project template}
 
-The [template/] directory of the repository is a starter project for a
-Cloudflare Worker written in OCaml. Copy it to start a new worker.
+Copy [template/] outside the workero source checkout to start a Worker.
+Follow {{!page-getting_started}Getting started} to install the source package
+and run the copy locally.
 
 {1 Files}
 
-- [dune-project]: a package that depends on [workero].
-- [src/dune]: the executable [main], built with [(modes wasm)].
-- [src/main.ml]: the worker.
-- [wrangler.toml]: runs [workero build src/main.bc.wasm.js] as the build
-  command (see {{!page-cli}the CLI}) and sets [GREETING] in [[vars]].
-- [package.json]: [wrangler] and [binaryen] as development dependencies.
+- [dune-project] requires OCaml 5.4 or later and the [workero] package.
+- [src/dune] builds [src/main.ml] with [(modes wasm)] and links [workero].
+- [src/main.ml] handles [GET /], [POST /echo], and [GET /env].
+- [wrangler.toml] points to [_worker/index.js], runs
+  [workero build src/main.bc.wasm.js], watches [src/], and sets [GREETING]
+  in [[vars]].
+- [package.json] lists Wrangler 4.151.3 and binaryen 132. binaryen supplies
+  [wasm-opt] for wasm_of_ocaml.
 
-{1 Run it}
+{1 Run the copied project}
+
+After installing the source package into your active opam switch, run these
+commands from your copy:
 
 {@sh[
-opam install workero
-npm install          # wrangler, and binaryen for wasm_of_ocaml
-npx wrangler dev     # builds src/main.ml, serves on localhost:8787
-npx wrangler deploy
+eval "$(opam env)"
+npm install
+npx wrangler dev
 ]}
 
-{1 The worker}
+In another terminal, request [http://127.0.0.1:8787/]. Expect
+[Hello from OCaml on Cloudflare Workers]. Request [/env] to see
+[hello from vars], the default [GREETING] value.
 
-{@ocaml[
-let handler req env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "Hello from OCaml on Cloudflare Workers\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | GET, "/env" ->
-      Response.text
-        (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:`Not_Found "not found\n"
-
-let () = Workero.serve handler
-]}
-
-[GET /env] reads [GREETING] with {!Workero.Env.var}.
+To deploy, first run [npx wrangler login] with a Cloudflare account, then
+[npx wrangler deploy]. You do not need an account for local [wrangler dev].

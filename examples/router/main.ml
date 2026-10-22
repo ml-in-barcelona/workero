@@ -1,9 +1,15 @@
-let handler req _env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "home\n"
-  | GET, "/about" -> Response.text "about\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | _ -> Response.text ~status:`Not_Found "not found\n"
+open Workero
 
-let () = Workero.serve handler
+let router =
+  Router.make
+    [
+      Router.get "/" (fun _ _ _ _ -> Response.text "home\n");
+      Router.get "/about" (fun _ _ _ _ -> Response.text "about\n");
+      Router.get "/users/:id<int>" (fun params _ _ _ ->
+          Response.text ("user " ^ Router.param_exn params "id" ^ "\n"));
+      Router.get "/files/:path<string...>" (fun params _ _ _ ->
+          Response.text ("file " ^ Router.param_exn params "path" ^ "\n"));
+      Router.post "/echo" (fun _ req _ _ -> Response.text (Request.text req));
+    ]
+
+let () = Workero.serve (Router.to_handler router)

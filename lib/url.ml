@@ -24,10 +24,12 @@ let port t =
 
 let path t =
   let raw = field t "pathname" in
-  try
-    Js.to_string
-      (Js.Unsafe.coerce (call (global "decodeURIComponent") [| str raw |]))
-  with Js.Js_error.Exn _ -> raw
+  if String.contains raw '%' then
+    try
+      Js.to_string
+        (Js.Unsafe.coerce (call (global "decodeURIComponent") [| str raw |]))
+    with Js.Js_error.Exn _ -> raw
+  else raw
 
 let pathname t = field t "pathname"
 let search t = field t "search"

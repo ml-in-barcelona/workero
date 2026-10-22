@@ -41,14 +41,28 @@ val request : Request.t -> Jsonkit.t
 ```
 Reads the whole body and parses it as JSON.
 
-Raises `Jsonkit.Of_string_error` when the body is not valid JSON. The payload describes the syntax error. A handler that lets it escape makes the runtime answer with status 500; use [`parse`](./#val-parse) or [`decode`](./#val-decode) to answer with 400\.
+Raises `Jsonkit.Of_string_error` when the body is not valid JSON. The payload describes the syntax error. A handler that lets it escape makes the runtime answer with status 500; use [`parse`](./#val-parse) or [`decode`](./#val-decode) to handle the error and choose a response status in the handler.
 
 ```ocaml
 val parse : Request.t -> (Jsonkit.t, string) Stdlib.result
 ```
-Like [`request`](./#val-request). `Error message` when the body is not valid JSON.
+Like [`request`](./#val-request). `Error message` when the body is not valid JSON. It does not send a response; the handler chooses the status.
 
 ```ocaml
 val decode : (Jsonkit.t -> 'a) -> Request.t -> ('a, string) Stdlib.result
 ```
 `decode of_json req` parses the body and applies `of_json`. `of_json` is a jsonkit decoder, for example `user_of_json` from `[@@deriving json]`, or `Jsonkit.Of_json.(list int)`. `Error message` when the body is not valid JSON or when `of_json` raises `Jsonkit.Of_json_error`.
+
+```ocaml
+val of_js : Js_of_ocaml.Js.Unsafe.any -> Jsonkit.t
+```
+`of_js v` is the JSON form of the JavaScript value `v`, the one that `JSON.stringify` gives. A `Date` becomes a string, and a key whose value is `undefined` or a function is dropped, as in `JSON.stringify`.
+
+Raises `Invalid_argument` when `v` has no JSON form (`undefined`, a function or a symbol), or when `JSON.stringify` throws, for example on a cyclic object or a `BigInt`.
+
+```ocaml
+val to_js : Jsonkit.t -> Js_of_ocaml.Js.Unsafe.any
+```
+`to_js json` is a new JavaScript value, built with `JSON.parse`.
+
+Raises `Invalid_argument` when `json` holds a float that JSON cannot write: `nan` or an infinity.

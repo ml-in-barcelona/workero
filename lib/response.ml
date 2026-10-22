@@ -14,16 +14,23 @@ let build ?content_type ~status ~headers ~empty_body body =
   if List.mem status null_body_statuses && not (is_nullish body) then
     invalid_arg
       (Printf.sprintf "Workero.Response: status %d allows no body" status);
-  let h = Wire.headers_of_list headers in
-  Option.iter
-    (fun ct ->
-      if not (Js.to_bool (meth h "has" [| str "content-type" |])) then
-        ignore (meth h "set" [| str "content-type"; str ct |]))
-    content_type;
   let init =
-    Js.Unsafe.obj [| ("status", Js.Unsafe.inject status); ("headers", h) |]
+    (if status = 200 then [] else [ ("status", Js.Unsafe.inject status) ])
+    @
+    if headers = [] && content_type = None then []
+    else
+      let h = Wire.headers_of_list headers in
+      Option.iter
+        (fun ct ->
+          if not (Js.to_bool (meth h "has" [| str "content-type" |])) then
+            ignore (meth h "set" [| str "content-type"; str ct |]))
+        content_type;
+      [ ("headers", h) ]
   in
-  Js.Unsafe.new_obj (global "Response") [| body; init |]
+  Js.Unsafe.new_obj (global "Response")
+    (match init with
+    | [] -> [| body |]
+    | _ -> [| body; Js.Unsafe.obj (Array.of_list init) |])
 
 let text ?status ?(headers = []) body =
   build ~status:(code status) ~headers ~empty_body:(body = "") (str body)

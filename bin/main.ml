@@ -142,7 +142,23 @@ let missing_primitives loader =
   in
   scan 0 []
 
-let index_js ~name wasm =
+let class_exports classes =
+  match classes with
+  | [] -> ""
+  | _ ->
+      "import { WorkeroDurableObject } from \"./durable-object.js\";\n"
+      ^ String.concat ""
+          (List.mapi
+             (fun i c ->
+               Printf.sprintf
+                 "class workero_class_%d extends WorkeroDurableObject {\n\
+                 \  constructor(ctx, env) { super(ctx, env, \"%s\"); }\n\
+                  }\n\
+                  export { workero_class_%d as %s };\n"
+                 i c i c)
+             classes)
+
+let loader_prelude ~name wasm =
   let buf = Buffer.create 1024 in
   let modules =
     List.mapi
@@ -154,11 +170,167 @@ let index_js ~name wasm =
   in
   Printf.bprintf buf
     "import { loadWasmOCaml } from \"./load-wasm.js\";\n\
-     await loadWasmOCaml({ %s }, () => import(\"./%s.bc.wasm.js\"));\n\
-     %s"
+     await loadWasmOCaml({ %s }, () => import(\"./%s.bc.wasm.js\"));\n"
     (String.concat ", " modules)
-    name Embedded.index;
+    name;
   Buffer.contents buf
+
+let index_js ~name ~classes wasm =
+  loader_prelude ~name wasm ^ Embedded.index ^ class_exports classes
+
+let is_class_name name =
+  name <> ""
+  && (match name.[0] with '0' .. '9' -> false | _ -> true)
+  && (not (List.mem name [ "default"; "then"; "__proto__" ]))
+  && String.for_all
+       (function
+         | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '$' -> true | _ -> false)
+       name
+
+let find_workerd () =
+  let executable path = Sys.file_exists path && not (Sys.is_directory path) in
+  let path_dirs =
+    String.split_on_char ':' (Option.value (Sys.getenv_opt "PATH") ~default:"")
+    |> List.filter (fun d -> d <> "")
+  in
+  let in_path binary = List.map (fun d -> Filename.concat d binary) path_dirs in
+  let in_node_modules =
+    List.map
+      (fun d -> Filename.concat d "node_modules/.bin/workerd")
+      (ancestors (Sys.getcwd ()))
+  in
+  match Sys.getenv_opt "WORKERD" with
+  | Some value when value <> "" -> (
+      let candidates =
+        if String.contains value '/' then [ value ] else in_path value
+      in
+      match List.find_opt executable candidates with
+      | Some path -> path
+      | None -> fail "WORKERD is set to %s, which does not exist" value)
+  | _ -> (
+      match List.find_opt executable (in_path "workerd" @ in_node_modules) with
+      | Some path -> path
+      | None ->
+          fail
+            "workerd not found. workero build runs the program in workerd to \
+             find its Durable Object classes. Install it (npm install workerd, \
+             or wrangler), add it to PATH or set WORKERD")
+
+let probe_marker = "workero-durable-objects:"
+
+let probe_script ~name wasm =
+  loader_prelude ~name wasm
+  ^ "export default {\n  async test() {\n    console.log(\"" ^ probe_marker
+  ^ "\" + Object.keys(globalThis.__workero?.durable_objects ?? {}).join(\" \"));\n\
+    \  },\n\
+     };\n"
+
+let probe_config ~name wasm =
+  let modules =
+    [ "workero-probe.mjs"; "load-wasm.js"; name ^ ".bc.wasm.js" ]
+    |> List.map (fun f ->
+        Printf.sprintf "(name = \"%s\", esModule = embed \"%s\")" f f)
+  in
+  let wasm_modules =
+    List.map
+      (fun f ->
+        let path = Printf.sprintf "%s.bc.wasm.assets/%s" name f in
+        Printf.sprintf "(name = \"%s\", wasm = embed \"%s\")" path path)
+      wasm
+  in
+  Printf.sprintf
+    "using Workerd = import \"/workerd/workerd.capnp\";\n\
+     const config :Workerd.Config = (\n\
+    \  services = [(name = \"main\", worker = (\n\
+    \    compatibilityDate = \"2025-06-01\",\n\
+    \    modules = [%s],\n\
+    \  ))],\n\
+     );\n"
+    (String.concat ", " (modules @ wasm_modules))
+
+let probe_timeout () =
+  match
+    Option.bind (Sys.getenv_opt "WORKERO_PROBE_TIMEOUT") float_of_string_opt
+  with
+  | Some seconds when seconds > 0. -> seconds
+  | _ -> 30.
+
+let wait_with_timeout pid seconds =
+  let deadline = Unix.gettimeofday () +. seconds in
+  let rec loop () =
+    match Unix.waitpid [ WNOHANG ] pid with
+    | 0, _ when Unix.gettimeofday () > deadline ->
+        Unix.kill pid Sys.sigkill;
+        ignore (Unix.waitpid [] pid);
+        None
+    | 0, _ ->
+        Unix.sleepf 0.05;
+        loop ()
+    | _, status -> Some status
+  in
+  loop ()
+
+let probe_result ~output = function
+  | None ->
+      Error
+        ( output,
+          Printf.sprintf
+            "the program did not finish initialising in workerd within %g \
+             seconds (set WORKERO_PROBE_TIMEOUT to change the limit)"
+            (probe_timeout ()) )
+  | Some (Unix.WEXITED 0) -> (
+      let found =
+        String.split_on_char '\n' output
+        |> List.find_map (fun line ->
+            let line = String.trim line in
+            if String.starts_with ~prefix:probe_marker line then
+              let n = String.length probe_marker in
+              Some (String.sub line n (String.length line - n))
+            else None)
+      in
+      match found with
+      | None ->
+          Error (output, "workerd did not report the Durable Object classes")
+      | Some names -> (
+          let names =
+            String.split_on_char ' ' names |> List.filter (( <> ) "")
+          in
+          match List.find_opt (fun c -> not (is_class_name c)) names with
+          | Some c ->
+              Error ("", Printf.sprintf "invalid Durable Object class name %S" c)
+          | None -> Ok (List.sort_uniq compare names)))
+  | Some _ -> Error (output, "the program failed to initialise in workerd")
+
+let durable_object_classes ~out ~name wasm =
+  let workerd = find_workerd () in
+  let files =
+    List.map (Filename.concat out)
+      [ "workero-probe.mjs"; "workero-probe.capnp"; "workero-probe.log" ]
+  in
+  let script, config, log =
+    match files with [ a; b; c ] -> (a, b, c) | _ -> assert false
+  in
+  let result =
+    Fun.protect
+      ~finally:(fun () -> List.iter remove files)
+      (fun () ->
+        write_file script (probe_script ~name wasm);
+        write_file config (probe_config ~name wasm);
+        let fd = Unix.openfile log [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644 in
+        let pid =
+          Unix.create_process workerd
+            [| workerd; "test"; config |]
+            Unix.stdin fd fd
+        in
+        let status = wait_with_timeout pid (probe_timeout ()) in
+        Unix.close fd;
+        probe_result ~output:(read_file log) status)
+  in
+  match result with
+  | Ok classes -> classes
+  | Error (output, message) ->
+      prerr_string output;
+      fail "%s" message
 
 let package ~allow_missing ~built ~name out =
   let loader = Printf.sprintf "%s.bc.wasm.js" name in
@@ -189,6 +361,7 @@ let package ~allow_missing ~built ~name out =
       if Filename.check_suffix f ".wasm.assets" then
         remove (Filename.concat out f))
     (Sys.readdir out);
+  remove (Filename.concat out "durable-object.js");
   copy assets_src (Filename.concat out assets);
   write_file (Filename.concat out loader) (read_file loader_src);
   write_file (Filename.concat out "load-wasm.js") Embedded.load_wasm;
@@ -198,10 +371,18 @@ let package ~allow_missing ~built ~name out =
     |> List.filter (fun f -> Filename.check_suffix f ".wasm")
     |> List.sort compare
   in
-  write_file (Filename.concat out "index.js") (index_js ~name wasm);
+  let index = Filename.concat out "index.js" in
+  write_file index (index_js ~name ~classes:[] wasm);
+  let classes = durable_object_classes ~out ~name wasm in
+  if classes <> [] then (
+    write_file (Filename.concat out "durable-object.js") Embedded.durable_object;
+    write_file index (index_js ~name ~classes wasm));
   let count = List.length wasm in
   Printf.printf "workero: wrote %s (%d wasm file%s)\n" out count
-    (if count = 1 then "" else "s")
+    (if count = 1 then "" else "s");
+  if classes <> [] then
+    Printf.printf "workero: Durable Object classes: %s\n"
+      (String.concat ", " classes)
 
 let loader_suffix = ".bc.wasm.js"
 let is_loader arg = String.ends_with ~suffix:loader_suffix arg

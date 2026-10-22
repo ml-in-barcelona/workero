@@ -1,23 +1,43 @@
 {0 Bindings}
 
-A binding connects your Worker to a Cloudflare resource, such as a key-value
-namespace or a database. You declare it in [wrangler.toml]. At run time it is a
-name in [env], and you open it with [of_env].
+Bindings expose configuration and Cloudflare resources through the handler's
+[env] argument. Configure variables and resources in [wrangler.toml], and set
+Worker secrets with Wrangler. Resource modules provide [of_env] functions to
+look up bindings and check their methods.
 
 {1 What workero supports}
 
-- {{!page-kv}KV}: {!Workero.KV}, Workers KV namespaces.
-- {{!page-cache}Cache}: {!Workero.Cache}, the Cache API.
-- {{!page-r2}R2}: {!Workero.R2}, object storage.
-- {{!page-d1}D1}: {!Workero.D1} and {!Workero.Sql_value}, SQL databases.
+- {{!page-env}Variables and secrets}: {!Workero.Env.var} reads string variables
+  and Worker secrets, {!Workero.Env.secret} requires a string, and
+  {!Workero.Env.json} reads object or array variables. These are values in
+  [env], not resource bindings.
+- {{!page-env}Secrets Store}: {!Workero.Secret_store.of_env} looks up an account
+  secret binding; {!Workero.Secret_store.get} reads its value.
+- {{!page-kv}KV}: {!Workero.KV.of_env} looks up a Workers KV namespace.
+- {{!page-r2}R2}: {!Workero.R2.of_env} looks up an object storage bucket.
+- {{!page-d1}D1}: {!Workero.D1.of_env} looks up a SQL database; use
+  {!Workero.Sql_value} for SQL values.
+- {{!page-durable_objects}Durable Objects}:
+  {!Workero.Durable_object.Namespace.of_env} looks up a namespace. Object
+  classes support key-value and SQL storage, alarms, and hibernating WebSockets.
+- {{!page-fetcher}Service bindings and static assets}:
+  {!Workero.Fetcher.of_env} looks up either fetch-capable binding. Durable Object
+  stubs from {!Workero.Durable_object.Namespace.get} are also fetchers.
+- {{!page-queue}Queues}: {!Workero.Queue.of_env} looks up a producer; the
+  {!Workero.queue} handler receives consumer batches, not an [of_env] binding.
+- {{!page-rate_limiter}Rate Limiting}: {!Workero.Rate_limiter.of_env} looks up a
+  limiter.
+- {{!page-ai}Workers AI}: {!Workero.Ai.of_env} looks up a model binding.
+- {{!page-analytics_engine}Analytics Engine}:
+  {!Workero.Analytics_engine.of_env} looks up a dataset.
 
-String variables and secrets are not bindings. {!Workero.Env.var} reads them.
-See {{!page-env}Variables and secrets}.
+{{!page-cache}Cache} uses the runtime global [caches.default], not [env] or
+an [of_env] binding. It needs no [wrangler.toml] entry.
 
 {1 Declare a binding}
 
-Each resource has a table in [wrangler.toml]. [binding] is the name that you
-pass to [of_env]:
+Each resource has its own [wrangler.toml] entry. Most use [binding] as the name
+you pass to [of_env]; Rate Limiting uses [name]. For example:
 
 {@toml[
 [[kv_namespaces]]
@@ -32,29 +52,41 @@ bucket_name = "my-bucket"
 binding = "DB"
 database_name = "my-database"
 database_id = "<database id>"
+
+[[services]]
+binding = "BACKEND"
+service = "backend-worker"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "jobs"
 ]}
 
-The Cache API has no binding. {!Workero.Cache} uses the cache of the data
-center that runs the Worker.
+See each binding page for its other settings and deployment steps.
 
 {1 Use a binding}
 
-[of_env env name] returns the binding. It raises [Invalid_argument] when [env]
-has no binding with that name. The message names it. Open the binding inside the
-handler, where you have [env].
+Call the module's [of_env env name] inside the handler. It raises
+[Invalid_argument] if the name is absent or the value does not have the
+expected methods. The error names the binding.
 
-Every operation suspends like {!Workero.Promise.await}, so you call it in direct
-style. When the runtime fails, for example on an SQL error or a network error,
-the operation raises {!Workero.Js_error}. The payload is a
-{!Workero.Promise.error}, the original JavaScript error. That includes errors
-that JavaScript throws before it returns a Promise.
-{!Workero.Promise.error_to_string} gives ["Name: message"].
+The lookup itself does not perform I/O. Operations that wait for a runtime
+result suspend like {!Workero.Promise.await}; call them in direct style inside
+a handler. {!Workero.Analytics_engine.write} is synchronous and returns [unit].
+A runtime failure raises {!Workero.Js_error}; use
+{!Workero.Promise.error_to_string} to read the error name and message. Each
+binding page describes its own return values and limits.
 
 {1 Develop locally}
 
-[wrangler dev] runs bindings against local storage by default. KV, R2 and D1
-need no Cloudflare account for this, and the data stays on your machine. Create
-the resources for a deploy with Wrangler:
+[wrangler dev] uses local resources by default for KV, R2, D1, Durable
+Objects, Queues, assets, Analytics Engine, Rate Limiting, and Secrets Store.
+Service bindings need the target Worker running with the caller. Workers AI
+always calls Cloudflare remotely and may incur usage charges. Local simulation
+does not prove remote writes or model results. See
+{{:https://developers.cloudflare.com/workers/local-development/bindings-per-env/}Cloudflare's local binding support table}.
+
+To deploy KV, R2 or D1, create the remote resources first:
 
 {@sh[
 npx wrangler kv namespace create KV
@@ -62,5 +94,5 @@ npx wrangler r2 bucket create my-bucket
 npx wrangler d1 create my-database
 ]}
 
-Each command prints the values for [wrangler.toml]. Each binding page has a
-complete Worker.
+Copy the identifiers into [wrangler.toml]. Do not run these creation commands
+for local development. See the binding pages for their examples and checks.

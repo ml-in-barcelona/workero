@@ -21,12 +21,12 @@ They can be anywhere in the arguments.
 
 ### build
 
-`workero build` is a transparent wrapper of `dune build`. It removes its two own options from the arguments and passes every other argument to `dune build` unchanged and in the same order. There is no `--` separator.
+`workero build` removes its own options from the arguments and passes every other argument to `dune build` in the same order. It adds `--profile release` unless another profile is selected. There is no `--` separator.
 
 ```sh
 workero build src/main.bc.wasm.js --profile dev --display short
 ```
-Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`, relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. The error is the usage line followed by `workero: expected exactly one .bc.wasm.js target`. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
+Exactly one argument must end in `.bc.wasm.js`. It is the target to package, written as you would write it for `dune build`. Without an explicit dune root, write it relative to the current directory. With none, or with more than one, `workero` prints a usage error and exits with code 1\. The error is the usage line followed by `workero: expected exactly one .bc.wasm.js target`. Other targets and aliases in the arguments go to dune, but `workero` does not package them.
 
 Run it from any directory inside the dune project.
 
@@ -42,10 +42,10 @@ Run it from any directory inside the dune project.
 
 `workero build` finds the output of the `.bc.wasm.js` target the way dune does, so it works when the project is inside another dune project, when you run it from a subdirectory, and when you move the build directory.
 
-1. The dune root is the `--root` directory in the arguments, or `DUNE_ROOT`. With `--release` or `-p` it is the current directory. Otherwise it is the outermost parent directory of the current directory that has a `dune-workspace` file. If there is none, it is the outermost parent that has a `dune-project` file. If there is none, it is the current directory.
+1. The dune root is `--root` from the arguments, if set. With `--release`, `-p`, or `--for-release-of-packages` and no `--root`, it is the current directory. Otherwise `DUNE_ROOT`, if set, supplies the root. If none of these selects a root, it is the outermost parent directory of the current directory that has a `dune-workspace` file. If there is none, it is the outermost parent that has a `dune-project` file. If there is none, it is the current directory.
 2. The build directory is `--build-dir` from the arguments, or `DUNE_BUILD_DIR`, or `_build`. A relative path is relative to the dune root.
 3. The output is in `<build directory>/default/<path of the target from the root>`.
-With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative to that root, not to the current directory, and so does `workero build`. The output is in the directory of the target, and the name is the file name without `.bc.wasm.js`.
+With an explicit root (`--root`, `DUNE_ROOT`, `--release`, `-p`, or `--for-release-of-packages`), `workero build` locates the target relative to that root, not to the current directory. The output is in the directory of the target, and the name is the file name without `.bc.wasm.js`.
 
 
 ## What it does
@@ -54,18 +54,25 @@ With an explicit root (`--root` or `DUNE_ROOT`), dune reads the target relative 
 2. Removes the `*.wasm.assets` directories that earlier runs left in the output directory, so a second run leaves one set of `.wasm` files.
 3. Copies the wasm\_of\_ocaml loader (`<name>.bc.wasm.js`) and its `<name>.bc.wasm.assets` directory into the output directory.
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
-5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](./Workero.md#val-serve) and [`Workero.scheduled`](./Workero.md#val-scheduled).
-It prints `workero: wrote <dir> (<n> wasm file(s))`. On an error it prints `workero: <reason>` to stderr and exits with code 1\.
+5. Writes an initial `index.js` and runs the program once in `workerd test` to read class names registered at module initialization with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register). The probe runs for at most 30 seconds by default. Set `WORKERO_PROBE_TIMEOUT` to a positive number of seconds to change it; absent, invalid and nonpositive values use 30 seconds. The probe does not call a fetch, scheduled or queue handler.
+6. Writes the final `index.js`. It imports every `.wasm` file, exports the registered [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue) handlers through its default export, and adds named exports for registered Durable Object classes. If classes exist, it writes `durable-object.js` for their initialization, fetch, alarm, and WebSocket event handlers. It removes a stale `durable-object.js` when no classes are registered.
+On success it prints `workero: wrote <dir> (<n> wasm file(s))` and, if classes were found, `workero: Durable Object classes: <names>`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, are not wrapped by that error handler.
+
+A build with no registered fetch, scheduled, queue or Durable Object handler can complete, but its generated worker fails to load with `registered no handler`. Register at least one handler at module initialization.
 
 
 ## Errors
 
-`workero build` and `workero package` exit with code 1 and print `workero: <reason>` to stderr when:
+`workero build` and `workero package` use `workero: <reason>` and exit with code 1 for these handled errors:
 
 - the arguments do not match the usage,
 - `dune build` fails (`workero build` only),
 - dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
 - the target is outside the dune root (`workero build` only),
+- `workerd` cannot be found on `PATH`, through `WORKERD` or in a parent `node_modules/.bin` directory. If `WORKERD` is set to a nonempty value, it takes precedence; a name without a slash is looked up on `PATH`, while a path is checked directly,
+- the program fails during initialization in `workerd`. Its `workerd` output is printed before `workero: the program failed to initialise in workerd`,
+- initialization takes longer than `WORKERO_PROBE_TIMEOUT` (30 seconds by default). `workero` kills the probe and prints its output and the timeout,
+- `workerd` exits successfully but does not report registered class names,
 - the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They fail at run time if called. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, drop the library that needs them, or pass `--allow-missing-primitives` if they are never called.
 The check also works for programs built with `--pretty` in `wasm_of_ocaml` `flags`.
 

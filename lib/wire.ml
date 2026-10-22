@@ -34,4 +34,18 @@ let text msg = read ~decode:Decode.string msg "text"
 let bytes msg = read ~decode:Decode.bytes msg "arrayBuffer"
 
 let body_of_string s =
-  Js.Unsafe.inject (Typed_array.Bytes.to_uint8Array (Bytes.of_string s))
+  Js.Unsafe.inject (Typed_array.Bytes.to_uint8Array (Bytes.unsafe_of_string s))
+
+let fetch_init ~who ?(method_ = Method.GET) ?(headers = []) ?body () =
+  (match (method_, body) with
+  | (Method.GET | HEAD), Some _ ->
+      invalid_arg (who ^ ": a GET or HEAD request has no body")
+  | _ -> ());
+  let fields =
+    [
+      ("method", str (Method.to_string method_));
+      ("headers", headers_of_list headers);
+    ]
+    @ match body with Some b -> [ ("body", body_of_string b) ] | None -> []
+  in
+  Js.Unsafe.obj (Array.of_list fields)

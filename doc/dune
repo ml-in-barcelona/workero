@@ -3,8 +3,13 @@
  (mld_files
   index
   getting_started
+  runtime_apis
   handlers
   requests
+  fetch
+  url
+  json
+  router
   streams
   forms
   websockets
@@ -13,11 +18,18 @@
   logging
   globals
   testing
+  limits
   bindings
   kv
   cache
   r2
   d1
+  fetcher
+  queue
+  rate_limiter
+  ai
+  analytics_engine
+  durable_objects
   interop
   how_it_works
   libraries

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
+- `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
+- `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).
+- `Workero.Durable_object`: Durable Objects with SQLite storage. `register` binds a class, `make` builds its handlers (`init`, `fetch`, `alarm`), `Namespace` opens a binding and gives stubs (a `Fetcher.t`), `Id`, `State` and `Storage` (synchronous key-value, alarms, `sync`, `delete_all`).
+- `Durable_object.Sql` (`query`, `run`, `database_size`) with `Storage.sql`, `Storage.transaction_sync` (rolls back and re-raises the original exception; `Promise.await` inside raises `Invalid_argument`), and hibernatable WebSockets: `make ~websocket_message ~websocket_close ~websocket_error`, `State.accept_websocket`, `websockets`, `tags`, `set_websocket_auto_response`, and `Websocket.serialize_attachment` / `deserialize_attachment`.
+- `workero build` and `workero package` run the program once in `workerd` to read the registered Durable Object classes, export them from `index.js` and write `durable-object.js`. They need `workerd` (`WORKERD`, `PATH` or `node_modules/.bin`). A program that raises during initialisation now fails the build with its error.
+- `index.js` accepts a worker that registers only Durable Object classes.
+- `Env.secret` reads a required string variable or secret and raises `Invalid_argument`, without the value, when it is missing or not a string. `Env.json` reads an object or array variable as a `Jsonkit.t`.
+- `JSON.of_js` and `JSON.to_js` convert between JavaScript values and `Jsonkit.t` through `JSON.stringify` and `JSON.parse`.
+- `Workero.Secret_store`: Secrets Store secrets (`of_env`, `get`).
+- `Workero.Fetcher`: service bindings and assets (`of_env`, `fetch`, `fetch_request`), the type that Durable Object stubs will use.
+- `Workero.Router`: routes with `get`, `post` and the other methods, `any`, `scope`, `wrap`, `make`, `find` and `to_handler`. Patterns follow the server-reason-react route syntax: `/users/:id<int>`, `/files/:rest<string...>`. Static beats parameter beats catch-all; `make` rejects duplicate and ambiguous routes. `to_handler` answers 400, 404, 405 with `Allow`, and a 308 for trailing slashes.
 - `URL.pathname`, `URL.search`, `URL.hash` and `URL.origin` give the raw parts of a URL, as the JavaScript `URL` does.
 - `Context.pass_through_on_exception` binds `ctx.passThroughOnException()`. It needs a route with an origin.
 - `serve` and `scheduled` flush standard output and standard error when a handler ends, also when it raises, so `print_string` and `Printf.printf` reach the logs without `%!`. Output from a `wait_until` function that runs after the handler returns appears when the next handler ends.

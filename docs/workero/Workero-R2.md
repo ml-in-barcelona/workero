@@ -1,7 +1,7 @@
 
 # Module `Workero.R2`
 
-A Cloudflare R2 bucket, bound in `wrangler.toml` with `[[r2_buckets]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
+Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
 
 ```ocaml
 type t
@@ -9,14 +9,12 @@ type t
 ```ocaml
 val of_env : Env.t -> string -> t
 ```
-`of_env env name` is the bucket bound as `name`.
-
-Raises `Invalid_argument` when `env` has no binding `name`.
+`of_env env name` looks up the bucket bound as `name`. It does not suspend. Raises `Invalid_argument` if the binding is missing, is not an object, or lacks `get`, `put`, `head`, or `delete`. The error names the binding.
 
 ```ocaml
 val get : t -> string -> string option
 ```
-The bytes of an object, or `None` when the key does not exist.
+The entire body of an object as bytes, or `None` when the key does not exist. Reads the body into Worker memory.
 
 ```ocaml
 val put : ?content_type:string -> t -> string -> string -> unit
@@ -38,7 +36,7 @@ type info = {
 ```ocaml
 val head : t -> string -> info option
 ```
-The metadata of an object without its body, or `None` when the key does not exist.
+The metadata of an object without its body, or `None` when the key does not exist. `head` and `get` are separate, non-atomic requests.
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t

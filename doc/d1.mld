@@ -1,32 +1,27 @@
 {0 D1}
 
-{!Workero.D1} is a {{:https://developers.cloudflare.com/d1/}Cloudflare D1}
-database: SQLite on Cloudflare.
+Run basic SQL queries with {!Workero.D1}, a subset of the
+{{:https://developers.cloudflare.com/d1/}Cloudflare D1} API. D1 stores a
+SQLite database.
 
-{1 Configure}
+{1 Configure the binding and schema}
 
-{@sh[
-npx wrangler d1 create my-database
-]}
-
-Copy the printed values into [wrangler.toml]:
+For local development, put this in [wrangler.toml]:
 
 {@toml[
 [[d1_databases]]
 binding = "DB"
-database_name = "my-database"
-database_id = "<database id>"
 ]}
 
-Create the tables with a migration or [wrangler d1 execute]. For local
-development, add [--local]:
+Create the local table before you send requests. [--local] writes to the same
+local D1 storage that [npx wrangler dev] uses:
 
 {@sh[
-npx wrangler d1 execute my-database --local \
-  --command "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)"
+npx wrangler d1 execute DB --local \
+  --command "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
 ]}
 
-{1 Use}
+{1 Write the Worker}
 
 {@ocaml[
 let handler req env _ctx =
@@ -36,7 +31,7 @@ let handler req env _ctx =
   | POST, "/users" ->
       let name = Request.text req in
       let changed =
-        D1.run db "INSERT INTO users (name) VALUES (?)" ~params:[ Text name ]
+        D1.run db "INSERT INTO users (name) VALUES (?)" ~params:[ D1.Text name ]
       in
       Response.text (Printf.sprintf "inserted %d row\n" changed)
   | GET, "/users" ->
@@ -55,21 +50,59 @@ let handler req env _ctx =
 let () = Workero.serve handler
 ]}
 
-- {!Workero.D1.of_env} opens the database bound as ["DB"]. It raises
-  [Invalid_argument] when there is no such binding.
-- {!Workero.D1.query} runs SQL and gives the rows. Each row is a list of
-  [(column, value)] pairs in result order.
-- {!Workero.D1.run} runs a statement that returns no rows, such as [INSERT] or
-  [CREATE TABLE], and gives the number of rows that it changed.
-- [~params] are values for the [?] marks of the SQL, in order. Always pass user
-  input as parameters. Never build SQL by joining strings.
+[D1.run] executes a statement that returns no rows and gives the number of
+changed rows. [D1.query] returns rows as lists of [(column, value)] pairs in
+result order. Bind user input to SQL [?] marks with [~params]; do not join it
+into SQL text. An SQL error raises {!Workero.Js_error}. Use
+{!Workero.Promise.error_to_string} to read the underlying error.
 
-An SQL error raises {!Workero.Js_error}. Read the message of the database with
-{!Workero.Promise.error_to_string}.
+{1 Verify locally}
+
+Run [npx wrangler dev] in one terminal. In a second terminal:
+
+{@sh[
+curl -X POST -d ada http://localhost:8787/users
+curl http://localhost:8787/users
+]}
+
+The responses are [inserted 1 row] and [ada]. The local database persists
+between runs of [wrangler dev].
+
+{1 Deploy with an existing database}
+
+Remote creation requires an authenticated Wrangler. If you do not let
+{{:https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning}Wrangler provision it on deploy},
+create a database and copy the printed ID into [wrangler.toml]:
+
+{@sh[
+npx wrangler d1 create my-database
+]}
+
+{@toml[
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "<database id>"
+]}
+
+Create the table in the remote database before sending requests to the
+deployed Worker. If Wrangler provisions the database on deploy, deploy first,
+then create the table:
+
+{@sh[
+npx wrangler d1 execute DB --remote \
+  --command "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
+]}
+
+For later schema changes, use
+{{:https://developers.cloudflare.com/d1/reference/migrations/}D1 migrations}.
+[--local] and [--remote] write to different databases. See
+{{!page-getting_started}Getting started} for deployment steps.
 
 {1 SQL values}
 
-{!Workero.Sql_value.t} (also {!Workero.D1.value}) is the value of one column:
+{!Workero.Sql_value.t} (also {!Workero.D1.value}) represents a column or
+parameter:
 
 - [Null]
 - [Int of int64]
@@ -77,43 +110,15 @@ An SQL error raises {!Workero.Js_error}. Read the message of the database with
 - [Text of string]
 - [Blob of string], raw bytes
 
-{@ocaml[
-let show (value : Workero.Sql_value.t) =
-  match value with
-  | Null -> "null"
-  | Int n -> Int64.to_string n
-  | Float f -> string_of_float f
-  | Text s -> s
-  | Blob b -> Printf.sprintf "%d bytes" (String.length b)
+{2 Numeric precision}
 
-let () =
-  Workero.serve (fun _req env _ctx ->
-      let db = Workero.D1.of_env env "DB" in
-      let rows =
-        Workero.D1.query db "SELECT ?, ?, ?, ?, ?"
-          ~params:[ Int 42L; Float 1.5; Text "hi"; Blob "\000\255"; Null ]
-      in
-      let cells = List.concat_map (List.map (fun (_, v) -> show v)) rows in
-      Workero.Response.text (String.concat ", " cells ^ "\n"))
-]}
+D1 carries numbers as JavaScript numbers. [Int] parameters must be within
+±[2^53]; {!Workero.Sql_value.to_js} raises [Invalid_argument] outside that
+range before SQL runs.
 
-D1 carries numbers as JavaScript numbers, which are 64-bit floats:
-
-- An [Int] is exact only within ±2{^53}. {!Workero.Sql_value.to_js} raises
-  [Invalid_argument] for an [Int] beyond that, so the call fails before any
-  SQL runs.
-- A column that holds [1.0] cannot be told apart from [1]. Both read as
-  [Int 1L].
-- A [Float] is read only for a number with a fractional part, or beyond
-  2{^53}.
-
-{1 Test locally}
-
-[wrangler dev] uses a local D1 database. Run the commands of {e Configure}
-with [--local], then:
-
-{@sh[
-npx wrangler dev
-curl -X POST -d ada localhost:8787/users
-curl localhost:8787/users
-]}
+A read cannot distinguish an [INTEGER] column from a [REAL] column. Numbers
+without a fractional part within ±[2^53] read as [Int], so a [REAL] value of
+[2.0] reads as [Int 2L]. Other numbers read as [Float]. An [INTEGER] beyond
+[2^53] reaches OCaml already rounded by the runtime, not as an exact [int64].
+See {!Workero.Sql_value} and the
+{{:https://developers.cloudflare.com/d1/worker-api/}Cloudflare D1 Worker API}.

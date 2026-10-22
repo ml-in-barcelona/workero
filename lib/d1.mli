@@ -1,13 +1,13 @@
-(** A Cloudflare D1 database, bound in [wrangler.toml] with [[[d1_databases]]].
-    Each function suspends like {!Promise.await} and raises {!Js_error} when the
-    runtime rejects, for example on an SQL error. *)
+(** Basic SQL queries on a Cloudflare D1 database, bound with [[[d1_databases]]]
+    in [wrangler.toml]. Storage operations suspend like {!Promise.await} and
+    raise {!Js_error} when the runtime rejects, for example on an SQL error. *)
 
 type t
 
 val of_env : Env.t -> string -> t
-(** [of_env env name] is the database bound as [name].
-
-    Raises [Invalid_argument] when [env] has no binding [name]. *)
+(** [of_env env name] looks up the database bound as [name]. It does not
+    suspend. Raises [Invalid_argument] if the binding is missing, is not an
+    object, or lacks [prepare]. The error names the binding. *)
 
 type value = Sql_value.t =
   | Null
@@ -16,7 +16,7 @@ type value = Sql_value.t =
   | Text of string
   | Blob of string
       (** An SQL value. {!Sql_value} describes the number limits: an [Int] is
-          exact within ±2{^ 53} only. *)
+          exact within ±[2^53] only. *)
 
 type row = Sql_value.row
 (** The columns of a row in result order, with their names. *)

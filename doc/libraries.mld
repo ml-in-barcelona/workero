@@ -1,17 +1,19 @@
 {0 Supported libraries}
 
-This page lists OCaml libraries and standard library features that run in a
-Worker. The list is not complete. A library works when it compiles with
-wasm_of_ocaml and needs no operating system feature that a Worker does not have,
-such as threads or sockets. A new dependency increases the size of your Worker.
-See
-{{!page-testing}Testing and limits}.
+This page gives examples of OCaml standard library features and libraries you
+can use in a Worker. The list is not complete. A successful wasm_of_ocaml build
+alone does not show that every function works in the Workers runtime. Check
+each feature your code calls, especially if it needs operating system features
+such as sockets or processes. Dependencies add to the Worker bundle. See
+{{!page-limits}Limits}.
 
-{1 Checked in workerd}
+{1 Features in the example worker}
 
-The route list of [examples/features] runs each of these in a deployed Worker:
+The routes in [examples/features/main.mlx] demonstrate these features. The
+example builds a Worker; the repository test suite does not run these routes.
+Test the routes you use in [workerd] and in your deployment:
 
-- Effects: OCaml 5 effect handlers, with and without awaiting Promises.
+- Effects: OCaml 5 effect handlers; a separate route awaits a Promise.
 - [Hashtbl], [Lazy], [Seq], [Printexc] and [Random.State].
 - [Int32], [Int64], [Float] and [Bigarray].
 - [Marshal].
@@ -26,12 +28,13 @@ The route list of [examples/features] runs each of these in a deployed Worker:
 with a ppx that derives the functions. {!Workero.JSON} builds on it and gives
 values as [Jsonkit.t]. It does not re-export jsonkit. opam installs jsonkit with
 workero. Add [jsonkit] to the [libraries] of your [dune] file to use it. See
-{{!page-requests}Requests and responses}.
+{{!page-json}JSON}.
 
 {1 Server-side React}
 
 [examples/react] renders a page from [.mlx] components with a trimmed copy of
-server-reason-react. It uses the synchronous render path only.
+server-reason-react. It uses the synchronous render path only. This example
+builds but is not part of the repository's [workerd] test suite.
 
 {1 Embedded files}
 

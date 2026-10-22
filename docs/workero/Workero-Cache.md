@@ -1,7 +1,7 @@
 
 # Module `Workero.Cache`
 
-The Cache API of the data center that runs the Worker (`caches.default`). Entries are keyed by URL, and each data center has its own cache. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects.
+The global `caches.default` runtime API, not an `env` binding. Entries are keyed by URL string in the data center that runs the Worker. Operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects.
 
 ```ocaml
 val match_ : string -> Response.t option
@@ -11,7 +11,7 @@ val match_ : string -> Response.t option
 ```ocaml
 val put : string -> Response.t -> unit
 ```
-`put url response` caches `response` under `url`. The runtime consumes the body of `response`, so send a copy to the client. It rejects a response with status 206 or a `Vary: *` header, and caches it only as long as its `Cache-Control` header allows.
+`put url response` attempts to cache `response` under `url`. The runtime consumes its body; pass [`Response.clone`](./Workero-Response.md#val-clone) if you also send the response to the client. A resolved call does not guarantee that the response was stored. The Cache API respects `Cache-Control`, does not cache `Set-Cookie` responses, and rejects status 206 or `Vary: *`.
 
 ```ocaml
 val delete : string -> bool
