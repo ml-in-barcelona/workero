@@ -1,7 +1,7 @@
 
 # Handlers
 
-Register the event handlers that your Worker needs at the top level of its OCaml program. [`Workero.serve`](./Workero.md#val-serve) handles HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) handles cron triggers and [`Workero.queue`](./Workero.md#val-queue) consumes Queue messages. Each registration is independent: a cron-only or queue-only Worker does not need an HTTP handler.
+Register the event handlers that your Worker needs at the top level of its OCaml program. [`Workero.serve`](./Workero.md#val-serve) handles HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) handles cron triggers, [`Workero.queue`](./Workero.md#val-queue) consumes Queue messages and [`Workero.email`](./Workero.md#val-email) receives email. Each registration is independent: a cron-only or queue-only Worker does not need an HTTP handler. Classes for Durable Objects, entrypoints and Workflows are not event handlers. Register them with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register), [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) and [`Workero.Workflow.register`](./Workero-Workflow.md#val-register).
 
 
 ## Handle HTTP requests
@@ -59,8 +59,18 @@ The Worker logs a line beginning `cron */5 * * * * scheduled for `. The timestam
 [`Workero.queue`](./Workero.md#val-queue) takes a [`Workero.Queue.Batch.t`](./Workero-Queue-Batch.md#type-t), `env` and `ctx`. It returns `unit`. Register it at the top level, as with the other handlers. The [Queue guide](./queue.md) shows a producer binding, consumer configuration, body decoding and acknowledgement in a complete Worker.
 
 
+## Receive email
+
+[`Workero.email`](./Workero.md#val-email) takes a [`Workero.Email.t`](./Workero-Email.md#type-t), `env` and `ctx`. It returns `unit`. The handler forwards, replies to or rejects the message. The [Email guide](./email.md) covers each action and its limits.
+
+```ocaml
+let () =
+  Workero.email (fun message _env _ctx ->
+      Workero.Email.forward message "me@example.org")
+```
+
 ## Runtime behavior
 
-Each event handler runs in a fiber. You can call [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await) inside it while other events run. The build's `index.js` exports only the handlers registered at startup: `fetch`, `scheduled` and/or `queue`. A program with no event handlers and no [Durable Object classes](./durable_objects.md) fails Worker initialization with `workero: the OCaml program registered no handler`.
+Each event handler runs in a fiber. You can call [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await) inside it while other events run. The build's `index.js` exports only the handlers registered at startup: `fetch`, `scheduled`, `queue` and/or `email`. A program with no event handlers and no [Durable Object classes](./durable_objects.md), [entrypoint classes](./entrypoints.md) or [Workflow classes](./workflows.md) fails Worker initialization with `workero: the OCaml program registered no handler`.
 
-An uncaught HTTP handler exception rejects the response Promise, and the runtime returns `500`. An uncaught cron handler exception fails that run. An uncaught Queue handler exception fails that delivery; unacknowledged messages can be retried. Other events continue. See [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue) for their signatures.
+An uncaught HTTP handler exception rejects the response Promise, and the runtime returns `500`. An uncaught cron handler exception fails that run. An uncaught Queue handler exception fails that delivery; unacknowledged messages can be retried. An uncaught email handler exception rejects the event, and Cloudflare treats the delivery as failed. Other events continue. See [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue) and [`Workero.email`](./Workero.md#val-email) for their signatures.

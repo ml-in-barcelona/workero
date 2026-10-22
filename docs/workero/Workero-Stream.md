@@ -24,12 +24,12 @@ Locks the stream. Raises [`Js_error`](./Workero.md#exception-Js_error) when it i
 ```ocaml
 val iter : (string -> unit) -> t -> unit
 ```
-`iter f s` calls `f` on every chunk until the end. Suspends.
+`iter f s` locks `s` and calls `f` on every chunk until the end. If `f` raises, `iter` cancels the stream and raises the same exception. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when `s` is already locked.
 
 ```ocaml
 val pipe : unit -> Writer.t * t
 ```
-An identity `TransformStream`: what is written is read from `t`.
+`pipe ()` is the writer and the readable side of an identity `TransformStream`: what you write to the [`Writer.t`](./Workero-Stream-Writer.md#type-t) you read from the [`t`](./#type-t).
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t

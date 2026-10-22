@@ -9,13 +9,22 @@ The `ctx` of an object.
 ```ocaml
 val id : t -> Id.t
 ```
+The identity of the current object.
+
 ```ocaml
 val storage : t -> Storage.t
 ```
+The storage of the current object.
+
 ```ocaml
 val wait_until : t -> (unit -> unit) -> unit
 ```
 Like [`Context.wait_until`](./Workero-Context.md#val-wait_until).
+
+```ocaml
+val container : t -> Container.t option
+```
+The container of the object, or `None` when the class has none.
 
 ```ocaml
 val block_concurrency_while : t -> (unit -> 'a) -> 'a
@@ -40,6 +49,8 @@ The accepted sockets, or those with `tag`.
 ```ocaml
 val tags : t -> Websocket.t -> string list
 ```
+The tags that [`accept_websocket`](./#val-accept_websocket) gave to the socket.
+
 ```ocaml
 val set_websocket_auto_response : 
   t ->

@@ -37,9 +37,16 @@ cp test/worker/cases/*.mjs "$out/cases/"
   printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
   printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
   echo '        (name = "BACKEND", service = "backend"),'
-  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler Rpc RpcNoHandler; do
     echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"
   done
+  echo '        (name = "CALC", service = (name = "worker", entrypoint = "Calc")),'
+  echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
+  echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
+  echo '        (name = "JSRPC", service = (name = "rpc", entrypoint = "Js")),'
+  echo '        (name = "FLOW", wrapped = (moduleName = "workero-test:workflow", innerBindings = [(name = "ENGINE", service = (name = "workflow-engine", entrypoint = "Engine"))])),'
+  echo '        (name = "NOT_A_WORKFLOW", json = "{}"),'
+  echo '        (name = "JSDO", durableObjectNamespace = (className = "JsObject", serviceName = "rpc")),'
   echo '        (name = "KV", kvNamespace = "kv"),'
   echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
@@ -52,12 +59,14 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "STORE_BROKEN", wrapped = (moduleName = "workero-test:secret-store", innerBindings = [(name = "MODE", text = "fail")])),'
   echo '        (name = "JOBS", queue = "queue-sink"),'
   echo '        (name = "LIMITER", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "limit"), (name = "TARGET", service = (name = "limiter", entrypoint = "Limiter"))])),'
+  echo '        (name = "HYPERDRIVE", hyperdrive = (designator = "db-proxy", database = "app", user = "alice", password = "s3cret", scheme = "postgresql")),'
+  printf '%s\n' '        (name = "HYPERDRIVE_BAD", json = "{\"port\":\"leak-me-port\",\"password\":42}"),'
   echo '        (name = "AI", wrapped = (moduleName = "workero-test:forward", innerBindings = [(name = "METHODS", text = "run"), (name = "TARGET", service = (name = "ai", entrypoint = "Ai"))])),'
   echo '        (name = "ANALYTICS", wrapped = (moduleName = "workero-test:analytics", innerBindings = [])),'
   echo '        (name = "ANALYTICS_BROKEN", wrapped = (moduleName = "workero-test:analytics-broken", innerBindings = [])),'
   echo '      ],'
   echo '      durableObjectNamespaces = ['
-  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler Rpc RpcNoHandler; do
     echo "        (className = \"$class\", uniqueKey = \"workero-test-$class\", enableSql = true),"
   done
   echo '      ],'
@@ -69,12 +78,42 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache backend queue-sink limiter ai; do
+  for svc in kv r2 cache backend queue-sink limiter ai db-proxy; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
     echo '    )),'
   done
+  echo '    (name = "workflow-engine", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "workflow-engine.mjs", esModule = embed "workflow-engine.mjs")],'
+  echo '      bindings = ['
+  echo '        (name = "USER_WORKFLOW", service = (name = "worker", entrypoint = "Flow")),'
+  echo '      ],'
+  echo '    )),'
+  echo '    (name = "rpc", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "rpc.mjs", esModule = embed "rpc.mjs")],'
+  echo '      bindings = [(name = "BACKEND", service = "backend")],'
+  echo '      durableObjectNamespaces = [(className = "JsObject", uniqueKey = "rpc-js-object", enableSql = true)],'
+  echo '      durableObjectStorage = (inMemory = void),'
+  echo '    )),'
+  echo '    (name = "email-harness", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = ['
+  echo '        (name = "email-harness.mjs", esModule = embed "email-harness.mjs"),'
+  echo '        (name = "cloudflare:email", esModule = embed "cloudflare-email.mjs"),'
+  (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", esModule = embed \"$f\"),"
+    done
+  (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", wasm = embed \"$f\"),"
+    done
+  echo '      ],'
+  echo '      globalOutbound = "upstream",'
+  echo '    )),'
   echo '    (name = "d1", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "d1.mjs", esModule = embed "d1.mjs")],'
@@ -92,7 +131,16 @@ cp test/worker/cases/*.mjs "$out/cases/"
     echo "        (name = \"$f\", esModule = embed \"$f\"),"
   done
   echo '      ],'
-  echo '      bindings = [(name = "WORKER", service = "worker")],'
+  echo '      bindings = ['
+  echo '        (name = "WORKER", service = "worker"),'
+  echo '        (name = "RPC", durableObjectNamespace = (className = "Rpc", serviceName = "worker")),'
+  echo '        (name = "RPC_NO_HANDLER", durableObjectNamespace = (className = "RpcNoHandler", serviceName = "worker")),'
+  echo '        (name = "CALC", service = (name = "worker", entrypoint = "Calc")),'
+  echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
+  echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
+  echo '        (name = "EMAIL", service = "email-harness"),'
+  echo '        (name = "ENGINE", service = (name = "workflow-engine", entrypoint = "Engine")),'
+  echo '      ],'
   echo '    )),'
   echo '    (name = "test-queue", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
@@ -109,6 +157,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '    (modules = [(name = "workero-test:d1", internal = true, esModule = embed "d1-binding.mjs")]),'
   echo '    (modules = [(name = "workero-test:secret-store", internal = true, esModule = embed "secret-store-binding.mjs")]),'
   echo '    (modules = [(name = "workero-test:forward", internal = true, esModule = embed "forward-binding.mjs")]),'
+  echo '    (modules = [(name = "workero-test:workflow", internal = true, esModule = embed "workflow-binding.mjs")]),'
   echo '    (modules = [(name = "workero-test:analytics", internal = true, esModule = embed "analytics-binding.mjs")]),'
   echo '    (modules = [(name = "workero-test:analytics-broken", internal = true, esModule = embed "analytics-broken-binding.mjs")]),'
   echo '  ],'

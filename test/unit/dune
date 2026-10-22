@@ -11,13 +11,16 @@
   test_response
   test_status
   test_stream
+  test_socket
   test_form_data
   test_websocket
   test_fetch
   test_env
   test_scheduled
+  test_email
   test_bindings
   test_secret_store
+  test_hyperdrive
   test_fetcher
   test_queue
   test_rate_limiter
@@ -25,6 +28,9 @@
   test_analytics_engine
   test_sql_value
   test_durable_object
+  test_entrypoint
+  test_workflow
+  test_rpc
   test_decode
   test_globals
   test_router)

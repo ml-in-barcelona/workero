@@ -57,6 +57,24 @@ let test_bytes () =
   raises_invalid "negative" (fun () -> Workero.Crypto.random_bytes (-1));
   raises_invalid "too many" (fun () -> Workero.Crypto.random_bytes 65537)
 
+let test_subtle_arguments () =
+  raises_invalid "empty hmac key" (fun () ->
+      Workero.Crypto.Key.import_hmac Workero.Crypto.Sha256 "");
+  List.iter
+    (fun n ->
+      raises_invalid "aes key size" (fun () ->
+          Workero.Crypto.Key.import_aes_gcm (String.make n 'k')))
+    [ 0; 15; 17; 31; 33 ];
+  raises_invalid "pbkdf2 iterations" (fun () ->
+      Workero.Crypto.pbkdf2 Workero.Crypto.Sha256 ~password:"p" ~salt:"s"
+        ~iterations:0 ~length:16);
+  raises_invalid "pbkdf2 length" (fun () ->
+      Workero.Crypto.pbkdf2 Workero.Crypto.Sha256 ~password:"p" ~salt:"s"
+        ~iterations:1 ~length:0);
+  raises_invalid "hkdf length" (fun () ->
+      Workero.Crypto.hkdf Workero.Crypto.Sha256 ~key:"k" ~salt:"" ~info:""
+        ~length:(-1))
+
 let test_console () =
   ignore
     (js_eval
@@ -100,6 +118,7 @@ let () =
         [
           Alcotest.test_case "uuid" `Quick test_uuid;
           Alcotest.test_case "bytes" `Quick test_bytes;
+          Alcotest.test_case "subtle arguments" `Quick test_subtle_arguments;
         ] );
       ("console", [ Alcotest.test_case "levels" `Quick test_console ]);
       ("timer", [ Alcotest.test_case "set and clear" `Quick test_timers ]);

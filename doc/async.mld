@@ -159,18 +159,23 @@ let () = Workero.serve handler
 
 {1 Where you can await}
 
-Await inside a handler registered with {!Workero.serve}, {!Workero.scheduled}
-or {!Workero.queue}, in a {!Workero.Context.wait_until} function, or in the
-[~init], [~fetch], [~alarm], [~websocket_message], [~websocket_close] and
-[~websocket_error] handlers of {!Workero.Durable_object.make}.
+Await inside a handler registered with {!Workero.serve},
+{!Workero.scheduled}, {!Workero.queue} or {!Workero.email}, in a
+{!Workero.Context.wait_until} function, or in the [~init], [~fetch], [~alarm],
+[~rpc], [~websocket_message], [~websocket_close] and [~websocket_error]
+handlers of {!Workero.Durable_object.make}. The [~fetch] and [~rpc] handlers of
+{!Workero.Entrypoint.make} can await. So can the function given to
+{!Workero.Workflow.register} and the callback of {!Workero.Workflow.Step.do_}.
 {!Workero.Durable_object.State.wait_until} and
 {!Workero.Durable_object.State.block_concurrency_while} also run functions
 that can await. Functions called from these fibers can await too. The function
 passed to {!Workero.Durable_object.register} to create an object cannot await;
-use [~init] for asynchronous initialization. The function passed to
+use [~init] for asynchronous initialization. The same holds for the function
+passed to {!Workero.Entrypoint.register}. The function passed to
 {!Workero.Durable_object.Storage.transaction_sync} cannot await either: it
-raises [Invalid_argument], and the transaction rolls back. Waiting elsewhere
-fails:
+raises [Invalid_argument], and the transaction rolls back. Use
+{!Workero.Durable_object.Storage.val-transaction} to await in a transaction.
+Waiting elsewhere fails:
 
 - In a {!Workero.Timer.set_timeout} callback, the callback runs outside the
   handler fiber.

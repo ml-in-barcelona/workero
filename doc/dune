@@ -25,11 +25,16 @@
   r2
   d1
   fetcher
+  socket
   queue
+  email
   rate_limiter
+  hyperdrive
   ai
   analytics_engine
   durable_objects
+  entrypoints
+  workflows
   interop
   how_it_works
   libraries

@@ -13,6 +13,11 @@ export class WorkeroDurableObject extends DurableObject {
       if (typeof handlers[method] === "function")
         this[method] = (...args) => handlers[method](...args);
     }
+    this[Symbol.for("workero.rpc")] = (method, args) => {
+      if (typeof handlers.rpc !== "function")
+        throw new Error(`workero: class ${name} declares the RPC method ${method} but its handlers have no ~rpc`);
+      return handlers.rpc(method, args);
+    };
     if (typeof handlers.init === "function")
       ctx.blockConcurrencyWhile(() => handlers.init());
   }

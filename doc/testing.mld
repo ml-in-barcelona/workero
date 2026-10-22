@@ -19,6 +19,8 @@ deploying the worker. See {{!page-limits}Limits} for Cloudflare platform limits.
   --experimental config.capnp].
 + Run [workerd test config.capnp] for fetch and scheduled tests.
 
+[workerd] cannot run the email handler this way. See {{!page-email}Email}.
+
 [test/worker/run.sh] shows a working config generator. It builds
 [test/worker/main.ml], then runs the suites imported by
 [test/worker/tests.mjs]. Worker routes live in [test/worker/routes_*.ml]; cases
@@ -33,11 +35,18 @@ They do not test production Cloudflare storage services. The repository also
 tests startup failure in [test/worker-init/], handler exports in
 [test/worker-exports/] and build/package behavior in [test/cli/].
 
-The Durable Object suite in [test/worker/cases/do.mjs] tests synchronous
-SQLite queries and writes, transaction commit and rollback (including an
-attempt to call [Promise.await]), hibernatable WebSocket message and close callbacks,
-attachments, tags, broadcast and automatic responses. These [workerd] tests
-do not evict an object between WebSocket events, so they do not prove recovery
+[workerd] has no Workflows engine and no email delivery, so the Workflow and
+email tests use JavaScript stand-ins in [test/worker/services/]. The Container
+tests in [test/worker-containers/] start real containers. They run only where
+Docker and the test images exist, and print [SKIP containers] otherwise. See
+{{!page-known_issues}Support and known issues} for what these tests do not
+prove.
+
+The Durable Object suite in [test/worker/cases/do.mjs] tests synchronous SQLite
+queries and writes, transaction commit and rollback (including an attempt to
+call [Promise.await]), hibernatable WebSocket message and close callbacks,
+attachments, tags, broadcast and automatic responses. These [workerd] tests do
+not evict an object between WebSocket events, so they do not prove recovery
 after hibernation. They also do not test [websocket_error] or a suspension
 inside a WebSocket event callback. Test eviction and platform limits in a
 deployed Worker.

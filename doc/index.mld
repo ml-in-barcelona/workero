@@ -15,13 +15,17 @@ result while the runtime handles other requests.
 {1 Runtime APIs}
 
 Use {{!page-runtime_apis}Runtime APIs} to register handlers, route HTTP
-requests, return responses, stream data, and run background work.
+requests, return responses, stream data, open TCP connections, receive email,
+and run background work.
 
 {1 Bindings}
 
 {{!page-bindings}Bindings} expose configuration and Cloudflare resources through
 your handler's [env] argument. Use them for storage, Durable Objects, Queues,
-other Workers, static assets, AI, analytics, and rate limiting.
+other Workers, static assets, databases through Hyperdrive, AI, analytics, and
+rate limiting. {{!page-entrypoints}Entrypoints} expose RPC methods that other
+Workers call through a service binding, and {{!page-workflows}Workflows} run
+durable multi-step programs.
 
 {1 Development and deployment}
 
@@ -33,11 +37,14 @@ other Workers, static assets, AI, analytics, and rate limiting.
 
 {1 Advanced}
 
-- {{!page-how_it_works}How Workero works}: compilation, effects, and the JavaScript entry point.
-- {{!page-interop}JavaScript interop}: call APIs without a typed Workero wrapper.
+- {{!page-how_it_works}How Workero works}: compilation, effects, and the
+  JavaScript entry point.
+- {{!page-interop}JavaScript interop}: call APIs without a typed Workero
+  wrapper.
 
 {1 OCaml API reference}
 
-The {!Workero} module reference lists types, functions, defaults, and exceptions.
+The {!Workero} module reference lists types, functions, defaults, and
+exceptions.
 
 {!modules: Workero}

@@ -26,6 +26,48 @@ Run `npx wrangler dev` in one terminal and `curl http://localhost:8787/` in a se
 
 ## Randomness
 
-[`Workero.Crypto.random_uuid`](./Workero-Crypto.md#val-random_uuid) returns a random version 4 UUID. [`Workero.Crypto.random_bytes`](./Workero-Crypto.md#val-random_bytes) returns cryptographically random bytes. It accepts at most 65536 bytes per call and raises `Invalid_argument` for a negative size or a larger request. [`Workero.Crypto`](./Workero-Crypto.md) binds only these random functions, not the full Web Crypto API.
+[`Workero.Crypto.random_uuid`](./Workero-Crypto.md#val-random_uuid) returns a random version 4 UUID. [`Workero.Crypto.random_bytes`](./Workero-Crypto.md#val-random_bytes) returns cryptographically random bytes. It accepts at most 65536 bytes per call and raises `Invalid_argument` for a negative size or a larger request.
+
+
+## Subtle crypto
+
+[`Workero.Crypto`](./Workero-Crypto.md) also wraps a first subset of `crypto.subtle`. Data goes in and out as OCaml strings that hold raw bytes. The functions wait for the runtime, so call them inside a handler.
+
+```ocaml
+open Workero
+
+let sign_and_check secret body =
+  let key = Crypto.Key.import_hmac Crypto.Sha256 secret in
+  let signature = Crypto.hmac_sign key body in
+  Crypto.hmac_verify key ~signature body
+
+let handler _req _env _ctx =
+  Response.text (string_of_bool (sign_and_check "secret" "body"))
+
+let () = Workero.serve handler
+```
+`sign_and_check` gives `true` for any non-empty `secret`. This function encrypts and decrypts with AES-GCM. `raw_key` has 16, 24 or 32 bytes. It gives `Some plain`:
+
+```ocaml
+open Workero
+
+let seal_and_open raw_key plain =
+  let key = Crypto.Key.import_aes_gcm raw_key in
+  let iv = Crypto.random_bytes 12 in
+  let sealed = Crypto.aes_gcm_encrypt key ~iv plain in
+  Crypto.aes_gcm_decrypt key ~iv sealed
+
+let handler _req _env _ctx =
+  match seal_and_open (String.make 16 'k') "hello" with
+  | Some plain -> Response.text plain
+  | None -> Response.text ~status:`Internal_Server_Error "decryption failed"
+
+let () = Workero.serve handler
+```
+- [`Workero.Crypto.digest`](./Workero-Crypto.md#val-digest): SHA-1, SHA-256, SHA-384 and SHA-512, chosen by [`Workero.Crypto.hash`](./Workero-Crypto.md#type-hash).
+- [`Workero.Crypto.Key.import_hmac`](./Workero-Crypto-Key.md#val-import_hmac), [`Workero.Crypto.hmac_sign`](./Workero-Crypto.md#val-hmac_sign) and [`Workero.Crypto.hmac_verify`](./Workero-Crypto.md#val-hmac_verify).
+- [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm), [`Workero.Crypto.aes_gcm_encrypt`](./Workero-Crypto.md#val-aes_gcm_encrypt) and [`Workero.Crypto.aes_gcm_decrypt`](./Workero-Crypto.md#val-aes_gcm_decrypt). The cipher text ends with the 16-byte tag. Never use one `iv` twice with one key. Decryption gives `None` when authentication fails.
+- [`Workero.Crypto.pbkdf2`](./Workero-Crypto.md#val-pbkdf2) and [`Workero.Crypto.hkdf`](./Workero-Crypto.md#val-hkdf) derive bytes.
+A [`Workero.Crypto.Key.t`](./Workero-Crypto-Key.md#type-t) is a non-extractable `CryptoKey`. Its type names the algorithm, so the compiler rejects an HMAC key in an AES-GCM function. Bad arguments that the library can check raise `Invalid_argument`. A rejection from the runtime raises [`Workero.Js_error`](./Workero.md#exception-Js_error). Deployed Workers allow at most 100000 PBKDF2 iterations.
 
 For logging, use [Console or standard output](./logging.md). For other globals, see [JavaScript interop](./interop.md) and [supported web standards](https://developers.cloudflare.com/workers/runtime-apis/web-standards/).

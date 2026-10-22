@@ -9,10 +9,11 @@ before deployment; the plan and trigger type affect some limits.
 - The uncompressed Worker bundle limit is 64 MiB on both Free and Paid plans.
   There is no compressed-size limit. [wrangler deploy --outdir bundled/
   --dry-run] prints [Total Upload] for the bundle that Wrangler would upload.
-- Worker startup must finish within 1 second. Keep expensive work out of
-  module initialization. [workero build] also initializes your program in
-  [workerd] to discover Durable Object classes, with a separate 30-second
-  default probe timeout. That local probe is not the Cloudflare startup limit.
+- Worker startup must finish within 1 second. Keep expensive work out of module
+  initialization. [workero build] also initializes your program in [workerd] to
+  discover Durable Object, entrypoint and Workflow classes, with a separate
+  30-second default probe timeout. That local probe is not the Cloudflare
+  startup limit.
 
 {1 Memory and CPU}
 

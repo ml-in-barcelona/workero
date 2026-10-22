@@ -7,6 +7,7 @@ Workero provides OCaml interfaces to APIs in the Cloudflare Workers runtime, wit
 ## Handlers and routing
 
 - [Handlers](./handlers.md): register HTTP, scheduled, and queue handlers with [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), and [`Workero.queue`](./Workero.md#val-queue).
+- [Email](./email.md): receive messages from Email Routing with [`Workero.email`](./Workero.md#val-email), then forward, reply to or reject them.
 - [Router](./router.md): match methods and paths, read route parameters, and mount groups of routes.
 
 ## HTTP and data
@@ -19,6 +20,12 @@ Workero provides OCaml interfaces to APIs in the Cloudflare Workers runtime, wit
 - [Forms and file uploads](./forms.md): read multipart and URL-encoded forms.
 - [WebSockets](./websockets.md): accept connections and receive messages. For hibernating connections, see [Durable Objects](./durable_objects.md).
 - [Cache](./cache.md): read and write cached responses in the local data center. Cache uses `caches.default` and needs no `env` binding.
+
+## Network
+
+- [Sockets](./socket.md): open outbound TCP connections with [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) and read and write them with streams.
+- [Entrypoints](./entrypoints.md): expose RPC methods with [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) and call them on a service binding.
+- [Workflows](./workflows.md): write durable multi-step programs with [`Workero.Workflow.register`](./Workero-Workflow.md#val-register) and start them with a Workflow binding.
 
 ## Execution
 

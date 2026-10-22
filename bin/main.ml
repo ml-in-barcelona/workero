@@ -142,21 +142,66 @@ let missing_primitives loader =
   in
   scan 0 []
 
+type kind = Durable_object | Entrypoint | Workflow
+type class_export = { name : string; kind : kind; methods : string list }
+
+let kind_tag = function
+  | Durable_object -> "durable_object"
+  | Entrypoint -> "entrypoint"
+  | Workflow -> "workflow"
+
+let kind_of_tag = function
+  | "durable_object" -> Some Durable_object
+  | "entrypoint" -> Some Entrypoint
+  | "workflow" -> Some Workflow
+  | _ -> None
+
+let kind_glue = function
+  | Durable_object ->
+      ("durable-object.js", Embedded.durable_object, "WorkeroDurableObject")
+  | Entrypoint -> ("entrypoint.js", Embedded.entrypoint, "WorkeroEntrypoint")
+  | Workflow -> ("workflow.js", Embedded.workflow, "WorkeroWorkflow")
+
+let glue_files = [ "durable-object.js"; "entrypoint.js"; "workflow.js" ]
+
 let class_exports classes =
-  match classes with
-  | [] -> ""
-  | _ ->
-      "import { WorkeroDurableObject } from \"./durable-object.js\";\n"
-      ^ String.concat ""
-          (List.mapi
-             (fun i c ->
-               Printf.sprintf
-                 "class workero_class_%d extends WorkeroDurableObject {\n\
-                 \  constructor(ctx, env) { super(ctx, env, \"%s\"); }\n\
-                  }\n\
-                  export { workero_class_%d as %s };\n"
-                 i c i c)
-             classes)
+  let glue_of c = kind_glue c.kind in
+  let imports =
+    List.sort_uniq compare
+      (List.map
+         (fun c ->
+           let file, _, base = glue_of c in
+           (file, base))
+         classes)
+  in
+  String.concat ""
+    (List.map
+       (fun (file, base) ->
+         Printf.sprintf "import { %s } from \"./%s\";\n" base file)
+       imports)
+  ^ String.concat ""
+      (List.mapi
+         (fun i c ->
+           let _, _, base = glue_of c in
+           let rpc =
+             match c.methods with
+             | [] -> ""
+             | methods ->
+                 Printf.sprintf
+                   "for (const m of [%s]) workero_class_%d.prototype[m] = \
+                    function (...a) { return \
+                    this[Symbol.for(\"workero.rpc\")](m, a); };\n"
+                   (String.concat ", "
+                      (List.map (Printf.sprintf "\"%s\"") methods))
+                   i
+           in
+           Printf.sprintf
+             "class workero_class_%d extends %s {\n\
+             \  constructor(ctx, env) { super(ctx, env, \"%s\"); }\n\
+              }\n\
+              %sexport { workero_class_%d as %s };\n"
+             i base c.name rpc i c.name)
+         classes)
 
 let loader_prelude ~name wasm =
   let buf = Buffer.create 1024 in
@@ -187,6 +232,21 @@ let is_class_name name =
          | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '$' -> true | _ -> false)
        name
 
+let reserved_methods =
+  [
+    "fetch";
+    "alarm";
+    "connect";
+    "constructor";
+    "prototype";
+    "webSocketMessage";
+    "webSocketClose";
+    "webSocketError";
+  ]
+
+let is_method_name name =
+  (not (List.mem name reserved_methods)) && is_class_name name
+
 let find_workerd () =
   let executable path = Sys.file_exists path && not (Sys.is_directory path) in
   let path_dirs =
@@ -213,17 +273,25 @@ let find_workerd () =
       | None ->
           fail
             "workerd not found. workero build runs the program in workerd to \
-             find its Durable Object classes. Install it (npm install workerd, \
-             or wrangler), add it to PATH or set WORKERD")
+             find its Durable Object, entrypoint and Workflow classes. Install \
+             it (npm install workerd, or wrangler), add it to PATH or set \
+             WORKERD")
 
-let probe_marker = "workero-durable-objects:"
+let probe_marker = "workero-class:"
+let probe_end = "workero-classes-end"
 
 let probe_script ~name wasm =
   loader_prelude ~name wasm
-  ^ "export default {\n  async test() {\n    console.log(\"" ^ probe_marker
-  ^ "\" + Object.keys(globalThis.__workero?.durable_objects ?? {}).join(\" \"));\n\
-    \  },\n\
-     };\n"
+  ^ "const kinds = { durable_objects: \"durable_object\", entrypoints: \
+     \"entrypoint\", workflows: \"workflow\" };\n\
+     export default {\n\
+    \  async test() {\n\
+    \    for (const [key, kind] of Object.entries(kinds))\n\
+    \      for (const [name, factory] of \
+     Object.entries(globalThis.__workero?.[key] ?? {}))\n\
+    \        console.log(\"" ^ probe_marker
+  ^ " \" + [kind, name, ...(factory.rpc ?? [])].join(\" \"));\n\
+    \    console.log(\"" ^ probe_end ^ "\");\n  },\n};\n"
 
 let probe_config ~name wasm =
   let modules =
@@ -270,6 +338,23 @@ let wait_with_timeout pid seconds =
   in
   loop ()
 
+let parse_class_line line =
+  match String.split_on_char ' ' line |> List.filter (( <> ) "") with
+  | tag :: name :: methods -> (
+      match kind_of_tag tag with
+      | None -> Error (Printf.sprintf "unknown class kind %S" tag)
+      | Some kind -> (
+          if not (is_class_name name) then
+            Error (Printf.sprintf "invalid class name %S" name)
+          else
+            match List.find_opt (fun m -> not (is_method_name m)) methods with
+            | Some m ->
+                Error
+                  (Printf.sprintf "invalid RPC method name %S in class %s" m
+                     name)
+            | None -> Ok { name; kind; methods }))
+  | _ -> Error (Printf.sprintf "unreadable class line %S" line)
+
 let probe_result ~output = function
   | None ->
       Error
@@ -278,30 +363,35 @@ let probe_result ~output = function
             "the program did not finish initialising in workerd within %g \
              seconds (set WORKERO_PROBE_TIMEOUT to change the limit)"
             (probe_timeout ()) )
-  | Some (Unix.WEXITED 0) -> (
-      let found =
+  | Some (Unix.WEXITED 0)
+    when not
+           (List.exists
+              (fun line -> String.trim line = probe_end)
+              (String.split_on_char '\n' output)) ->
+      Error (output, "workerd did not report the registered classes")
+  | Some (Unix.WEXITED 0) ->
+      let n = String.length probe_marker in
+      let lines =
         String.split_on_char '\n' output
-        |> List.find_map (fun line ->
-            let line = String.trim line in
-            if String.starts_with ~prefix:probe_marker line then
-              let n = String.length probe_marker in
-              Some (String.sub line n (String.length line - n))
-            else None)
+        |> List.map String.trim
+        |> List.filter (String.starts_with ~prefix:probe_marker)
+        |> List.map (fun line -> String.sub line n (String.length line - n))
       in
-      match found with
-      | None ->
-          Error (output, "workerd did not report the Durable Object classes")
-      | Some names -> (
-          let names =
-            String.split_on_char ' ' names |> List.filter (( <> ) "")
-          in
-          match List.find_opt (fun c -> not (is_class_name c)) names with
-          | Some c ->
-              Error ("", Printf.sprintf "invalid Durable Object class name %S" c)
-          | None -> Ok (List.sort_uniq compare names)))
+      let rec parse acc = function
+        | [] -> Ok (List.sort (fun a b -> compare a.name b.name) acc)
+        | line :: rest -> (
+            match parse_class_line line with
+            | Error message -> Error ("", message)
+            | Ok c ->
+                if List.exists (fun x -> x.name = c.name) acc then
+                  Error
+                    ("", Printf.sprintf "class %s is registered twice" c.name)
+                else parse (c :: acc) rest)
+      in
+      parse [] lines
   | Some _ -> Error (output, "the program failed to initialise in workerd")
 
-let durable_object_classes ~out ~name wasm =
+let registered_classes ~out ~name wasm =
   let workerd = find_workerd () in
   let files =
     List.map (Filename.concat out)
@@ -361,7 +451,7 @@ let package ~allow_missing ~built ~name out =
       if Filename.check_suffix f ".wasm.assets" then
         remove (Filename.concat out f))
     (Sys.readdir out);
-  remove (Filename.concat out "durable-object.js");
+  List.iter (fun f -> remove (Filename.concat out f)) glue_files;
   copy assets_src (Filename.concat out assets);
   write_file (Filename.concat out loader) (read_file loader_src);
   write_file (Filename.concat out "load-wasm.js") Embedded.load_wasm;
@@ -373,16 +463,31 @@ let package ~allow_missing ~built ~name out =
   in
   let index = Filename.concat out "index.js" in
   write_file index (index_js ~name ~classes:[] wasm);
-  let classes = durable_object_classes ~out ~name wasm in
+  let classes = registered_classes ~out ~name wasm in
   if classes <> [] then (
-    write_file (Filename.concat out "durable-object.js") Embedded.durable_object;
+    List.iter
+      (fun c ->
+        let file, source, _ = kind_glue c.kind in
+        write_file (Filename.concat out file) source)
+      classes;
     write_file index (index_js ~name ~classes wasm));
   let count = List.length wasm in
   Printf.printf "workero: wrote %s (%d wasm file%s)\n" out count
     (if count = 1 then "" else "s");
-  if classes <> [] then
+  let names kind =
+    List.filter_map
+      (fun c -> if c.kind = kind then Some c.name else None)
+      classes
+  in
+  if names Durable_object <> [] then
     Printf.printf "workero: Durable Object classes: %s\n"
-      (String.concat ", " classes)
+      (String.concat ", " (names Durable_object));
+  if names Entrypoint <> [] then
+    Printf.printf "workero: entrypoint classes: %s\n"
+      (String.concat ", " (names Entrypoint));
+  if names Workflow <> [] then
+    Printf.printf "workero: workflow classes: %s\n"
+      (String.concat ", " (names Workflow))
 
 let loader_suffix = ".bc.wasm.js"
 let is_loader arg = String.ends_with ~suffix:loader_suffix arg

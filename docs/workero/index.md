@@ -13,12 +13,12 @@ Handlers run in direct style. Calls such as `Workero.fetch` wait for their resul
 
 ## Runtime APIs
 
-Use [Runtime APIs](./runtime_apis.md) to register handlers, route HTTP requests, return responses, stream data, and run background work.
+Use [Runtime APIs](./runtime_apis.md) to register handlers, route HTTP requests, return responses, stream data, open TCP connections, receive email, and run background work.
 
 
 ## Bindings
 
-[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument. Use them for storage, Durable Objects, Queues, other Workers, static assets, AI, analytics, and rate limiting.
+[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument. Use them for storage, Durable Objects, Queues, other Workers, static assets, databases through Hyperdrive, AI, analytics, and rate limiting. [Entrypoints](./entrypoints.md) expose RPC methods that other Workers call through a service binding, and [Workflows](./workflows.md) run durable multi-step programs.
 
 
 ## Development and deployment
