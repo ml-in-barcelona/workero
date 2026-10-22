@@ -61,7 +61,10 @@ not supported yet.
 - [HTMLRewriter].
 - Outbound TCP sockets ([connect]). {!Workero.Hyperdrive} gives connection details, but no OCaml database driver can use them yet.
 - [AbortController] and request cancellation.
-- [crypto.subtle]. {!Workero.Crypto} has [random_uuid] and [random_bytes] only.
+- Most of [crypto.subtle]. {!Workero.Crypto} has digests, HMAC, AES-GCM, PBKDF2
+  and HKDF with raw keys. It has no key generation, no [exportKey], no [jwk],
+  [pkcs8] or [spki] import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no
+  [wrapKey] and no [DigestStream]. Keys are never extractable.
 - Containers.
 
 {1 Differences from native OCaml}

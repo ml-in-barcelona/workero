@@ -4,6 +4,7 @@ import form from "./cases/form.mjs";
 import ws from "./cases/ws.mjs";
 import context from "./cases/context.mjs";
 import globals from "./cases/globals.mjs";
+import crypto from "./cases/crypto.mjs";
 import envSuite from "./cases/env.mjs";
 import fetcher from "./cases/fetcher.mjs";
 import router from "./cases/router.mjs";
@@ -18,7 +19,7 @@ import entrypoint from "./cases/entrypoint.mjs";
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, durableObject, durableObjectRpc, entrypoint]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, durableObject, durableObjectRpc, entrypoint]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };
