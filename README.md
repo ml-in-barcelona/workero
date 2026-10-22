@@ -141,6 +141,8 @@ let () =
 ```
 
 Reach an object with `Durable_object.Namespace.get_by_name` and `Fetcher.fetch`.
+RPC methods: `register ~rpc:["incr"]` and `make ~rpc` let a JavaScript caller
+write `stub.incr()`; OCaml code uses `Durable_object.call`.
 Alarms use `Storage.set_alarm` and the `~alarm` handler. `Storage.sql` and
 `Storage.transaction_sync` give SQL and transactions. `State.accept_websocket`
 and the `~websocket_message` handler serve hibernatable WebSockets.

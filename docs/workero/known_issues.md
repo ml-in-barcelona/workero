@@ -27,7 +27,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 ## Limits of Durable Objects
 
 - Only classes with SQLite storage work. A class listed in `new_classes` builds, then fails at run time with a JavaScript error. See [Durable Objects](./durable_objects.md).
-- A stub supports `fetch` only. There are no RPC methods on a stub.
+- RPC methods on a stub: names are declared with `register ~rpc`. Arguments and results are JSON. `Date`, `Map`, `BigInt`, `Uint8Array`, streams, stubs and functions cannot cross the call. A method name cannot be `fetch`, `alarm`, `connect`, `constructor`, `prototype` or a `webSocket*` handler.
 - Stored values are JSON. A `Date` that other code stores reads back as its ISO string and a `Map` as `{}`. A `BigInt` or a cyclic value raises `Invalid_argument`.
 - The function given to `register` cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Load stored values in `~init`. Keep per-object state in closures.
 - [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) must run when the module starts. A `register` call that a condition skips is not exported.
@@ -41,7 +41,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - The `tail` and `email` handlers.
 - Workflows.
-- RPC: `WorkerEntrypoint` and RPC methods on Durable Object stubs.
+- RPC: `WorkerEntrypoint` classes.
 - Durable Objects without SQLite storage, and `State.container`.
 - Vectorize, Hyperdrive and the Send Email binding.
 - `HTMLRewriter`.

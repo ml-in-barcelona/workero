@@ -69,6 +69,42 @@ The build fails, and prints the error of the program, when the program raises du
 [`Workero.Durable_object.Id.name`](./Workero-Durable_object-Id.md#val-name) gives the name of an id made with `id_from_name`. [`Workero.Durable_object.State.id`](./Workero-Durable_object-State.md#val-id) gives the id of the running object.
 
 
+## RPC methods
+
+A class can expose methods that callers invoke on the stub, such as `stub.increment()`, without building a request. Declare the method names with `~rpc` in [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register), and answer the calls with the `~rpc` handler of [`Workero.Durable_object.make`](./Workero-Durable_object.md#val-make):
+
+```ocaml
+let () =
+  Durable_object.register ~rpc:[ "increment"; "add" ] "Counter" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~rpc:(fun name args ->
+          match (name, args) with
+          | "increment", [] ->
+              let n =
+                match Durable_object.Storage.get storage "count" with
+                | Some (`Int n) -> n + 1
+                | _ -> 1
+              in
+              Durable_object.Storage.put storage "count" (`Int n);
+              `Int n
+          | "add", [ `Int a; `Int b ] -> `Int (a + b)
+          | _ -> invalid_arg ("bad call to " ^ name))
+        ())
+```
+The names must be known before any object exists, because `workero build` adds them to the exported class. `rpc` receives the name and the arguments as `Jsonkit.t`, and returns the result as JSON. A JavaScript caller sees a promise for the result: `await stub.add(1, 2)`. An exception in the handler rejects the call with its message. A handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
+
+OCaml code calls a method with [`Workero.Durable_object.call`](./Workero-Durable_object.md#val-call):
+
+```ocaml
+let stub = Durable_object.Namespace.get_by_name counters "main" in
+match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
+| `Int n -> n
+| _ -> failwith "unexpected result"
+```
+A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error). Arguments and results are JSON: values that JSON cannot carry, such as `Date`, `Map`, `BigInt`, streams and other stubs, are not supported. A JavaScript `undefined` argument or result becomes ``Null`.
+
+
 ## Storage
 
 [`Workero.Durable_object.Storage`](./Workero-Durable_object-Storage.md) reads and writes keys without suspending. Values are `Jsonkit.t`. They go through `JSON.stringify` and `JSON.parse` around the runtime's own storage. A value written by JavaScript code reads as its JSON form: a `Date` is its ISO string and a `Map` is `{}`. `get` and `list` raise `Invalid_argument` for a stored value that `JSON.stringify` rejects, such as a `BigInt` or a cyclic object. [`Workero.Durable_object.Storage.list`](./Workero-Durable_object-Storage.md#val-list) takes `prefix`, `start`, `end_`, `reverse` and `limit`.

@@ -186,6 +186,7 @@ val make :
   ?websocket_close:
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
   ?websocket_error:(Websocket.t -> string -> unit) ->
+  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
   unit ->
   t
 (** [make ()] gives an object that handles no event. [init] runs under
@@ -194,11 +195,13 @@ val make :
     object. [fetch] answers the requests that a stub sends. [alarm] runs when
     the alarm is due; an exception makes the runtime retry it. The [websocket_*]
     handlers get the events of sockets accepted with {!State.accept_websocket};
-    [websocket_error] gets the error message. Every handler runs in its own
-    fiber and may call {!Promise.await}. A stub fetch on an object without a
-    [fetch] handler fails. *)
+    [websocket_error] gets the error message. [rpc] answers the calls of the
+    methods that {!register} declared: [rpc name args] gets the method name and
+    the arguments as JSON, and returns the result as JSON. See {!register}.
+    Every handler runs in its own fiber and may call {!Promise.await}. A stub
+    fetch on an object without a [fetch] handler fails. *)
 
-val register : string -> (State.t -> Env.t -> t) -> unit
+val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 (** [register class_name create] binds [create] to the class that
     [workero build] exports under [class_name]. Call it at module
     initialisation, once per class. The build reads the names by running the
@@ -210,11 +213,31 @@ val register : string -> (State.t -> Env.t -> t) -> unit
     Load stored values in [~init] of {!make}. If [create] raises, the object
     fails to start and the request that needed it fails.
 
+    [rpc] names the RPC methods of the class, for example [["increment"]]. The
+    build adds each name as a method of the exported class, so JavaScript code
+    calls [stub.increment(...)] and OCaml code calls {!call}. The [rpc] handler
+    of {!make} runs each call. A name must follow the rules of [class_name],
+    must be unique in the class, and must not be [fetch], [alarm], [connect],
+    [constructor], [prototype], [webSocketMessage], [webSocketClose] or
+    [webSocketError]. Declare the names here, not in [create]: the build reads
+    them before any object exists. A call to a declared name on a class whose
+    handlers have no [rpc] fails.
+
     Raises [Invalid_argument] when [class_name] is empty, starts with a digit,
     has a character other than an ASCII letter, a digit, ["_"] or ["$"], is
     ["default"], ["then"] or ["__proto__"], or is already registered. Reserved
     words such as ["class"] are accepted: the generated module exports the class
-    under that name without declaring a variable of it. *)
+    under that name without declaring a variable of it. It also raises
+    [Invalid_argument] for an invalid or repeated name in [rpc]. *)
+
+val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+(** [call stub name args] calls the RPC method [name] of the object that [stub]
+    reaches, with [args], and waits for the result. Arguments and result are
+    JSON, converted like {!Storage} values: a JavaScript [undefined] result
+    reads as [`Null], and a value that [JSON.stringify] rejects raises
+    [Invalid_argument]. The runtime creates the object on the first call.
+    Suspends. Raises {!Js_error} when the method is missing or when it raises or
+    rejects; the error message is that of the remote exception. *)
 
 module Namespace : sig
   type t

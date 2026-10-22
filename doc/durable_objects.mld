@@ -108,6 +108,54 @@ with the path and the query of the URL. The host is ignored.
 [id_from_name]. {!Workero.Durable_object.State.id} gives the id of the running
 object.
 
+{1 RPC methods}
+
+A class can expose methods that callers invoke on the stub, such as
+[stub.increment()], without building a request. Declare the method names with
+[~rpc] in {!Workero.Durable_object.register}, and answer the calls with the
+[~rpc] handler of {!Workero.Durable_object.make}:
+
+{@ocaml[
+let () =
+  Durable_object.register ~rpc:[ "increment"; "add" ] "Counter" (fun state _env ->
+      let storage = Durable_object.State.storage state in
+      Durable_object.make
+        ~rpc:(fun name args ->
+          match (name, args) with
+          | "increment", [] ->
+              let n =
+                match Durable_object.Storage.get storage "count" with
+                | Some (`Int n) -> n + 1
+                | _ -> 1
+              in
+              Durable_object.Storage.put storage "count" (`Int n);
+              `Int n
+          | "add", [ `Int a; `Int b ] -> `Int (a + b)
+          | _ -> invalid_arg ("bad call to " ^ name))
+        ())
+]}
+
+The names must be known before any object exists, because [workero build] adds
+them to the exported class. [rpc] receives the name and the arguments as
+[Jsonkit.t], and returns the result as JSON. A JavaScript caller sees
+a promise for the result: [await stub.add(1, 2)]. An exception in the handler
+rejects the call with its message. A handler runs in its own fiber and may call
+{!Workero.Promise.await}.
+
+OCaml code calls a method with {!Workero.Durable_object.call}:
+
+{@ocaml[
+let stub = Durable_object.Namespace.get_by_name counters "main" in
+match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
+| `Int n -> n
+| _ -> failwith "unexpected result"
+]}
+
+A call to a missing method, or to a method that raises, raises
+{!Workero.Js_error}. Arguments and results are JSON: values that JSON cannot
+carry, such as [Date], [Map], [BigInt], streams and other stubs, are not
+supported. A JavaScript [undefined] argument or result becomes [`Null].
+
 {1 Storage}
 
 {!Workero.Durable_object.Storage} reads and writes keys without suspending.

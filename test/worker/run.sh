@@ -37,7 +37,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
   printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
   echo '        (name = "BACKEND", service = "backend"),'
-  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler Rpc RpcNoHandler; do
     echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"
   done
   echo '        (name = "KV", kvNamespace = "kv"),'
@@ -57,7 +57,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "ANALYTICS_BROKEN", wrapped = (moduleName = "workero-test:analytics-broken", innerBindings = [])),'
   echo '      ],'
   echo '      durableObjectNamespaces = ['
-  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler; do
+  for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler Rpc RpcNoHandler; do
     echo "        (className = \"$class\", uniqueKey = \"workero-test-$class\", enableSql = true),"
   done
   echo '      ],'
@@ -92,7 +92,11 @@ cp test/worker/cases/*.mjs "$out/cases/"
     echo "        (name = \"$f\", esModule = embed \"$f\"),"
   done
   echo '      ],'
-  echo '      bindings = [(name = "WORKER", service = "worker")],'
+  echo '      bindings = ['
+  echo '        (name = "WORKER", service = "worker"),'
+  echo '        (name = "RPC", durableObjectNamespace = (className = "Rpc", serviceName = "worker")),'
+  echo '        (name = "RPC_NO_HANDLER", durableObjectNamespace = (className = "RpcNoHandler", serviceName = "worker")),'
+  echo '      ],'
   echo '    )),'
   echo '    (name = "test-queue", worker = ('
   echo '      compatibilityDate = "2026-10-01",'

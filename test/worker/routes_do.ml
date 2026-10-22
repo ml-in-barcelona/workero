@@ -353,7 +353,32 @@ let rooms ~hibernating state _env =
              Websocket.close ~code:1000 ws))
     ()
 
+let rpc_counter state _env =
+  let storage = D.State.storage state in
+  let get () = count_of (D.Storage.get storage "n") in
+  D.make
+    ~rpc:(fun name args ->
+      match (name, args) with
+      | "increment", [] ->
+          let n = get () + 1 in
+          D.Storage.put storage "n" (`Int n);
+          `Int n
+      | "add", [ `Int a; `Int b ] -> `Int (a + b)
+      | "get", [] -> `Int (get ())
+      | "echo", [ v ] -> v
+      | "nothing", [] -> `Null
+      | "fail", [ `String message ] -> failwith message
+      | "slow", [] ->
+          Promise.await (Timer.sleep 20);
+          `String "slept"
+      | _ -> invalid_arg ("bad RPC call " ^ name))
+    ()
+
 let () =
+  D.register
+    ~rpc:[ "increment"; "add"; "get"; "echo"; "nothing"; "fail"; "slow" ]
+    "Rpc" rpc_counter;
+  D.register ~rpc:[ "ping" ] "RpcNoHandler" (fun _ _ -> D.make ());
   D.register "Sqlite" sqlite;
   D.register "Rooms" (rooms ~hibernating:true);
   D.register "NoWsHandler" (rooms ~hibernating:false);
@@ -382,6 +407,21 @@ let handle req env _ctx =
       in
       match Fetcher.fetch stub url with
       | res -> Some (Response.text (show res))
+      | exception Js_error e ->
+          Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
+  | [ ""; "do-rpc"; binding; name; meth ] -> (
+      let namespace = D.Namespace.of_env env binding in
+      let stub = D.Namespace.get_by_name namespace name in
+      let args =
+        match query req "args" with
+        | None -> []
+        | Some text -> (
+            match Jsonkit.of_string text with
+            | `List l -> l
+            | _ -> invalid_arg "args must be a JSON array")
+      in
+      match D.call stub meth args with
+      | v -> Some (Response.text (Jsonkit.to_string v))
       | exception Js_error e ->
           Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
   | [ ""; "do-ws"; binding; name; op ] ->

@@ -105,6 +105,12 @@ for probe in workero-probe.mjs workero-probe.capnp workero-probe.log; do
 done
 echo "ok - build exports the registered Durable Object classes"
 
+grep -q 'prototype\[m\] = function' "$out/index.js" || fail "index.js adds the RPC methods of a class"
+[ "$(grep -c 'for (const m of' "$out/index.js")" -eq 1 ] || fail "only the class with RPC methods gets RPC glue"
+grep -q 'for (const m of \["increment", "get"\]) workero_class_[0-9]*.prototype' "$out/index.js" ||
+  fail "index.js lists the RPC methods in declaration order"
+echo "ok - build adds the declared RPC methods to the class"
+
 workero test/cli/present/main.bc.wasm.js || fail "a rebuild without classes builds"
 [ ! -e "$out/durable-object.js" ] || fail "a rebuild without classes removes durable-object.js"
 grep -q "WorkeroDurableObject" "$out/index.js" && fail "a rebuild without classes drops the class exports"
