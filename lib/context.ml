@@ -9,7 +9,8 @@ let wait_until ctx f =
         f ();
         Js.Unsafe.inject Js.undefined)
   in
-  ignore (meth ctx "waitUntil" [| work |])
+  ignore
+    (meth ctx "waitUntil" [| meth (global "Promise") "resolve" [| work |] |])
 
 let pass_through_on_exception ctx =
   ignore (meth ctx "passThroughOnException" [||])

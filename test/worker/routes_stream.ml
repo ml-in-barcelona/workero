@@ -78,6 +78,11 @@ let self_close ctx =
       Stream.Writer.write w "x";
       Stream.Writer.close w)
 
+let sync_wait ctx =
+  outcome := "pending";
+  Context.wait_until (observed ctx) (fun () -> ());
+  Response.text "started"
+
 let iter_cancel ctx =
   ended := "running";
   let w, source = Stream.pipe () in
@@ -125,6 +130,7 @@ let handle req _env ctx =
   | _, "/stream/cancel" -> Some (until_cancelled ctx)
   | _, "/stream/raise" -> Some (raises ctx)
   | _, "/stream/self-close" -> Some (self_close ctx)
+  | _, "/stream/sync-wait" -> Some (sync_wait ctx)
   | _, "/stream/iter-cancel" -> Some (iter_cancel ctx)
   | _, "/stream/echo" -> Some (echo ctx req)
   | _, "/stream/state" ->

@@ -159,6 +159,17 @@ const selfCloseCase = async (env, failures) => {
   report("stream: function that closes the writer itself ends cleanly", problems, failures);
 };
 
+const syncWaitCase = async (env, failures) => {
+  const res = await env.WORKER.fetch("http://test/stream/sync-wait");
+  const body = await res.text();
+  await sleep(50);
+  const { outcome } = await state(env);
+  const problems = [];
+  if (res.status !== 200 || body !== "started") problems.push(`${res.status} ${JSON.stringify(body)}`);
+  if (outcome !== "ok") problems.push(`waitUntil outcome ${outcome}`);
+  report("stream: wait_until with a function that never suspends passes a promise", problems, failures);
+};
+
 const cacheCase = async (env, failures) => {
   const key = "http://test/cache-clone-key";
   const problems = [];
@@ -221,6 +232,7 @@ export default async (env, failures) => {
   await responseStreamCases(env, failures);
   await echoCase(env, failures);
   await selfCloseCase(env, failures);
+  await syncWaitCase(env, failures);
   await cacheCase(env, failures);
   await runCases(env, cases, failures);
 };
