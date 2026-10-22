@@ -2,7 +2,7 @@
     query arguments are percent-decoded. In a query, [+] decodes to a space, as
     in WHATWG [URLSearchParams]. *)
 
-type t
+type t = Url_core.t
 
 val of_string : string -> t option
 (** [None] when the string is not an [http] or [https] URL. *)
