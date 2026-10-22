@@ -49,5 +49,6 @@ remove it.
 {1 Release}
 
 A CI job checks the npm registry every day. For a new [wrangler] version, it
-releases the package without manual steps: the tag is [wrangler-<version>].
+releases the package without manual steps: the tag is [wrangler-<version>]. It
+waits until the tag of the workerd version that [wrangler] pins exists.
 See [CONTRIBUTING.md] in the repository.

@@ -1,24 +1,29 @@
 import { execFileSync } from "node:child_process";
 import { fail, fetchVersion, isVersion, latestVersion } from "./npm.ts";
 
-export type Release = { name: "workerd" | "wrangler"; version: string };
-
-export const targets = (wrangler: string, pinned: string): Release[] => [
-  { name: "workerd", version: pinned },
-  { name: "wrangler", version: wrangler },
-];
-
-export const tagOf = (release: Release): string => `${release.name}-${release.version}`;
+const hasTag = (tag: string): boolean =>
+  execFileSync("git", ["tag", "--list", tag], { encoding: "utf8" }).trim() === tag;
 
 const main = async (): Promise<void> => {
+  const [name, mode] = process.argv.slice(2);
+  if ((name !== "workerd" && name !== "wrangler") || (mode !== undefined && mode !== "--tagged")) {
+    return fail("Usage: node scripts/upstream.ts <workerd|wrangler> [--tagged]");
+  }
   const wrangler = (await latestVersion("wrangler")).version;
   const pinned = (await fetchVersion("wrangler", wrangler)).dependencies?.["workerd"];
   if (!isVersion(pinned)) return fail(`wrangler ${wrangler} pins workerd ${pinned}, not an exact version`);
-  const tags = new Set(execFileSync("git", ["tag", "--list"], { encoding: "utf8" }).split("\n"));
-  const wanted = process.argv[2] === "--tagged";
-  for (const release of targets(wrangler, pinned)) {
-    if (tags.has(tagOf(release)) === wanted) console.log(`${release.name} ${release.version}`);
+  const version = name === "workerd" ? pinned : wrangler;
+  const tagged = hasTag(`${name}-${version}`);
+  if (mode === "--tagged") {
+    if (tagged) console.log(version);
+    return;
   }
+  if (tagged) return;
+  if (name === "wrangler" && !hasTag(`workerd-${pinned}`)) {
+    console.error(`Skip wrangler ${version}: the tag workerd-${pinned} does not exist yet.`);
+    return;
+  }
+  console.log(version);
 };
 
-if (process.argv[1] === import.meta.filename) await main();
+await main();

@@ -36,9 +36,8 @@ worker, worker-init, worker-exports, and CLI tests.
 
 Edit library API descriptions in the `.mli` files and guides in `doc/*.mld`.
 The docs of `workerd` and `wrangler` are `doc/workerd/index.mld` and
-`doc/wrangler/index.mld`. The four platform packages share
-`doc/workerd-platform/index.mld`. Run `make docs` to generate HTML and Markdown with odoc;
-it copies Markdown to `docs/`. Do not edit generated `docs/` pages directly.
+`doc/wrangler/index.mld`. Run `make docs` to generate HTML and Markdown with
+odoc; it copies Markdown to `docs/`. Do not edit generated `docs/` pages directly.
 
 ## Releasing workero
 
@@ -52,8 +51,11 @@ The opam packages `workerd` and `wrangler` have their own version, changelog
 the repository root, next to `workero.opam`, and each has a `(package)` stanza
 in `dune-project`.
 
-- `workerd.opam` and `workerd-<platform>.opam` install the prebuilt workerd
-  binary. The version is the version of the npm package `workerd`.
+- `workerd.opam` installs the prebuilt workerd binary. The version is the
+  version of the npm package `workerd`. opam cannot filter a download by
+  platform, so the file lists the four npm tarballs of
+  `@cloudflare/workerd-<platform>` as `extra-source` (about 154 MiB), and a
+  command filtered by `os` and `arch` unpacks one.
 - `wrangler.opam` installs a bundle of wrangler. The version is the version of
   the npm package `wrangler`. It depends on the exact workerd version that
   wrangler pins.
@@ -65,8 +67,8 @@ generate: the templates set `version`, `available`, `depends`, `build`,
 step. Do not edit the `.opam` files or the templates by hand. The scripts in
 `scripts/` write the templates:
 
-- `node scripts/workerd-opam.ts <version>` fetches the npm metadata of the five
-  workerd packages.
+- `node scripts/workerd-opam.ts <version>` fetches the npm metadata of the four
+  platform packages of workerd.
 - `node scripts/wrangler-opam.ts <version>` fetches the npm metadata of
   wrangler and the workerd version that it pins.
 - `node scripts/changelog.ts <workerd|wrangler> <version> "<note>"` adds a
@@ -79,21 +81,25 @@ Node.js 22.18 or later runs the scripts.
 
 ### Automatic releases
 
-`upstream-releases.yml` runs every day and on request. It needs the secret
-`GH_TOKEN`: a token that can push to `main` and to tags, and start workflows.
-Each run:
+Two workflows run every day and on request: `sync-workerd.yml` at 05:17 UTC
+and `sync-wrangler.yml` at 05:47 UTC. They need the secret `GH_TOKEN`: a token
+that can push to `main` and to tags, and start workflows. Both use the
+concurrency group `sync-upstream`, so they never run at the same time. Each run:
 
-1. Reads the npm registry (`scripts/upstream.ts`): the latest `wrangler` and the
-   `workerd` version that it pins. Other workerd versions are not released:
-   npm has a new workerd almost every day.
-2. Skips versions that already have a tag. For each new version, in this order:
-   workerd, then wrangler,
-   `scripts/release-upstream.sh` writes the templates and the changelog section,
-   regenerates the opam files with dune, runs `opam lint`, commits, and makes
-   the tag `workerd-<version>` or `wrangler-<version>`. A workerd version is
-   always released before the wrangler that needs it.
-3. Pushes the commits and all tags in one atomic push. When the push fails,
-   nothing is published, and the next run starts again.
+1. Reads the npm registry (`scripts/upstream.ts <package>`).
+   - `sync-workerd` takes the `workerd` version that the latest `wrangler`
+     pins. Other workerd versions are not released: npm has a new workerd
+     almost every day.
+   - `sync-wrangler` takes the latest `wrangler`. It skips when the tag
+     `workerd-<pinned version>` does not exist. A later run releases it.
+2. Does nothing when the version already has a tag. Otherwise
+   `scripts/release-upstream.sh <package>` writes the template and the
+   changelog section, regenerates the opam files with dune, runs `opam lint`,
+   commits, and makes the tag `workerd-<version>` or `wrangler-<version>`.
+3. Pushes the commit and the tag in one atomic push. When another commit
+   reached `main` first, the job rebases, moves the tag, and tries again, up
+   to three times. When it still fails, nothing is published, and the next run
+   starts again.
 
 Only the latest versions are released. Versions that npm published between two
 runs are skipped.
@@ -105,11 +111,11 @@ starts CI. The release job needs `GH_TOKEN` anyway, to push to the
 `opam-repository` fork.
 
 Re-runs are safe. A version with a tag is not released again. At the start of a
-run, `scripts/restart-releases.sh` starts `release-binaries.yml` again for a
-latest version that has a tag but no successful or active release run.
-`release-binaries.yml` reuses an existing GitHub release and an existing pull
-request. The wrangler pull request on `opam-repository` can fail its checks
-until the pull request of the workerd version that it needs is merged.
+run, `scripts/restart-releases.sh <package>` starts `release-binaries.yml`
+again for the latest version that has a tag but no successful or active release
+run. `release-binaries.yml` reuses an existing GitHub release and an existing
+pull request. The wrangler pull request on `opam-repository` can fail its
+checks until the pull request of the workerd version that it needs is merged.
 
 ### Manual releases
 

@@ -11,11 +11,32 @@ bug-reports: "https://github.com/ml-in-barcelona/workero/issues"
 dev-repo: "git+https://github.com/ml-in-barcelona/workero.git"
 x-maintenance-intent: ["(latest)"]
 version: "1.20261019.1"
-available: [ os = "linux" | os = "macos" ]
-depends: [
-  "workerd-linux-64" {= version & os = "linux" & arch = "x86_64"}
-  "workerd-linux-arm64" {= version & os = "linux" & arch = "arm64"}
-  "workerd-darwin-64" {= version & os = "macos" & arch = "x86_64"}
-  "workerd-darwin-arm64" {= version & os = "macos" & arch = "arm64"}
+available: [ (os = "linux" | os = "macos") & (arch = "x86_64" | arch = "arm64") ]
+depends: []
+build: [
+  ["tar" "-xzf"
+    "workerd-linux-64.tgz" {os = "linux" & arch = "x86_64"}
+    "workerd-linux-arm64.tgz" {os = "linux" & arch = "arm64"}
+    "workerd-darwin-64.tgz" {os = "macos" & arch = "x86_64"}
+    "workerd-darwin-arm64.tgz" {os = "macos" & arch = "arm64"}
+  ]
 ]
-build: []
+install: [
+  ["install" "-m" "755" "package/bin/workerd" "%{bin}%/workerd"]
+]
+extra-source "workerd-linux-64.tgz" {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-linux-64/-/workerd-linux-64-1.20261019.1.tgz"
+  checksum: "sha512=e3ef95462f6f91044e62aae96583a2c4826e5439ae8e4c2b4f892ccecc4d165bdc9ac5fa32bd86ba6bf120dde0222c52def25487752676d92d86a8f95f44b75f"
+}
+extra-source "workerd-linux-arm64.tgz" {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-linux-arm64/-/workerd-linux-arm64-1.20261019.1.tgz"
+  checksum: "sha512=ef93d5b493b07e349c439dec6cbb505c8ec3f323f5736d6df961143da61baa4cdacf866a7d1e7001dfb3b96b3c1b943b90e8f649022f11f6394a7f18f9456b9c"
+}
+extra-source "workerd-darwin-64.tgz" {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-darwin-64/-/workerd-darwin-64-1.20261019.1.tgz"
+  checksum: "sha512=e5920b6c0b5afdf050be198061e084edd28c31822becdf702445f9d1f1062ca488c06b6f4f41f349f1cd20afceedc050e201d0d967c888f0a5bf07327ba1347c"
+}
+extra-source "workerd-darwin-arm64.tgz" {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-darwin-arm64/-/workerd-darwin-arm64-1.20261019.1.tgz"
+  checksum: "sha512=730c3601bea554cc694e21048ca98f239f29e44328d2f6136521fedd692a5c975081cdc44bae86b8bdb8efe5360766166a3861bb6b6a8fb8f24ab5e7794ef8f6"
+}

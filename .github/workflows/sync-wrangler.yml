@@ -1,0 +1,53 @@
+name: Sync wrangler
+
+on:
+  schedule:
+    - cron: '47 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Release the new wrangler version
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4.0
+
+      - name: Install dune
+        run: opam install dune
+
+      - name: Restart a release run that did not finish
+        run: scripts/restart-releases.sh wrangler
+
+      - name: Release the new version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tag=$(scripts/release-upstream.sh wrangler)
+          [ -n "$tag" ] || exit 0
+          for _ in 1 2 3; do
+            git push --atomic origin HEAD:main "refs/tags/$tag" && exit 0
+            git pull --rebase origin main
+            git tag -f "$tag"
+          done
+          exit 1

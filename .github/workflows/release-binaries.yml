@@ -73,19 +73,14 @@ jobs:
 
       - name: Prepare the opam-repository files
         run: |
-          mkdir -p "$RUNNER_TEMP/packages"
+          dir="$RUNNER_TEMP/packages/$PACKAGE/$PACKAGE.$VERSION"
+          mkdir -p "$dir"
           if [ "$PACKAGE" = wrangler ]; then
             url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/wrangler-$VERSION.tgz"
             sum=$(sha512sum "$ARCHIVE" | cut -d' ' -f1)
-            mkdir -p "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION"
-            scripts/opam-repo-file.sh wrangler.opam "$url" "$sum" \
-              > "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION/opam"
+            scripts/opam-repo-file.sh wrangler.opam "$url" "$sum" > "$dir/opam"
           else
-            for f in workerd.opam workerd-*.opam; do
-              name=$(basename "$f" .opam)
-              mkdir -p "$RUNNER_TEMP/packages/$name/$name.$VERSION"
-              scripts/opam-repo-file.sh "$f" > "$RUNNER_TEMP/packages/$name/$name.$VERSION/opam"
-            done
+            scripts/opam-repo-file.sh workerd.opam > "$dir/opam"
           fi
 
       - name: Open the opam-repository pull request

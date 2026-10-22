@@ -5,34 +5,35 @@ const main = async (): Promise<void> => {
   if (!isVersion(version)) {
     return fail("Usage: node scripts/workerd-opam.ts <workerd version>, for example 1.20261019.1");
   }
-  for (const p of platforms) {
-    const v = await fetchVersion(`@cloudflare/workerd-${p.npm}`, version);
-    writeTemplate(
-      `workerd-${p.npm}`,
-      `version: "${version}"
-available: os = "${p.os}" & arch = "${p.arch}"
-depends: []
-build: []
-install: [
-  ["install" "-m" "755" "bin/workerd" "%{bin}%/workerd"]
-]
-url {
-  src: "${v.dist.tarball}"
-  checksum: "sha512=${sha512Hex(v.dist.integrity)}"
-}
-`,
-    );
-  }
+  const sources = await Promise.all(
+    platforms.map(async (p) => ({
+      p,
+      v: await fetchVersion(`@cloudflare/workerd-${p.npm}`, version),
+    })),
+  );
   writeTemplate(
     "workerd",
     `version: "${version}"
-available: [ os = "linux" | os = "macos" ]
-depends: [
+available: [ (os = "linux" | os = "macos") & (arch = "x86_64" | arch = "arm64") ]
+depends: []
+build: [
+  ["tar" "-xzf"
 ${platforms
-  .map((p) => `  "workerd-${p.npm}" {= version & os = "${p.os}" & arch = "${p.arch}"}`)
+  .map((p) => `    "workerd-${p.npm}.tgz" {os = "${p.os}" & arch = "${p.arch}"}`)
   .join("\n")}
+  ]
 ]
-build: []
+install: [
+  ["install" "-m" "755" "package/bin/workerd" "%{bin}%/workerd"]
+]
+${sources
+  .map(
+    ({ p, v }) => `extra-source "workerd-${p.npm}.tgz" {
+  src: "${v.dist.tarball}"
+  checksum: "sha512=${sha512Hex(v.dist.integrity)}"
+}`,
+  )
+  .join("\n")}
 `,
   );
 };

@@ -39,4 +39,4 @@ A workero project can use `wrangler dev` and `wrangler deploy` with the `wrangle
 
 ## Release
 
-A CI job checks the npm registry every day. For a new `wrangler` version, it releases the package without manual steps: the tag is `wrangler-<version>`. See `CONTRIBUTING.md` in the repository.
+A CI job checks the npm registry every day. For a new `wrangler` version, it releases the package without manual steps: the tag is `wrangler-<version>`. It waits until the tag of the workerd version that `wrangler` pins exists. See `CONTRIBUTING.md` in the repository.

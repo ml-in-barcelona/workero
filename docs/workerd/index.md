@@ -9,12 +9,8 @@ workerd is the runtime that runs Cloudflare Workers. This opam package installs 
 ```
 opam install workerd
 ```
-The `workerd` package depends on one binary package for your platform.
+opam downloads the binaries for all four platforms (Linux and macOS, x86\_64 and arm64), about 154 MiB, and installs the one for your system.
 
-- `workerd-linux-64`: Linux x86\_64.
-- `workerd-linux-arm64`: Linux arm64.
-- `workerd-darwin-64`: macOS x86\_64.
-- `workerd-darwin-arm64`: macOS arm64.
 Linux needs glibc 2\.35 or later. Windows is not supported.
 
 Check the install:
@@ -23,9 +19,9 @@ Check the install:
 workerd --version
 ```
 
-## Why there are five packages
+## Why opam downloads four files
 
-opam can select a download for one platform only with a package, not with a filter on a download. Each platform has its own package. The `workerd` package has no files; it selects the right one. Install `workerd`, not the platform packages.
+opam cannot select a download by platform. The `url` and `extra-source` fields have no filter. For this reason, the package lists the four npm tarballs, and a filtered command unpacks the one that fits your `os` and `arch`. The `workerd` package installs a single file, `bin/workerd`.
 
 
 ## Versions
@@ -42,9 +38,9 @@ The workero tests run Workers in `workerd`. They need `workerd` on `PATH`.
 
 ## Source of the binaries
 
-Each platform package downloads one tarball from the npm registry, from the package `@cloudflare/workerd-<platform>`. opam checks its SHA-512 sum. The package copies `bin/workerd` to the `bin` directory of the switch.
+The package downloads four tarballs from the npm registry, from the packages `@cloudflare/workerd-<platform>`. opam checks the SHA-512 sum of each one. The install copies `bin/workerd` to the `bin` directory of the switch.
 
 
 ## Release
 
-A CI job checks the npm registry every day. For a new `workerd` version, it releases the package without manual steps: the tag is `workerd-<version>`. See `CONTRIBUTING.md` in the repository.
+A CI job checks the npm registry every day. It releases the `workerd` version that the latest `wrangler` pins, without manual steps: the tag is `workerd-<version>`. Other `workerd` versions are not released. See `CONTRIBUTING.md` in the repository.

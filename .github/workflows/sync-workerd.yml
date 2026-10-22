@@ -1,4 +1,4 @@
-name: Release upstream versions
+name: Sync workerd
 
 on:
   schedule:
@@ -9,12 +9,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: upstream-releases
+  group: sync-upstream
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Release new workerd and wrangler versions
+  sync:
+    name: Release the new workerd version
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -36,14 +36,18 @@ jobs:
       - name: Install dune
         run: opam install dune
 
-      - name: Restart release runs that did not finish
-        run: scripts/restart-releases.sh
+      - name: Restart a release run that did not finish
+        run: scripts/restart-releases.sh workerd
 
-      - name: Release new versions
+      - name: Release the new version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          tags=$(scripts/release-upstream.sh)
-          if [ -n "$tags" ]; then
-            echo "$tags" | xargs git push --atomic origin HEAD:main
-          fi
+          tag=$(scripts/release-upstream.sh workerd)
+          [ -n "$tag" ] || exit 0
+          for _ in 1 2 3; do
+            git push --atomic origin HEAD:main "refs/tags/$tag" && exit 0
+            git pull --rebase origin main
+            git tag -f "$tag"
+          done
+          exit 1

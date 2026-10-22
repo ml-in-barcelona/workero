@@ -8,13 +8,8 @@ source, because the workerd build needs Bazel.
 
 {v opam install workerd v}
 
-The [workerd] package depends on one binary package for your platform.
-
-{ul
-{- [workerd-linux-64]: Linux x86_64.}
-{- [workerd-linux-arm64]: Linux arm64.}
-{- [workerd-darwin-64]: macOS x86_64.}
-{- [workerd-darwin-arm64]: macOS arm64.}}
+opam downloads the binaries for all four platforms (Linux and macOS, x86_64 and
+arm64), about 154 MiB, and installs the one for your system.
 
 Linux needs glibc 2.35 or later. Windows is not supported.
 
@@ -22,12 +17,12 @@ Check the install:
 
 {v workerd --version v}
 
-{1 Why there are five packages}
+{1 Why opam downloads four files}
 
-opam can select a download for one platform only with a package, not with a
-filter on a download. Each platform has its own package. The [workerd] package
-has no files; it selects the right one. Install [workerd], not the platform
-packages.
+opam cannot select a download by platform. The [url] and [extra-source] fields
+have no filter. For this reason, the package lists the four npm tarballs, and a
+filtered command unpacks the one that fits your [os] and [arch]. The
+[workerd] package installs a single file, [bin/workerd].
 
 {1 Versions}
 
@@ -45,12 +40,13 @@ The workero tests run Workers in [workerd]. They need [workerd] on [PATH].
 
 {1 Source of the binaries}
 
-Each platform package downloads one tarball from the npm registry, from the
-package [@cloudflare/workerd-<platform>]. opam checks its SHA-512 sum. The
-package copies [bin/workerd] to the [bin] directory of the switch.
+The package downloads four tarballs from the npm registry, from the packages
+[@cloudflare/workerd-<platform>]. opam checks the SHA-512 sum of each one. The
+install copies [bin/workerd] to the [bin] directory of the switch.
 
 {1 Release}
 
-A CI job checks the npm registry every day. For a new [workerd] version, it
-releases the package without manual steps: the tag is [workerd-<version>].
+A CI job checks the npm registry every day. It releases the [workerd] version
+that the latest [wrangler] pins, without manual steps: the tag is
+[workerd-<version>]. Other [workerd] versions are not released.
 See [CONTRIBUTING.md] in the repository.
