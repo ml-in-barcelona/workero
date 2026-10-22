@@ -15,13 +15,14 @@ import analytics from "./cases/analytics.mjs";
 import durableObject from "./cases/do.mjs";
 import durableObjectRpc from "./cases/do_rpc.mjs";
 import entrypoint from "./cases/entrypoint.mjs";
+import rpcValues from "./cases/rpc_values.mjs";
 import socket from "./cases/socket.mjs";
 import email from "./cases/email.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, email]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, rpcValues, email]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };

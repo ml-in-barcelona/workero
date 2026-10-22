@@ -40,6 +40,21 @@ val transaction_sync : t -> (unit -> 'a) -> 'a
 `transaction_sync storage f` runs `f` in a transaction and returns its result. If `f` raises, every write of `f` to storage and to SQL is rolled back and the same exception reaches the caller. `f` cannot suspend: a call to [`Promise.await`](./Workero-Promise.md#val-await) in it raises `Invalid_argument`.
 
 ```ocaml
+type transaction
+```
+The handle of a running [`transaction`](./#val-transaction).
+
+```ocaml
+val transaction : t -> (transaction -> 'a) -> 'a
+```
+`transaction storage f` runs `f` in a transaction and returns its result. Unlike [`transaction_sync`](./#val-transaction_sync), `f` may call [`Promise.await`](./Workero-Promise.md#val-await). Every write of `f` to storage and to SQL, made through `storage` or its [`sql`](./#val-sql), commits when `f` returns. If `f` raises, those writes are rolled back and the same exception reaches the caller. Calls to `transaction` in `f` nest: a nested transaction that raises rolls back alone. Suspends.
+
+```ocaml
+val rollback : transaction -> unit
+```
+Rolls back the writes of the transaction so far and lets `f` go on running: writes after `rollback` are not part of the transaction, so raise to stop instead when they must not happen. Raises [`Js_error`](./Workero.md#exception-Js_error) when the transaction has ended.
+
+```ocaml
 val delete_all : t -> unit
 ```
 Deletes every key-value pair. It does not delete an alarm. Suspends.

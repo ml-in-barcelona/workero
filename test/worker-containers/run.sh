@@ -45,7 +45,7 @@ cp test/worker-containers/tests.mjs "$out/"
       echo "        (name = \"$f\", wasm = embed \"$f\"),"
     done
   echo '      ],'
-  echo '      bindings = [(name = "SANDBOX", durableObjectNamespace = "Sandbox")],'
+  echo '      bindings = [(name = "SANDBOX", durableObjectNamespace = "Sandbox"), (name = "SELF", service = "worker")],'
   echo "      durableObjectNamespaces = [(className = \"Sandbox\", uniqueKey = \"workero-test-Sandbox\", enableSql = true, container = (imageName = \"$app_image\"))],"
   echo '      durableObjectStorage = (localDisk = "do-disk"),'
   echo "      containerEngine = (localDocker = (socketPath = \"unix:/var/run/docker.sock\", containerEgressInterceptorImage = \"$proxy_image\")),"

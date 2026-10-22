@@ -1,6 +1,9 @@
 const cases = [
   ["a started container answers over its TCP port", "a/fetch", "running=true|hello-from-container\n"],
   ["running is true while the container runs", "a/fetch", "running=true|hello-from-container\n"],
+  ["raw TCP connect round-trips an HTTP request to the container port", "t/tcp", " 200 OK|hello-from-container\n"],
+  ["setInactivityTimeout is accepted and rejects 0", "o/timeout", "timeout=set|invalid|hello-from-container\n"],
+  ["outbound HTTP of the container reaches the Worker through the interceptor", "i/intercept", "intercepted:/hi"],
   ["destroy stops the container", "a/destroy", "running=false"],
   ["monitor returns when the program exits", "m/monitor", "exited"],
   ["signal reaches the main process", "s/signal", "stopped"],

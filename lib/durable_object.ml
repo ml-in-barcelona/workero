@@ -106,6 +106,20 @@ module Storage = struct
          [| Js.Unsafe.inject (Js.wrap_callback work) |]);
     Option.get !result
 
+  type transaction = js
+
+  let transaction t f =
+    let result = ref None in
+    let work =
+      Async.promising (fun (txn : js) : js ->
+          Async.run (fun () ->
+              result := Some (f txn);
+              undefined))
+    in
+    Binding.call ~decode:Decode.unit t "transaction" [| work |];
+    Option.get !result
+
+  let rollback txn = ignore (Binding.invoke txn "rollback" [||])
   let delete_all t = Binding.call ~decode:Decode.unit t "deleteAll" [||]
   let sync t = Binding.call ~decode:Decode.unit t "sync" [||]
   let get_alarm t = Binding.call_opt ~decode:Decode.float t "getAlarm" [||]
@@ -178,6 +192,45 @@ module Container = struct
       (Binding.invoke t "getTcpPort"
          [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |])
 
+  let connect t ~port =
+    if port < 1 || port > 65535 then
+      invalid_arg
+        (Printf.sprintf
+           "Workero.Durable_object.Container.connect: port %d is outside 1 to \
+            65535"
+           port);
+    let tcp =
+      Binding.invoke t "getTcpPort"
+        [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |]
+    in
+    Socket.of_js
+      (Binding.invoke tcp "connect"
+         [| str (Printf.sprintf "10.0.0.1:%d" port) |])
+
+  let max_inactivity_timeout_ms = 21_600_000
+
+  let set_inactivity_timeout t ~ms =
+    if ms < 1 || ms > max_inactivity_timeout_ms then
+      invalid_arg
+        (Printf.sprintf
+           "Workero.Durable_object.Container.set_inactivity_timeout: %d ms is \
+            outside 1 to %d"
+           ms max_inactivity_timeout_ms);
+    Binding.call ~decode:Decode.unit t "setInactivityTimeout"
+      [| Js.Unsafe.inject (Js.number_of_float (float_of_int ms)) |]
+
+  let intercept_outbound_http t address fetcher =
+    Binding.call ~decode:Decode.unit t "interceptOutboundHttp"
+      [| str address; Fetcher.to_js fetcher |]
+
+  let intercept_all_outbound_http t fetcher =
+    Binding.call ~decode:Decode.unit t "interceptAllOutboundHttp"
+      [| Fetcher.to_js fetcher |]
+
+  let intercept_outbound_https t address fetcher =
+    Binding.call ~decode:Decode.unit t "interceptOutboundHttps"
+      [| str address; Fetcher.to_js fetcher |]
+
   let of_js (v : js) : t = v
   let to_js (t : t) : js = t
 end
@@ -242,7 +295,7 @@ type t = {
   websocket_close :
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) option;
   websocket_error : (Websocket.t -> string -> unit) option;
-  rpc : (string -> Jsonkit.t list -> Jsonkit.t) option;
+  rpc : (string -> Rpc.t list -> Rpc.t) option;
 }
 
 let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
@@ -256,8 +309,6 @@ let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
     websocket_error;
     rpc;
   }
-
-let json_of_js v = if typeof v = "undefined" then `Null else Json_js.of_js v
 
 let alarm_info_of_js info =
   if typeof info <> "object" || is_nullish info then
@@ -338,8 +389,8 @@ let handlers_js t =
            (fun rpc name args : js ->
              Async.run (fun () ->
                  flushing (fun () ->
-                     let args = List.map json_of_js (Decode.(list js) args) in
-                     Json_js.to_js (rpc (Decode.string name) args))))
+                     let args = List.map Rpc.of_js (Decode.(list js) args) in
+                     Rpc.to_js (rpc (Decode.string name) args))))
            t.rpc);
     ]
   in
@@ -453,12 +504,4 @@ module Namespace = struct
     get ?location_hint ns (id_from_name ns name)
 end
 
-let call stub name args =
-  let stub = Fetcher.to_js stub in
-  let args =
-    Js.Unsafe.inject (Js.array (Array.of_list (List.map Json_js.to_js args)))
-  in
-  Promise.await
-    (Promise.of_js ~decode:json_of_js
-       (Binding.invoke (global "Reflect") "apply"
-          [| Js.Unsafe.get stub name; stub; args |]))
+let call = Rpc.call

@@ -43,11 +43,10 @@ let is_method_name name = is_identifier name && not (List.mem name reserved)
 
 type t = {
   fetch : (Request.t -> Response.t) option;
-  rpc : (string -> Jsonkit.t list -> Jsonkit.t) option;
+  rpc : (string -> Rpc.t list -> Rpc.t) option;
 }
 
 let make ?fetch ?rpc () = { fetch; rpc }
-let json_of_js v = if typeof v = "undefined" then `Null else Json_js.of_js v
 
 let handlers_js t =
   let field name f = Option.map (fun f -> (name, Async.promising (f : _))) f in
@@ -65,8 +64,8 @@ let handlers_js t =
            (fun rpc name args : js ->
              Async.run (fun () ->
                  flushing (fun () ->
-                     let args = List.map json_of_js (Decode.(list js) args) in
-                     Json_js.to_js (rpc (Decode.string name) args))))
+                     let args = List.map Rpc.of_js (Decode.(list js) args) in
+                     Rpc.to_js (rpc (Decode.string name) args))))
            t.rpc);
     ]
   in
@@ -111,4 +110,4 @@ let register ?(rpc = []) name create =
     (Js.Unsafe.inject (Js.array (Array.of_list (List.map str rpc))));
   Js.Unsafe.set (classes ()) name factory
 
-let call = Durable_object.call
+let call = Rpc.call

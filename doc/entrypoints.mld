@@ -35,8 +35,10 @@ handler. The [rpc] handler of {!Workero.Entrypoint.make} gets the method name
 and the arguments, like the [rpc] handler of a Durable Object. A call to a
 declared name on a class whose handlers have no [rpc] fails with an error.
 
-The handler gets the arguments of the call as a list of JSON values and returns
-one JSON value. It runs in its own fiber and may call {!Workero.Promise.await},
+The handler gets the arguments of the call as a list of {!Workero.Rpc.t} values
+and returns one. They are JSON values and also bytes, dates, big integers, maps,
+sets, streams, stubs and functions; see
+{{!page-durable_objects}Durable Objects}. It runs in its own fiber and may call {!Workero.Promise.await},
 {!Workero.fetch} and the other bindings. An exception that the handler raises
 rejects the call. The caller sees an [Error] whose message is the exception.
 
@@ -86,10 +88,8 @@ fails with an error.
 
 {1 Limits}
 
-- Arguments and results are JSON values. RPC also accepts [Uint8Array], [Date],
-  [Map], [BigInt], streams and stubs, but {!Workero.Entrypoint.call} and the
-  handlers do not. A result with no JSON form raises [Invalid_argument]. A
-  result of [undefined] is [`Null].
+- A value with no {!Workero.Rpc.t} form, such as an [Error], raises
+  [Invalid_argument]. A result of [undefined] is [`Undefined].
 - The [scheduled], [queue], [email] and [tail] handlers of a
   class are not supported.
 - A class cannot share its name with a Durable Object class, and the method

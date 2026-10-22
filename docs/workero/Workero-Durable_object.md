@@ -50,11 +50,11 @@ val make :
   ?websocket_close:
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
   ?websocket_error:(Websocket.t -> string -> unit) ->
-  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
+  ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   unit ->
   t
 ```
-`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. The `websocket_*` handlers get the events of sockets accepted with [`State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket); `websocket_error` gets the error message. `rpc` answers the calls of the methods that [`register`](./#val-register) declared: `rpc name args` gets the method name and the arguments as JSON, and returns the result as JSON. See [`register`](./#val-register). Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
+`make ()` gives an object that handles no event. `init` runs under `blockConcurrencyWhile` before the first event, each time the object is created, and may call [`Promise.await`](./Workero-Promise.md#val-await); if it raises, the runtime resets the object. `fetch` answers the requests that a stub sends. `alarm` runs when the alarm is due; an exception makes the runtime retry it. The `websocket_*` handlers get the events of sockets accepted with [`State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket); `websocket_error` gets the error message. `rpc` answers the calls of the methods that [`register`](./#val-register) declared: `rpc name args` gets the method name and the arguments as [`Rpc.t`](./Workero-Rpc.md#type-t) values, and returns the result as one. See [`register`](./#val-register). Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). A stub fetch on an object without a `fetch` handler fails.
 
 ```ocaml
 val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
@@ -68,9 +68,9 @@ val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 Raises `Invalid_argument` when `class_name` is empty, starts with a digit, has a character other than an ASCII letter, a digit, `"_"` or `"$"`, is `"default"`, `"then"` or `"__proto__"`, or is already registered. Reserved words such as `"class"` are accepted: the generated module exports the class under that name without declaring a variable of it. It also raises `Invalid_argument` for an invalid or repeated name in `rpc`.
 
 ```ocaml
-val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 ```
-`call stub name args` calls the RPC method `name` of the object that `stub` reaches, with `args`, and waits for the result. Arguments and result are JSON, converted like [`Storage`](./Workero-Durable_object-Storage.md) values: a JavaScript `undefined` result reads as ``Null`, and a value that `JSON.stringify` rejects raises `Invalid_argument`. The runtime creates the object on the first call. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the method is missing or when it raises or rejects; the error message is that of the remote exception.
+`call stub name args` calls the RPC method `name` of the object that `stub` reaches, with `args`, and waits for the result. It is [`Rpc.call`](./Workero-Rpc.md#val-call): arguments and result are [`Rpc.t`](./Workero-Rpc.md#type-t) values, so `Date`, `Map`, bytes, streams, stubs and functions cross the call, and a JavaScript `undefined` result reads as ``Undefined`. The runtime creates the object on the first call. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the method is missing or when it raises or rejects; the error message is that of the remote exception. Raises `Invalid_argument` when an argument or the result has no [`Rpc.t`](./Workero-Rpc.md#type-t) form.
 
 ```ocaml
 module Namespace : sig ... end

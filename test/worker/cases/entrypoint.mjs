@@ -15,10 +15,11 @@ const ocamlCases = [
   { name: "Entrypoint.call: a missing method raises Js_error", request: call("nope", []), status: 502, bodyIncludes: "nope" },
   { name: "Entrypoint.call: a handler rejects wrong arguments", request: call("add", ["a", 1]), status: 502, bodyIncludes: "expected an int" },
   { name: "Entrypoint.call: the handler gets the ctx and may call wait_until", request: call("background", []), status: 200, body: '"scheduled"' },
-  { name: "Entrypoint.call: a JavaScript method that returns undefined gives null", request: call("nothing", [], "JSRPC"), status: 200, body: "null" },
+  { name: "Entrypoint.call: a JavaScript method that returns undefined gives `Undefined", request: call("nothing", [], "JSRPC"), status: 200, body: "undefined" },
   { name: "Entrypoint.call: a JavaScript method returns an object", request: call("object", [], "JSRPC"), status: 200, body: '{"a":[1,2],"b":null}' },
   { name: "Entrypoint.call: an asynchronous JavaScript method is awaited", request: call("delayed", [[1, "x"]], "JSRPC"), status: 200, body: '[1,"x"]' },
-  { name: "Entrypoint.call: a result with no JSON form raises Invalid_argument", request: call("big", [], "JSRPC"), status: 200, bodyIncludes: "Invalid_argument Workero.JSON.of_js" },
+  { name: "Entrypoint.call: a bigint result is read", request: call("big", [], "JSRPC"), status: 200, body: "bigint 10" },
+  { name: "Entrypoint.call: a result with no Rpc.t form raises Invalid_argument", request: call("typed", [], "JSRPC"), status: 200, bodyIncludes: "Invalid_argument Workero.Rpc.of_js" },
   { name: "Entrypoint.call: a class named like a reserved word works", request: call("ping", [], "CLASSEP"), status: 200, body: '"pong"' },
 ];
 

@@ -44,6 +44,7 @@ module Socket = Socket
 module Rate_limiter = Rate_limiter
 module Ai = Ai
 module Analytics_engine = Analytics_engine
+module Rpc = Rpc
 module Durable_object = Durable_object
 module Entrypoint = Entrypoint
 

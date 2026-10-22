@@ -118,7 +118,7 @@ let () =
           | _ -> invalid_arg ("bad call to " ^ name))
         ())
 ```
-The names must be known before any object exists, because `workero build` adds them to the exported class. `rpc` receives the name and the arguments as `Jsonkit.t`, and returns the result as JSON. A JavaScript caller sees a promise for the result: `await stub.add(1, 2)`. An exception in the handler rejects the call with its message. A handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
+The names must be known before any object exists, because `workero build` adds them to the exported class. `rpc` receives the name and the arguments as [`Workero.Rpc.t`](./Workero-Rpc.md#type-t), and returns one. A JavaScript caller sees a promise for the result: `await stub.add(1, 2)`. An exception in the handler rejects the call with its message. A handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
 
 OCaml code calls a method with [`Workero.Durable_object.call`](./Workero-Durable_object.md#val-call):
 
@@ -128,7 +128,34 @@ match Durable_object.call stub "add" [ `Int 1; `Int 2 ] with
 | `Int n -> n
 | _ -> failwith "unexpected result"
 ```
-A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error). Arguments and results are JSON: values that JSON cannot carry, such as `Date`, `Map`, `BigInt`, streams and other stubs, are not supported. A JavaScript `undefined` argument or result becomes ``Null`.
+A call to a missing method, or to a method that raises, raises [`Workero.Js_error`](./Workero.md#exception-Js_error).
+
+
+### Values
+
+Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t): the JSON constructors (``Null`, ``Bool`, ``Int`, ``Float`, ``String`, ``List`, ``Assoc`) and the other values that RPC carries, in both directions and at any depth:
+
+- ``Undefined` is `undefined`; ``Null` is `null`.
+- ``Bytes` is a `Uint8Array`. A JavaScript `ArrayBuffer` arrives as ``Bytes`.
+- ``Date` holds milliseconds since the epoch.
+- ``Bigint` holds decimal digits, so it has no size limit.
+- ``Map` and ``Set` keep their order.
+- ``Stream` is a [`Workero.Stream.t`](./Workero-Stream.md#type-t). The receiver consumes it.
+- ``Stub` is a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t): a service binding or a Durable Object stub.
+- ``Function` is a function. The callee can call it while the call runs. A function in a result stays callable through its stub.
+```ocaml
+match
+  Durable_object.call stub "touch"
+    [ `Date (Date.now ()); `Bytes "\000\001"; `Map [ (`String "k", `Set [ `Int 1 ]) ] ]
+with
+| `Date at -> at
+| _ -> failwith "unexpected result"
+```
+A handler written for JSON keeps working, because ``Int`, ``String` and the other JSON constructors are the same. [`Workero.Rpc.of_json`](./Workero-Rpc.md#val-of_json) and [`Workero.Rpc.to_json`](./Workero-Rpc.md#val-to_json) convert a `Jsonkit.t`. A call that used to give ``Null` for a JavaScript `undefined` now gives ``Undefined`.
+
+[`Workero.Rpc.value`](./Workero-Rpc.md#type-value) is the subset without ``Stream`, ``Stub` and ``Function`: the values that `structuredClone` copies. `(v :> Workero.Rpc.t)` converts a value, and [`Workero.Rpc.to_value`](./Workero-Rpc.md#val-to_value) converts back.
+
+An `Error`, a typed array other than `Uint8Array`, a class instance and a `Symbol` have no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form. Reading one raises `Invalid_argument`.
 
 
 ## Use storage and IDs
@@ -173,8 +200,17 @@ let () = Workero.serve handler
 ```
 For this separate Worker, use the `main`, `build`, and `compatibility_date` settings above. Bind `VISITS` to `Visits` and declare `Visits` in `new_sqlite_classes` (or `exports.Visits` with `storage = "sqlite"`). With fresh local storage, two requests to the Worker return `1` and `2`. [`Workero.Durable_object.Sql.query`](./Workero-Durable_object-Sql.md#val-query) returns named rows as [`Workero.Sql_value.row`](./Workero-Sql_value.md#type-row); `Sql.run` returns the number of rows written, and parameters bind to `?` in order. Both calls are synchronous. An SQL error raises [`Workero.Js_error`](./Workero.md#exception-Js_error). `Sql.database_size` reports bytes used.
 
-`Storage.transaction_sync` commits writes to SQL and storage keys together. If its callback raises, the runtime rolls back both and re-raises the error. The callback cannot await: [`Workero.Promise.await`](./Workero-Promise.md#val-await) raises `Invalid_argument` there and rolls back. JavaScript's asynchronous storage transaction has no OCaml equivalent here. SQL numbers cross the JavaScript number boundary: `REAL` `2.0` can read as `Sql_value.Int 2L`, and integers outside ±`2^53` cannot round-trip exactly. See [`Workero.Sql_value`](./Workero-Sql_value.md).
+`Storage.transaction_sync` commits writes to SQL and storage keys together. If its callback raises, the runtime rolls back both and re-raises the error. The callback cannot await: [`Workero.Promise.await`](./Workero-Promise.md#val-await) raises `Invalid_argument` there and rolls back. SQL numbers cross the JavaScript number boundary: `REAL` `2.0` can read as `Sql_value.Int 2L`, and integers outside ±`2^53` cannot round-trip exactly. See [`Workero.Sql_value`](./Workero-Sql_value.md).
 
+`Storage.transaction` does the same for a callback that awaits. The callback receives the transaction; writes through `storage` and its SQL handle belong to it. `Storage.rollback txn` undoes the writes so far, and the callback goes on running: later writes commit, so raise to stop. A nested `transaction` that raises rolls back alone.
+
+```ocaml
+let two_steps storage =
+  Workero.Durable_object.Storage.transaction storage (fun _txn ->
+      Workero.Durable_object.Storage.put storage "step" (`Int 1);
+      Workero.Promise.await (Workero.Timer.sleep 10);
+      Workero.Durable_object.Storage.put storage "step" (`Int 2))
+```
 
 ## Handle hibernatable WebSockets
 
@@ -258,8 +294,22 @@ let () =
           Fetcher.fetch port "http://container/")
         ())
 ```
-The program in the container needs time to listen on its port. Until then `Fetcher.fetch` raises [`Workero.Js_error`](./Workero.md#exception-Js_error): retry. [`Workero.Durable_object.Container.monitor`](./Workero-Durable_object-Container.md#val-monitor) waits until the container exits, [`Workero.Durable_object.Container.signal`](./Workero-Durable_object-Container.md#val-signal) sends a Unix signal, and [`Workero.Durable_object.Container.destroy`](./Workero-Durable_object-Container.md#val-destroy) stops it.
+The program in the container needs time to listen on its port. Until then `Fetcher.fetch` raises [`Workero.Js_error`](./Workero.md#exception-Js_error): retry. [`Workero.Durable_object.Container.monitor`](./Workero-Durable_object-Container.md#val-monitor) waits until the container exits, [`Workero.Durable_object.Container.signal`](./Workero-Durable_object-Container.md#val-signal) sends a Unix signal, and [`Workero.Durable_object.Container.destroy`](./Workero-Durable_object-Container.md#val-destroy) stops it. [`Workero.Durable_object.Container.set_inactivity_timeout`](./Workero-Durable_object-Container.md#val-set_inactivity_timeout) sets how long the container may stay idle, up to 6 hours.
 
+[`Workero.Durable_object.Container.connect`](./Workero-Durable_object-Container.md#val-connect) opens a raw TCP connection to a port and gives a [`Workero.Socket.t`](./Workero-Socket.md#type-t):
+
+```ocaml
+let socket = Durable_object.Container.connect container ~port:9000 in
+Socket.opened socket;
+Stream.Writer.write (Socket.writer socket) "ping";
+let reply = Stream.Reader.read (Socket.reader socket)
+```
+The `intercept_outbound_http`, `intercept_all_outbound_http` and `intercept_outbound_https` functions of [`Workero.Durable_object.Container`](./Workero-Durable_object-Container.md) send the outbound requests of the container to a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t), for example a service binding to the Worker. The target sees the original URL:
+
+```ocaml
+Durable_object.Container.intercept_outbound_http container "api.example.com"
+  (Fetcher.of_env env "SELF")
+```
 To run a container in `workerd`, give the namespace a `container` with an image, and give the config a `containerEngine` that uses the local Docker daemon:
 
 ```capnp
