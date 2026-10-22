@@ -1,16 +1,14 @@
 # workero
 
-Write Cloudflare Workers in OCaml. workero compiles an OCaml 5 program to
-WebAssembly with wasm_of_ocaml and packages it for Wrangler.
+Write Cloudflare Workers in OCaml. workero compiles OCaml to WebAssembly with
+wasm_of_ocaml and packages the result for Wrangler. Handlers run in direct style:
+`Workero.fetch` waits for a response while other requests can run.
 
-Handlers run in direct style. Calls such as `Workero.fetch` wait for their
-result while the runtime handles other requests.
+## Start a Worker
 
-## Start a worker
-
-You need [opam](https://opam.ocaml.org/doc/Install.html) with an active OCaml
-5.4 or later switch, [Git](https://git-scm.com/), and Node.js 22 or later with
-npm. Run these commands from a directory outside any Dune project:
+You need an active opam switch with OCaml 5.4 or later, Git, and Node.js 22 or
+later with npm. The `workero` package is not yet available from the opam package
+index. Run these commands from a directory outside any Dune project:
 
 ```sh
 eval "$(opam env)"
@@ -22,10 +20,10 @@ npm install
 npx wrangler dev
 ```
 
-The source pin installs the library and `workero` CLI. The package is not yet
-available from the opam package index. `npm install` provides Wrangler and
-binaryen's `wasm-opt`. Wrangler builds the worker and prints its local URL,
-usually `http://127.0.0.1:8787`. In another terminal, run:
+The source pin installs the library and CLI. `npm install` installs Wrangler,
+workerd, and binaryen's `wasm-opt`. The CLI uses workerd to check initialization
+and discover Durable Object classes. Wrangler prints the local URL, usually
+`http://127.0.0.1:8787`. In another terminal, run:
 
 ```sh
 curl http://127.0.0.1:8787/
@@ -33,7 +31,7 @@ curl http://127.0.0.1:8787/
 
 Expected response: `Hello from OCaml on Cloudflare Workers`.
 
-The handler in `my-worker/src/main.ml` can respond to requests directly:
+The handler in `my-worker/src/main.ml` reads a request and returns a response:
 
 ```ocaml
 let handler req _env _ctx =
@@ -44,14 +42,14 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ```
 
-Read the [getting started guide](https://ml-in-barcelona.github.io/workero/workero/getting_started.html)
-to edit and deploy the worker. See the [template guide](https://ml-in-barcelona.github.io/workero/workero/template.html),
-[runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html),
-[bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html),
-[CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html), and
-[contribution guide](CONTRIBUTING.md) for more detail.
+Follow [Getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html)
+to edit the template and run it locally. The [Runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html)
+and [Bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html)
+guides cover requests, JSON, routing, scheduled handlers, Queues, Durable
+Objects, SQL, and hibernating WebSockets. See the [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html)
+for packaging and [CONTRIBUTING.md](CONTRIBUTING.md) for repository work.
 
-## Examples
+## Demos
 
 - [Basic Worker](examples/basic/) ([demo](https://workero-example-basic.davesnx.workers.dev)): runtime and isolate information.
 - [Runtime limits](examples/limits/) ([demo](https://workero-example-limits.davesnx.workers.dev)): CPU and memory experiments.

@@ -110,8 +110,15 @@ parameter:
 - [Text of string]
 - [Blob of string], raw bytes
 
-D1 carries numbers as JavaScript numbers. An [Int] is exact only within
-±2{^53}; {!Workero.Sql_value.to_js} raises [Invalid_argument] outside that
-range before SQL runs. An integer-valued float reads back as [Int], and a
-number with a fractional part reads back as [Float]. See {!Workero.Sql_value}
-and {{:https://developers.cloudflare.com/d1/worker-api/}Cloudflare D1 Worker API}.
+{2 Numeric precision}
+
+D1 carries numbers as JavaScript numbers. [Int] parameters must be within
+±[2^53]; {!Workero.Sql_value.to_js} raises [Invalid_argument] outside that
+range before SQL runs.
+
+A read cannot distinguish an [INTEGER] column from a [REAL] column. Numbers
+without a fractional part within ±[2^53] read as [Int], so a [REAL] value of
+[2.0] reads as [Int 2L]. Other numbers read as [Float]. An [INTEGER] beyond
+[2^53] reaches OCaml already rounded by the runtime, not as an exact [int64].
+See {!Workero.Sql_value} and the
+{{:https://developers.cloudflare.com/d1/worker-api/}Cloudflare D1 Worker API}.

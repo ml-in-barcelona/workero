@@ -52,8 +52,11 @@ With an explicit root (`--root`, `DUNE_ROOT`, `--release`, `-p`, or `--for-relea
 2. Removes the `*.wasm.assets` directories that earlier runs left in the output directory, so a second run leaves one set of `.wasm` files.
 3. Copies the wasm\_of\_ocaml loader (`<name>.bc.wasm.js`) and its `<name>.bc.wasm.assets` directory into the output directory.
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
-5. Writes `index.js`, the worker entry point. It imports every `.wasm` file and exports the handlers that the program registered with [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) and [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled).
-On success it prints `workero: wrote <dir> (<n> wasm file(s))`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, are not wrapped by that error handler.
+5. Writes an initial `index.js` and runs the program once in `workerd test` to read class names registered at module initialization with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register). The probe runs for at most 30 seconds by default. Set `WORKERO_PROBE_TIMEOUT` to a positive number of seconds to change it; absent, invalid and nonpositive values use 30 seconds. The probe does not call a fetch, scheduled or queue handler.
+6. Writes the final `index.js`. It imports every `.wasm` file, exports the registered [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue) handlers through its default export, and adds named exports for registered Durable Object classes. If classes exist, it writes `durable-object.js` for their initialization, fetch, alarm, and WebSocket event handlers. It removes a stale `durable-object.js` when no classes are registered.
+On success it prints `workero: wrote <dir> (<n> wasm file(s))` and, if classes were found, `workero: Durable Object classes: <names>`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, are not wrapped by that error handler.
+
+A build with no registered fetch, scheduled, queue or Durable Object handler can complete, but its generated worker fails to load with `registered no handler`. Register at least one handler at module initialization.
 
 
 ## Errors
@@ -64,6 +67,10 @@ On success it prints `workero: wrote <dir> (<n> wasm file(s))`. Its explicit usa
 - `dune build` fails (`workero build` only),
 - dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
 - the target is outside the dune root (`workero build` only),
+- `workerd` cannot be found on `PATH`, through `WORKERD` or in a parent `node_modules/.bin` directory. If `WORKERD` is set to a nonempty value, it takes precedence; a name without a slash is looked up on `PATH`, while a path is checked directly,
+- the program fails during initialization in `workerd`. Its `workerd` output is printed before `workero: the program failed to initialise in workerd`,
+- initialization takes longer than `WORKERO_PROBE_TIMEOUT` (30 seconds by default). `workero` kills the probe and prints its output and the timeout,
+- `workerd` exits successfully but does not report registered class names,
 - the program uses OCaml functions that have no wasm implementation. The message is `workero: <name> uses functions with no wasm implementation: <list>`. They fail at run time if called. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, drop the library that needs them, or pass `--allow-missing-primitives` if they are never called.
 The check also works for programs built with `--pretty` in `wasm_of_ocaml` `flags`.
 

@@ -6,8 +6,8 @@ type t
 
 val of_env : Env.t -> string -> t
 (** [of_env env name] looks up the database bound as [name]. It does not
-    suspend. Raises [Invalid_argument] if the binding is missing, is not a D1
-    object, or lacks a required method. The error names the binding. *)
+    suspend. Raises [Invalid_argument] if the binding is missing, is not an
+    object, or lacks [prepare]. The error names the binding. *)
 
 type value = Sql_value.t =
   | Null
@@ -16,7 +16,7 @@ type value = Sql_value.t =
   | Text of string
   | Blob of string
       (** An SQL value. {!Sql_value} describes the number limits: an [Int] is
-          exact within ±2{^ 53} only. *)
+          exact within ±[2^53] only. *)
 
 type row = Sql_value.row
 (** The columns of a row in result order, with their names. *)

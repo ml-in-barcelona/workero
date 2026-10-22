@@ -1,20 +1,20 @@
 
 # Getting started
 
-Build a Cloudflare Worker in OCaml, run it locally, change its response, and deploy it. This guide starts outside the workero repository.
+Build a Cloudflare Worker in OCaml, run it locally, then change its response. Start outside the workero source checkout so Dune treats your Worker as its own project. Deployment is optional and needs a Cloudflare account.
 
 
 ## Prerequisites
 
-- [opam](https://opam.ocaml.org/doc/Install.html) with an active OCaml 5\.4 or later switch. The source package requires Dune 3\.24 or later, `js_of_ocaml` and `wasm_of_ocaml-compiler` 6\.4.1 or later and below 6\.5, and `jsonkit` 1\.1 or later and below 2\. The source installation below lets opam resolve these dependencies.
-- [Git](https://git-scm.com/) to clone the source.
-- [Node.js](https://nodejs.org/) 22 or later with npm. The template installs Wrangler 4\.151.3 and binaryen 132 with `npm install`. binaryen supplies `wasm-opt`, which wasm\_of\_ocaml needs on `PATH`.
-There is no published `workero` package on the opam package index yet. Install it from this repository instead. You need a Cloudflare account only for the deployment step.
+- [opam](https://opam.ocaml.org/doc/Install.html) with an active OCaml 5\.4 or later switch. The source package requires Dune 3\.24 or later, `js_of_ocaml` and `wasm_of_ocaml-compiler` 6\.4.1 or later and below 6\.5, and `jsonkit` 1\.1 or later and below 2\. opam resolves these dependencies.
+- Git to clone workero.
+- Node.js 22 or later with npm to install Wrangler and binaryen. binaryen supplies `wasm-opt`, which wasm\_of\_ocaml needs on `PATH`.
+The `workero` package is not yet available from the opam package index. Install it from source instead.
 
 
 ## 1\. Create a project
 
-From a directory outside any Dune project, clone workero, install its package into your active opam switch, and copy its template into a sibling directory:
+From a directory outside any Dune project, clone workero and install its package into your active switch. Copy the template into a sibling directory:
 
 ```sh
 eval "$(opam env)"
@@ -24,9 +24,7 @@ cp -R workero-source/template my-worker
 cd my-worker
 npm install
 ```
-The `opam pin add` command installs the `workero` library and CLI from the clone. `npm install` installs Wrangler and binaryen in `node_modules`. Keep `my-worker` outside `workero-source` because Dune selects an outer project root when projects are nested.
-
-The new project contains `dune-project`, `src/dune`, `src/main.ml`, `wrangler.toml`, and `package.json`. See [The project template](./template.md) for each file's role.
+The pin installs the `workero` library and CLI. `npm install` installs Wrangler and binaryen in `node_modules`. Keep `my-worker` outside `workero-source` so Dune does not select the source checkout as the project root. See [The project template](./template.md) for the files in your copy.
 
 
 ## 2\. Run locally
@@ -36,44 +34,37 @@ Start Wrangler from `my-worker`:
 ```sh
 npx wrangler dev
 ```
-Wrangler runs `workero build src/main.bc.wasm.js`, writes the packaged Worker to `_worker/`, and starts a local server. Look for its URL in the output, usually `http://127.0.0.1:8787`. You do not need to log in to run locally. Leave the server running and use a second terminal for these requests:
+Wrangler runs `workero build src/main.bc.wasm.js`, packages the Worker in `_worker/`, and prints a local URL, usually `http://127.0.0.1:8787`. Leave the server running. In another terminal, request the template's routes:
 
 ```sh
 curl http://127.0.0.1:8787/
 curl -d ping http://127.0.0.1:8787/echo
 curl http://127.0.0.1:8787/env
 ```
-The first response is `Hello from OCaml on Cloudflare Workers`, the second is `ping`, and the third is `hello from vars`. The `GREETING` value comes from `[vars]` in `wrangler.toml`.
+Expect `Hello from OCaml on Cloudflare Workers`, `ping`, and `hello from vars`, in that order. The third value comes from `[vars]` in `wrangler.toml`. Local development does not require Cloudflare login.
 
 
-## 3\. Write a response
+## 3\. Change the home page
 
-Replace `src/main.ml` with this handler. It retains the existing routes and changes the home page response:
+Open `src/main.ml` and change the `GET, "/"` branch to:
 
 ```ocaml
-let handler req env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "Hello from my worker\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | GET, "/env" ->
-      Response.text
-        (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:`Not_Found "not found\n"
-
-let () = Workero.serve handler
+| GET, "/" -> Response.text "Hello from my worker\n"
 ```
-Wrangler watches `src/` and rebuilds after you save. Run `curl http://127.0.0.1:8787/` again. The response is now `Hello from my worker`. [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) registers the handler; [Runtime APIs](./runtime_apis.md) lists the available request, response, and network functions. [Bindings](./bindings.md) covers configuration and resources.
+Wrangler watches `src/` and rebuilds after you save. Request the root path again:
+
+```sh
+curl http://127.0.0.1:8787/
+```
+Expect `Hello from my worker`. The template registers the handler with [`Workero.serve`](./Workero.md#val-serve). Continue with [Runtime APIs](./runtime_apis.md) for HTTP, JSON, and handlers, or [Bindings](./bindings.md) for Cloudflare resources.
 
 
-## 4\. Deploy
+## 4\. Deploy (optional)
 
-Create a [Cloudflare account](https://dash.cloudflare.com/sign-up) if you do not have one. From `my-worker`, authenticate Wrangler, then deploy:
+If you have a Cloudflare account and want a public Worker, authenticate and deploy from `my-worker`:
 
 ```sh
 npx wrangler login
 npx wrangler deploy
 ```
-The login command opens a browser for authentication. Wrangler builds and uploads the Worker, then prints its public URL, usually `https://workero-demo-template.<your-subdomain>.workers.dev`. Open that URL or request it with `curl` to see `Hello from my worker`. Your first deployment may ask you to set up a `workers.dev` subdomain. Unlike local development, deployment needs account authentication.
-
-Next, read [Handlers](./handlers.md), [Variables and secrets](./env.md), and [The workero CLI](./cli.md).
+Wrangler prints the public URL. It may ask you to set up a `workers.dev` subdomain on your first deployment. Request that URL to see `Hello from my worker`. See [CLI](./cli.md) for packaging details.

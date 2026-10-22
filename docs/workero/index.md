@@ -8,22 +8,18 @@ Handlers run in direct style. Calls such as `Workero.fetch` wait for their resul
 
 ## Get started
 
-- [Get started](./getting_started.md): create a Worker, run it locally, and deploy it.
-- [Starter project](./template.md): files, build configuration, and example routes.
+- [Getting started](./getting_started.md): create a Worker, run it locally, and deploy it.
+- [The project template](./template.md): files, build configuration, and example routes.
 
 ## Runtime APIs
 
-Use [runtime APIs](./runtime_apis.md) to handle HTTP requests, make outgoing requests, stream data, and run background work.
+Use [Runtime APIs](./runtime_apis.md) to register handlers, route HTTP requests, return responses, stream data, and run background work.
 
 
 ## Bindings
 
-[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument.
+[Bindings](./bindings.md) expose configuration and Cloudflare resources through your handler's `env` argument. Use them for storage, Durable Objects, Queues, other Workers, static assets, AI, analytics, and rate limiting.
 
-- [Variables and secrets](./env.md).
-- [Workers KV](./kv.md).
-- [R2](./r2.md).
-- [D1](./d1.md).
 
 ## Development and deployment
 
@@ -36,7 +32,7 @@ Use [runtime APIs](./runtime_apis.md) to handle HTTP requests, make outgoing req
 ## Advanced
 
 - [How Workero works](./how_it_works.md): compilation, effects, and the JavaScript entry point.
-- [JavaScript interop](./interop.md): call APIs that Workero does not wrap.
+- [JavaScript interop](./interop.md): call APIs without a typed Workero wrapper.
 
 ## OCaml API reference
 

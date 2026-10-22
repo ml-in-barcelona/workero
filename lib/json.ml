@@ -33,3 +33,6 @@ let decode of_json req =
       | value -> Ok value
       | exception Jsonkit.Of_json_error e ->
           Error (Jsonkit.of_json_error_to_string e))
+
+let of_js = Json_js.of_js
+let to_js = Json_js.to_js

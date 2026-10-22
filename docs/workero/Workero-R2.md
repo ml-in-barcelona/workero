@@ -1,7 +1,7 @@
 
 # Module `Workero.R2`
 
-Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
+Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
 
 ```ocaml
 type t
@@ -9,7 +9,7 @@ type t
 ```ocaml
 val of_env : Env.t -> string -> t
 ```
-`of_env env name` looks up the bucket bound as `name`. It does not suspend. Raises `Invalid_argument` if the binding is missing, is not an R2 object, or lacks a required method. The error names the binding.
+`of_env env name` looks up the bucket bound as `name`. It does not suspend. Raises `Invalid_argument` if the binding is missing, is not an object, or lacks `get`, `put`, `head`, or `delete`. The error names the binding.
 
 ```ocaml
 val get : t -> string -> string option

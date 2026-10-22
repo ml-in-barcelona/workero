@@ -1,7 +1,7 @@
 
 # WebSockets
 
-Use [`Workero.Websocket.upgrade`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-upgrade) to accept a WebSocket connection and echo messages. Return a normal response for requests without `Upgrade: websocket`.
+Use [`Workero.Websocket.upgrade`](./Workero-Websocket.md#val-upgrade) to accept a WebSocket connection and echo messages. Return a normal response for requests without `Upgrade: websocket`.
 
 ```ocaml
 let handler req _env ctx =
@@ -34,30 +34,35 @@ ws.onopen = () => ws.send("hello");
 ```
 The console prints `echo: hello`. A normal `curl -i http://localhost:8787/` request gets status 426\. See the [Cloudflare WebSocket example](https://developers.cloudflare.com/workers/examples/websockets/) for the platform handshake and lifecycle.
 
-[`Workero.Websocket.upgrade`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-upgrade) starts your function in its own fiber through [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until). Synchronous work before the first suspension can delay the `101` response.
+[`Workero.Websocket.upgrade`](./Workero-Websocket.md#val-upgrade) starts your function in its own fiber through [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). Synchronous work before the first suspension can delay the `101` response.
 
 - When your function returns, the socket closes with code 1000, if it is still open.
 - If your function raises, the socket closes with code 1011\. The error goes to `console.error`.
 
 ## Events
 
-[`Workero.Websocket.receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive) gives the next [`Workero.Websocket.event`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#type-event). It waits while no event is ready.
+[`Workero.Websocket.receive`](./Workero-Websocket.md#val-receive) gives the next [`Workero.Websocket.event`](./Workero-Websocket.md#type-event). It waits while no event is ready.
 
 - `Message (Text s)` and `Message (Binary b)`: a message. Binary data is a `string` of bytes.
-- `Close { code; reason; was_clean }`: the peer closed the connection. A second [`Workero.Websocket.receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive) gives the same `Close`.
+- `Close { code; reason; was_clean }`: the peer closed the connection. A second [`Workero.Websocket.receive`](./Workero-Websocket.md#val-receive) gives the same `Close`.
 - `Failed message`: the `error` event. A `Close` follows it.
-Events come in the order they arrived. The queue starts when [`Workero.Websocket.accept`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-accept) runs, so no message is lost between the accept and your first [`Workero.Websocket.receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive).
+Events come in the order they arrived. The queue starts when [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) runs, so no message is lost between the accept and your first [`Workero.Websocket.receive`](./Workero-Websocket.md#val-receive).
 
-Only one fiber may wait in [`Workero.Websocket.receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive). A second concurrent call raises `Invalid_argument`.
+Only one fiber may wait in [`Workero.Websocket.receive`](./Workero-Websocket.md#val-receive). A second concurrent call raises `Invalid_argument`.
 
-The loop can call [`Workero.fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) or [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) between messages. See [Async and background work](./async.md).
+The loop can call [`Workero.fetch`](./Workero.md#val-fetch) or [`Workero.Promise.await`](./Workero-Promise.md#val-await) between messages. See [Async and background work](./async.md).
 
 
 ## Send and close
 
-- [`Workero.Websocket.send`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-send) sends `Text s` or `Binary b`. It raises [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the socket is closed.
-- [`Workero.Websocket.close`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-close) closes with an optional `code` and `reason`.
+- [`Workero.Websocket.send`](./Workero-Websocket.md#val-send) sends `Text s` or `Binary b`. It raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the socket is closed.
+- [`Workero.Websocket.close`](./Workero-Websocket.md#val-close) closes with an optional `code` and `reason`.
 
 ## Without upgrade
 
-[`Workero.Websocket.upgrade`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-upgrade) is [`Workero.Websocket.pair`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-pair), [`Workero.Websocket.accept`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-accept) and [`Workero.Websocket.response`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-response) in one call. Use the parts to keep the `client` end, or to start the loop yourself.
+[`Workero.Websocket.upgrade`](./Workero-Websocket.md#val-upgrade) is [`Workero.Websocket.pair`](./Workero-Websocket.md#val-pair), [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) and [`Workero.Websocket.response`](./Workero-Websocket.md#val-response) in one call. Use the parts to keep the `client` end, or to start the loop yourself.
+
+
+## Durable Objects
+
+For connections that survive a Durable Object instance being evicted, use [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket) and the object's WebSocket handlers. See [Durable Objects](./durable_objects.md) for hibernation and per-connection attachments.

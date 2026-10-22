@@ -21,6 +21,18 @@ precompiled [WebAssembly.Module] and does not allow compiling wasm from bytes.
 - [index.js] imports every [.wasm] file, calls the loader, and exports the
   handlers that your program registered. See {{!page-handlers}Handlers}.
 
+[workero build] runs the program once in [workerd] to discover registered
+Durable Object classes. It then adds named class exports to [index.js] and
+uses [durable-object.js] to route object creation, fetch, alarm and hibernatable
+WebSocket events to the OCaml handlers. These names must be registered at
+module initialization. On each object creation, the JavaScript class calls
+the registered OCaml factory, installs the available event handlers and runs
+the optional [~init] handler under [blockConcurrencyWhile] before events.
+If the runtime evicts an object with hibernatable sockets, it creates the
+object again when a socket event arrives. In-memory state is lost; socket
+attachments can retain per-socket JSON state. See
+{{!page-durable_objects}Durable Objects}.
+
 The OCaml library reaches the runtime APIs ([Request], [Response], [fetch],
 bindings) through [Js_of_ocaml]. Workero converts between OCaml values and
 JavaScript objects. For APIs without a wrapper, see
@@ -38,8 +50,9 @@ the OCaml call as a continuation. It attaches callbacks to the Promise and
 returns control to the JavaScript event loop, so other requests can progress.
 On fulfillment, a callback resumes the continuation with the value. On
 rejection, it resumes by raising the error. The handler can suspend again.
-When the handler returns a {!Workero.Response.t} or raises, its outer Promise
-settles and the runtime handles the response or error.
+When the handler returns or raises, its outer Promise settles. A fetch handler
+returns a {!Workero.Response.t}; scheduled, queue, alarm and Durable Object
+WebSocket event handlers return [unit]. The runtime handles the result or error.
 
 wasm_of_ocaml implements these effects with WebAssembly's JavaScript Promise
 Integration (JSPI). The suspended continuation includes a WebAssembly stack.
@@ -48,11 +61,16 @@ WebAssembly can suspend only when JavaScript enters it through a
 use this boundary. Workero handles this mechanism; handler code uses direct
 style. See {{!page-async}Async and background work} for practical use and limits.
 
+The synchronous {!Workero.Durable_object.Storage.transaction_sync} callback
+cannot suspend. Workero rejects {!Workero.Promise.await} in that callback with
+[Invalid_argument], and the runtime rolls back the transaction.
+
 {1 Bundling: workero build}
 
-[workero build src/main.bc.wasm.js] builds the executable (in the release profile unless you
-pass another profile), checks that it has no missing primitives, and writes the
-directory that Wrangler bundles and deploys. See {{!page-cli}the CLI}. The
+[workero build src/main.bc.wasm.js] builds the executable (in the release
+profile unless you pass another profile), checks that it has no missing
+primitives, and writes the directory that Wrangler bundles and deploys. See
+{{!page-cli}the CLI}. The
 template runs it as the [[build]] command of [wrangler.toml].
 
 {1 Binary optimization: wasm-opt}

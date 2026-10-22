@@ -15,6 +15,8 @@ A Worker has to import its `.wasm` files, because the runtime gives a precompile
 
 - `load-wasm.js` gives the wasm\_of\_ocaml loader the precompiled modules and waits for OCaml initialisation.
 - `index.js` imports every `.wasm` file, calls the loader, and exports the handlers that your program registered. See [Handlers](./handlers.md).
+`workero build` runs the program once in `workerd` to discover registered Durable Object classes. It then adds named class exports to `index.js` and uses `durable-object.js` to route object creation, fetch, alarm and hibernatable WebSocket events to the OCaml handlers. These names must be registered at module initialization. On each object creation, the JavaScript class calls the registered OCaml factory, installs the available event handlers and runs the optional `~init` handler under `blockConcurrencyWhile` before events. If the runtime evicts an object with hibernatable sockets, it creates the object again when a socket event arrives. In-memory state is lost; socket attachments can retain per-socket JSON state. See [Durable Objects](./durable_objects.md).
+
 The OCaml library reaches the runtime APIs (`Request`, `Response`, `fetch`, bindings) through `Js_of_ocaml`. Workero converts between OCaml values and JavaScript objects. For APIs without a wrapper, see [JavaScript interop](./interop.md).
 
 
@@ -22,9 +24,11 @@ The OCaml library reaches the runtime APIs (`Request`, `Response`, `fetch`, bind
 
 A Worker isolate has one JavaScript thread and event loop. Its WebAssembly module loads once per isolate, and many requests can use it. JavaScript I/O returns Promises; WebAssembly cannot block the thread while one settles.
 
-Workero runs each handler in an OCaml 5 effect handler. When [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) performs an effect, that handler captures the rest of the OCaml call as a continuation. It attaches callbacks to the Promise and returns control to the JavaScript event loop, so other requests can progress. On fulfillment, a callback resumes the continuation with the value. On rejection, it resumes by raising the error. The handler can suspend again. When the handler returns a [`Workero.Response.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#type-t) or raises, its outer Promise settles and the runtime handles the response or error.
+Workero runs each handler in an OCaml 5 effect handler. When [`Workero.Promise.await`](./Workero-Promise.md#val-await) performs an effect, that handler captures the rest of the OCaml call as a continuation. It attaches callbacks to the Promise and returns control to the JavaScript event loop, so other requests can progress. On fulfillment, a callback resumes the continuation with the value. On rejection, it resumes by raising the error. The handler can suspend again. When the handler returns or raises, its outer Promise settles. A fetch handler returns a [`Workero.Response.t`](./Workero-Response.md#type-t); scheduled, queue, alarm and Durable Object WebSocket event handlers return `unit`. The runtime handles the result or error.
 
 wasm\_of\_ocaml implements these effects with WebAssembly's JavaScript Promise Integration (JSPI). The suspended continuation includes a WebAssembly stack. WebAssembly can suspend only when JavaScript enters it through a `WebAssembly.promising` function. The entry into each handler and every resume use this boundary. Workero handles this mechanism; handler code uses direct style. See [Async and background work](./async.md) for practical use and limits.
+
+The synchronous [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) callback cannot suspend. Workero rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) in that callback with `Invalid_argument`, and the runtime rolls back the transaction.
 
 
 ## Bundling: workero build

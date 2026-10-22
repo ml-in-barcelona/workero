@@ -92,6 +92,8 @@ you omit those arguments. If you already have a {!Workero.Stream.t}, use
 {!Workero.Response.of_stream} and {!Workero.Response.copy} pass the existing
 body stream to the new response; they do not read it when they get the handle.
 The original and new responses then share a body that cannot be consumed twice.
+Call {!Workero.Response.clone} before either copy consumes the body if you
+need to read both.
 To read both, call {!Workero.Response.clone} before consuming either body.
 
 {1 Back-pressure}
@@ -102,9 +104,9 @@ that nobody has read.
 
 {1 Client disconnect}
 
-The Worker gets no event when the client leaves. The next
-{!Workero.Stream.Writer.write} raises {!Workero.Js_error}. Catch it to clean
-up.
+The Worker gets no disconnect event when the client leaves. A later
+{!Workero.Stream.Writer.write} can raise {!Workero.Js_error}. Catch it to
+clean up.
 
 {@ocaml[
 let handler _req _env ctx =

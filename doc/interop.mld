@@ -1,15 +1,12 @@
 {0 JavaScript interop}
 
-These modules expose [of_js] and [to_js] to cross the JavaScript boundary:
-{!Workero.Request}, {!Workero.Response}, {!Workero.Stream},
-{!Workero.Form_data}, {!Workero.Websocket}, {!Workero.Env}, {!Workero.Context},
-{!Workero.Scheduled}, {!Workero.Cf}, {!Workero.KV}, {!Workero.R2}, {!Workero.D1},
-{!Workero.Sql_value} and {!Workero.Promise}. Check each linked signature for its
-conversion types:
-{!Workero.Promise.of_js}, for example, requires a decoder. Other modules need
-not expose a pair. {!Workero.URL} parses from a string and has no
-[of_js]/[to_js] pair. Use the supported conversions to call a JavaScript API
-that workero does not wrap.
+Use [of_js] and [to_js] to cross the JavaScript boundary. For example,
+{!Workero.Request}, {!Workero.Response}, {!Workero.Stream}, {!Workero.Env},
+{!Workero.Fetcher}, {!Workero.Queue}, {!Workero.Durable_object.State} and
+{!Workero.Durable_object.Sql}
+wrap raw JavaScript values. Check each linked module's signature for the
+conversion types. {!Workero.Promise.of_js} needs a decoder; {!Workero.URL}
+parses strings and has no [of_js]/[to_js] pair.
 
 {!Workero.js_value} is the type of a raw, unchecked JavaScript value. It is the
 same type as [Js_of_ocaml.Js.Unsafe.any]. Module signatures show the jsoo name.
@@ -76,3 +73,36 @@ let () = Workero.serve handler
 ]}
 
 Add [js_of_ocaml] to [libraries] next to [workero].
+
+{1 JSON values and environment bindings}
+
+{!Workero.JSON.of_js} converts a JavaScript value to [Jsonkit.t] using
+[JSON.stringify]. {!Workero.JSON.to_js} converts a [Jsonkit.t] back using
+[JSON.parse]. These conversions copy JSON data; they do not keep the original
+object. [of_js] rejects values that cannot be serialized, such as a cyclic
+object or [BigInt]. [to_js] rejects non-JSON floats such as [nan].
+
+{!Workero.Env.to_js} exposes the raw binding object if you need an API that
+workero does not wrap. For ordinary bindings use the typed [of_env] functions.
+{!Workero.Env.var} returns a string or [None], {!Workero.Env.secret} requires
+a string and raises [Invalid_argument] if it is absent or has another type,
+and {!Workero.Env.json} returns an object or array as [Jsonkit.t] (or [None]
+for a non-object or missing value). See {{!page-env}Variables and secrets}.
+
+{1 Durable Object sockets and SQL}
+
+{!Workero.Websocket.serialize_attachment} converts a [Jsonkit.t] to a raw
+JavaScript value and attaches it to a socket accepted through
+{!Workero.Durable_object.State.accept_websocket}. The attachment survives
+hibernation. {!Workero.Websocket.deserialize_attachment} converts it back to
+[Jsonkit.t option]. [serialize_attachment] raises {!Workero.Js_error} on a
+socket accepted with {!Workero.Websocket.accept}; that socket cannot hibernate.
+See
+{{!page-durable_objects}Durable Objects} for the socket lifecycle.
+
+{!Workero.Durable_object.Storage.sql} provides synchronous SQLite access on a
+Durable Object. {!Workero.Sql_value.to_js} and {!Workero.Sql_value.of_js}
+convert individual SQL values to and from raw JavaScript values. They are not
+JSON conversions: binary values use [Uint8Array], and JavaScript numbers can
+lose integer precision. Check the linked signatures before passing raw values
+to an external SQL API.

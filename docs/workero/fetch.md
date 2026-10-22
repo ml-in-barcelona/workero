@@ -1,7 +1,7 @@
 
 # Fetch
 
-Use [`Workero.fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) inside a handler to call another server. It waits for the response headers. Read the body separately with [`Workero.Response.body_text`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-body_text) or [`Workero.Response.body_bytes`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-body_bytes).
+Use [`Workero.fetch`](./Workero.md#val-fetch) inside a handler to call another server. It waits for response headers; read the response body separately.
 
 ```ocaml
 let handler _req _env _ctx =
@@ -19,8 +19,8 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-The default method is `GET`. A `~body` is raw bytes and does not set `content-type`; include that header when the server expects one. A body with `GET` or `HEAD` raises `Invalid_argument`. A failed request raises [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error); catch it if your handler must return a response for a network failure.
+The default method is `GET`. A `~body` is raw bytes and does not set `content-type`. Include that header when the server expects one. A body with `GET` or `HEAD` raises `Invalid_argument`. A failed request raises [`Workero.Js_error`](./Workero.md#exception-Js_error); catch it if your handler must return a response on a network failure.
 
-Call `fetch` inside a handler or a function passed to [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until). To forward the response without reading its body, use [`Workero.Response.copy`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-copy). If you set `~headers` on the copy, include the existing [`Workero.Response.headers`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-headers) because `~headers` replaces them. See [Requests and responses](./requests.md) for an example and [Streams](./streams.md) for passing through a large body.
+Call `fetch` inside a handler or a function passed to [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until). To forward the response without reading its body, use [`Workero.Response.copy`](./Workero-Response.md#val-copy). If you set `~headers` on the copy, include the existing [`Workero.Response.headers`](./Workero-Response.md#val-headers): `~headers` replaces them. See [Requests and responses](./requests.md) for an example and [Streams](./streams.md) for passing through a large body.
 
-See [`Workero.fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) and [`Workero.Response`](./Workero-Response.md) for the complete API.
+To call another Worker through a service binding or access static assets, use [Fetcher](./fetcher.md). See [`Workero.fetch`](./Workero.md#val-fetch) for the complete interface.

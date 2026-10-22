@@ -11,14 +11,14 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-`fetch` waits for response headers. `body_text` waits for the body. Other APIs that return a [`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) need an explicit [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
+`fetch` waits for response headers. `body_text` waits for the body. Other APIs that return a [`Workero.Promise.t`](./Workero-Promise.md#type-t) need an explicit [`Workero.Promise.await`](./Workero-Promise.md#val-await).
 
 
 ## Run independent work together
 
 Start independent Promises before you await either. If you await each before starting the next, their delays add up. If you start both first, their waits can overlap.
 
-[`Workero.Timer.sleep`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-sleep) returns a Promise that resolves after a delay in milliseconds:
+[`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) returns a Promise that resolves after a delay in milliseconds:
 
 ```ocaml
 let handler _req _env _ctx =
@@ -30,12 +30,12 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-Both timers start before the first wait. The waits take about 100 ms together, not 200 ms. To collect results or handle multiple failures, use [`Workero.Promise.all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all) or [`Workero.Promise.all_settled`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all_settled).
+Both timers start before the first wait. The waits take about 100 ms together, not 200 ms. To collect results or handle multiple failures, use [`Workero.Promise.all`](./Workero-Promise.md#val-all) or [`Workero.Promise.all_settled`](./Workero-Promise.md#val-all_settled).
 
 
 ## Work after the response
 
-Use [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until) for work that does not determine the response, such as a log write. It starts `f` immediately in its own fiber and registers that fiber's Promise with `ctx.waitUntil`. Synchronous work in `f` runs before `wait_until` returns. If `f` suspends, the handler can continue and send the response while `f` waits. `f` can call [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
+Use [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) for work that does not determine the response, such as a log write. It starts `f` immediately in its own fiber and registers that fiber's Promise with `ctx.waitUntil`. Synchronous work in `f` runs before `wait_until` returns. If `f` suspends, the handler can continue and send the response while `f` waits. `f` can call [`Workero.Promise.await`](./Workero-Promise.md#val-await).
 
 ```ocaml
 let handler _req _env ctx =
@@ -56,13 +56,13 @@ For HTTP requests, Cloudflare allows all `waitUntil` tasks for the request to co
 
 ## Handle errors
 
-[`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) raises [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when a JavaScript Promise rejects. A rejection from OCaml code, such as an exception in `map`, `bind`, a `make` executor or an `of_js` decoder, instead re-raises the original OCaml exception. [`Workero.Promise.error_of_exn`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_exn) makes such a rejection.
+[`Workero.Promise.await`](./Workero-Promise.md#val-await) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when a JavaScript Promise rejects. A rejection from OCaml code, such as an exception in `map`, `bind`, a `make` executor or an `of_js` decoder, instead re-raises the original OCaml exception. [`Workero.Promise.error_of_exn`](./Workero-Promise.md#val-error_of_exn) makes such a rejection.
 
-The payload of [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) is a [`Workero.Promise.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-error), the original JavaScript rejection reason. JavaScript allows any value, so the type is opaque.
+The payload of [`Workero.Js_error`](./Workero.md#exception-Js_error) is a [`Workero.Promise.error`](./Workero-Promise.md#type-error), the original JavaScript rejection reason. JavaScript allows any value, so the type is opaque.
 
-- [`Workero.Promise.error_to_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_string) converts it with JavaScript `String`, for example `"Error: nope"`.
-- [`Workero.Promise.error_of_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_string) makes a JavaScript `Error` with a message.
-- [`Workero.Promise.error_to_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_js) and [`Workero.Promise.error_of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
+- [`Workero.Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) converts it with JavaScript `String`, for example `"Error: nope"`.
+- [`Workero.Promise.error_of_string`](./Workero-Promise.md#val-error_of_string) makes a JavaScript `Error` with a message.
+- [`Workero.Promise.error_to_js`](./Workero-Promise.md#val-error_to_js) and [`Workero.Promise.error_of_js`](./Workero-Promise.md#val-error_of_js) give and take the raw value, so a handler can inspect or re-raise it.
 Catch a JavaScript rejection with `match ... with exception Js_error reason -> ...`:
 
 ```ocaml
@@ -84,22 +84,22 @@ An exception that escapes at program start-up fails the Worker load. Fix the exc
 
 ## Promise
 
-[`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) is the JavaScript `Promise`.
+[`Workero.Promise.t`](./Workero-Promise.md#type-t) is the JavaScript `Promise`.
 
-- [`Workero.Promise.make`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-make) is `new Promise(executor)`. The executor gets `resolve` and `reject`. `reject` takes a [`Workero.Promise.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-error).
-- [`Workero.Promise.resolve`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-resolve) and [`Workero.Promise.reject`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-reject) are `Promise.resolve` and `Promise.reject`.
-- [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) gives the resolved value.
-- [`Workero.Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js) and [`Workero.Promise.to_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-to_js) convert from and to a raw JavaScript Promise. See [JavaScript interop](./interop.md).
+- [`Workero.Promise.make`](./Workero-Promise.md#val-make) is `new Promise(executor)`. The executor gets `resolve` and `reject`. `reject` takes a [`Workero.Promise.error`](./Workero-Promise.md#type-error).
+- [`Workero.Promise.resolve`](./Workero-Promise.md#val-resolve) and [`Workero.Promise.reject`](./Workero-Promise.md#val-reject) are `Promise.resolve` and `Promise.reject`.
+- [`Workero.Promise.await`](./Workero-Promise.md#val-await) gives the resolved value.
+- [`Workero.Promise.of_js`](./Workero-Promise.md#val-of_js) and [`Workero.Promise.to_js`](./Workero-Promise.md#val-to_js) convert from and to a raw JavaScript Promise. See [JavaScript interop](./interop.md).
 `Promise.t` is backed by `Js_of_ocaml.Promise`. A promise resolved with another promise is boxed, so `'a t t` is a promise of a promise, which a raw JavaScript Promise would flatten.
 
 
 ## Combinators
 
-- [`Workero.Promise.map`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-map) and [`Workero.Promise.bind`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-bind) transform the resolved value, like `then`.
-- [`Workero.Promise.all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all) resolves with every value in order, or rejects with the first rejection.
-- [`Workero.Promise.race`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-race) settles like the first promise to settle.
-- [`Workero.Promise.any`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-any) resolves with the first value. When all reject, it rejects with an `AggregateError`.
-- [`Workero.Promise.all_settled`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-all_settled) resolves when every promise has settled, with a `result` for each. It never rejects.
+- [`Workero.Promise.map`](./Workero-Promise.md#val-map) and [`Workero.Promise.bind`](./Workero-Promise.md#val-bind) transform the resolved value, like `then`.
+- [`Workero.Promise.all`](./Workero-Promise.md#val-all) resolves with every value in order, or rejects with the first rejection.
+- [`Workero.Promise.race`](./Workero-Promise.md#val-race) settles like the first promise to settle.
+- [`Workero.Promise.any`](./Workero-Promise.md#val-any) resolves with the first value. When all reject, it rejects with an `AggregateError`.
+- [`Workero.Promise.all_settled`](./Workero-Promise.md#val-all_settled) resolves when every promise has settled, with a `result` for each. It never rejects.
 ```ocaml
 let handler _req _env _ctx =
   let open Workero in
@@ -123,9 +123,9 @@ let () = Workero.serve handler
 
 ## Where you can await
 
-Await only inside a handler given to [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) or [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled), inside a function given to [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until), or in code that these call. Waiting outside these fibers fails:
+Await inside a handler registered with [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) or [`Workero.queue`](./Workero.md#val-queue), in a [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) function, or in the `~init`, `~fetch`, `~alarm`, `~websocket_message`, `~websocket_close` and `~websocket_error` handlers of [`Workero.Durable_object.make`](./Workero-Durable_object.md#val-make). [`Workero.Durable_object.State.wait_until`](./Workero-Durable_object-State.md#val-wait_until) and [`Workero.Durable_object.State.block_concurrency_while`](./Workero-Durable_object-State.md#val-block_concurrency_while) also run functions that can await. Functions called from these fibers can await too. The function passed to [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) to create an object cannot await; use `~init` for asynchronous initialization. The function passed to [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) cannot await either: it raises `Invalid_argument`, and the transaction rolls back. Waiting elsewhere fails:
 
-- In a [`Workero.Timer.set_timeout`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-set_timeout) callback, the callback runs outside the handler fiber.
-- In a [`Workero.Promise.make`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-make) executor, suspending across the JavaScript executor frame fails.
+- In a [`Workero.Timer.set_timeout`](./Workero-Timer.md#val-set_timeout) callback, the callback runs outside the handler fiber.
+- In a [`Workero.Promise.make`](./Workero-Promise.md#val-make) executor, suspending across the JavaScript executor frame fails.
 - At program start-up, there is no handler fiber, so the Worker fails to load.
-To use a callback result, resolve a [`Workero.Promise.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#type-t) from the callback and await it in a handler. See [How it works](./how_it_works.md) for the suspension mechanism.
+To use a callback result, resolve a [`Workero.Promise.t`](./Workero-Promise.md#type-t) from the callback and await it in a handler. See [How it works](./how_it_works.md) for the suspension mechanism.

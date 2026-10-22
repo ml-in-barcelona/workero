@@ -16,16 +16,16 @@ Run `npx wrangler dev` in one terminal and `curl http://localhost:8787/` in a se
 
 ## Timers
 
-[`Workero.Timer.sleep`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-sleep), [`Workero.Timer.set_timeout`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-set_timeout), and [`Workero.Timer.set_interval`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-set_interval) take delays in milliseconds. Use [`Workero.Timer.clear_timeout`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-clear_timeout) or [`Workero.Timer.clear_interval`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-clear_interval) to stop a timer. Call timers from a handler or [`Workero.Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until), not at startup. A timer callback cannot call [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await); use [`Workero.Timer.sleep`](https://ml-in-barcelona.github.io/workero/workero/Workero/Timer/index.html#val-sleep) inside a handler when you need to wait.
+[`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep), [`Workero.Timer.set_timeout`](./Workero-Timer.md#val-set_timeout), and [`Workero.Timer.set_interval`](./Workero-Timer.md#val-set_interval) take delays in milliseconds. Use [`Workero.Timer.clear_timeout`](./Workero-Timer.md#val-clear_timeout) or [`Workero.Timer.clear_interval`](./Workero-Timer.md#val-clear_interval) to stop a timer. Call timers from a handler or [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until), not at startup. A timer callback cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await); use [`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) inside a handler when you need to wait.
 
 
 ## Time
 
-[`Workero.Date.now`](https://ml-in-barcelona.github.io/workero/workero/Workero/Date/index.html#val-now) is `Date.now()`. [`Workero.Date.to_iso_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Date/index.html#val-to_iso_string) is `new Date(t).toISOString()`. Times are milliseconds since the Unix epoch, as a `float`. In Workers the clock moves only after I/O. It does not measure CPU time.
+[`Workero.Date.now`](./Workero-Date.md#val-now) is `Date.now()`. [`Workero.Date.to_iso_string`](./Workero-Date.md#val-to_iso_string) is `new Date(t).toISOString()`. Times are milliseconds since the Unix epoch, as a `float`. In Workers the clock moves only after I/O. It does not measure CPU time.
 
 
 ## Randomness
 
-[`Workero.Crypto.random_uuid`](https://ml-in-barcelona.github.io/workero/workero/Workero/Crypto/index.html#val-random_uuid) returns a random version 4 UUID. [`Workero.Crypto.random_bytes`](https://ml-in-barcelona.github.io/workero/workero/Workero/Crypto/index.html#val-random_bytes) returns cryptographically random bytes. It accepts at most 65536 bytes per call and raises `Invalid_argument` for a negative size or a larger request. [`Workero.Crypto`](./Workero-Crypto.md) binds only these random functions, not the full Web Crypto API.
+[`Workero.Crypto.random_uuid`](./Workero-Crypto.md#val-random_uuid) returns a random version 4 UUID. [`Workero.Crypto.random_bytes`](./Workero-Crypto.md#val-random_bytes) returns cryptographically random bytes. It accepts at most 65536 bytes per call and raises `Invalid_argument` for a negative size or a larger request. [`Workero.Crypto`](./Workero-Crypto.md) binds only these random functions, not the full Web Crypto API.
 
 For logging, use [Console or standard output](./logging.md). For other globals, see [JavaScript interop](./interop.md) and [supported web standards](https://developers.cloudflare.com/workers/runtime-apis/web-standards/).

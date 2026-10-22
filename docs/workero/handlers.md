@@ -1,72 +1,66 @@
 
 # Handlers
 
-A worker answers events. workero has one handler for each kind of event: [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) for HTTP requests and [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled) for cron triggers. Register a handler once, at the top level of your program.
+Register the event handlers that your Worker needs at the top level of its OCaml program. [`Workero.serve`](./Workero.md#val-serve) handles HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) handles cron triggers and [`Workero.queue`](./Workero.md#val-queue) consumes Queue messages. Each registration is independent: a cron-only or queue-only Worker does not need an HTTP handler.
 
 
-## HTTP requests
+## Handle HTTP requests
 
-[`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) takes a function of three arguments, as the JavaScript `fetch(request, env, ctx)` handler does:
-
-- a [`Workero.Request.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#type-t), the incoming request,
-- an [`Workero.Env.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Env/index.html#type-t), the worker's variables, secrets, and resource bindings (see [Variables and secrets](./env.md) and [Bindings](./bindings.md)),
-- a [`Workero.Context.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#type-t), for background work and origin fallback (see [Async and background work](./async.md)).
-It returns a [`Workero.Response.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#type-t).
+[`Workero.serve`](./Workero.md#val-serve) takes a function with the same three arguments as a JavaScript `fetch(request, env, ctx)` handler. It returns a [`Workero.Response.t`](./Workero-Response.md#type-t). This `src/main.ml` responds to a request and reads a variable from `env`:
 
 ```ocaml
-let handler req env _ctx =
-  let open Workero in
+open Workero
+
+let handler req env ctx =
   match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "Hello from OCaml on Cloudflare Workers\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | GET, "/env" ->
+  | GET, "/" ->
+      Context.wait_until ctx (fun () ->
+          Promise.await (Timer.sleep 100);
+          print_endline "request answered");
       Response.text
-        (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
+        (Option.value (Env.var env "GREETING") ~default:"hello" ^ "\n")
+  | POST, "/echo" -> Response.text (Request.text req)
   | _ -> Response.text ~status:`Not_Found "not found\n"
 
 let () = Workero.serve handler
 ```
-The handler runs in direct style. It can wait for a body, for [`Workero.fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) or for [`Workero.Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await). Other requests keep running while it waits.
+With `GREETING = "hi"` in the `[vars]` section of `wrangler.toml`, `curl http://localhost:8787/` returns `hi`. The `env` argument also contains resource bindings. Use functions such as [`Workero.KV.of_env`](./Workero-KV.md#val-of_env) and [`Workero.Queue.of_env`](./Workero-Queue.md#val-of_env) to look them up. See [Variables and secrets](./env.md) and [Bindings](./bindings.md).
+
+[`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) runs work in another fiber that can continue after the response. Its function can wait for JavaScript Promises; failures there are logged and do not change the response. If your Worker runs on a route with an origin, [`Workero.Context.pass_through_on_exception`](./Workero-Context.md#val-pass_through_on_exception) lets the origin answer when the request handler raises. It has no effect on `workers.dev` or without an origin. See [Async and background work](./async.md) for waits and background work.
 
 
-## Falling back to the origin
+## Handle cron triggers
 
-[`Workero.Context.pass_through_on_exception`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-pass_through_on_exception) makes the runtime send the request to the origin server when the handler raises. It needs a route with an origin. It has no effect on `workers.dev`.
-
-
-## Cron triggers
-
-[`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled) registers the handler for [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/). It gets a [`Workero.Scheduled.t`](https://ml-in-barcelona.github.io/workero/workero/Workero/Scheduled/index.html#type-t), the `env` and the `ctx`, and returns `unit`.
+Add this `src/main.ml` for a Worker that only handles cron events:
 
 ```ocaml
 let () =
-  Workero.serve (fun _req _env _ctx -> Workero.Response.text "ok\n");
   Workero.scheduled (fun controller _env _ctx ->
-      let cron = Workero.Scheduled.cron controller in
-      let at = Workero.Scheduled.scheduled_time controller in
-      Printf.printf "cron %s scheduled for %.0f\n%!" cron at)
+      Printf.printf "cron %s scheduled for %.0f\n%!"
+        (Workero.Scheduled.cron controller)
+        (Workero.Scheduled.scheduled_time controller))
 ```
-[`Workero.Scheduled.cron`](https://ml-in-barcelona.github.io/workero/workero/Workero/Scheduled/index.html#val-cron) is the cron expression that fired. [`Workero.Scheduled.scheduled_time`](https://ml-in-barcelona.github.io/workero/workero/Workero/Scheduled/index.html#val-scheduled_time) is the scheduled time in milliseconds since the Unix epoch.
-
-List the schedules in `wrangler.toml`:
+Configure `wrangler.toml`:
 
 ```toml
 [triggers]
 crons = ["*/5 * * * *"]
 ```
-To fire a trigger by hand while `wrangler dev --test-scheduled` runs, request Wrangler's `/__scheduled` route:
+[`Workero.Scheduled.scheduled_time`](./Workero-Scheduled.md#val-scheduled_time) gives milliseconds since the Unix epoch. With `npx wrangler dev --test-scheduled` running, use this command to fire the trigger locally:
 
 ```sh
 curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
 ```
-A worker can register [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve), [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled), or both. A worker that only has cron triggers needs no [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve).
-
-Register handlers at the top level so they are ready when the Worker starts. See [How it works](./how_it_works.md) for the generated JavaScript entry point.
+The Worker logs a line beginning `cron */5 * * * * scheduled for `. The timestamp varies with the event.
 
 
-## Errors
+## Consume Queue messages
 
-- An exception that escapes the [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) handler rejects the response Promise, and the runtime answers with status 500\.
-- An exception that escapes the [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled) handler rejects the event Promise, and Cloudflare records the run as failed.
-- A later request or event is not affected.
-Catch errors when your handler can answer them. For example, [`Workero.JSON.decode`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-decode) returns `Error message` for invalid JSON; your handler can then choose a 400 response with [`Workero.JSON.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-error). See [JSON](./json.md).
+[`Workero.queue`](./Workero.md#val-queue) takes a [`Workero.Queue.Batch.t`](./Workero-Queue-Batch.md#type-t), `env` and `ctx`. It returns `unit`. Register it at the top level, as with the other handlers. The [Queue guide](./queue.md) shows a producer binding, consumer configuration, body decoding and acknowledgement in a complete Worker.
+
+
+## Runtime behavior
+
+Each event handler runs in a fiber. You can call [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await) inside it while other events run. The build's `index.js` exports only the handlers registered at startup: `fetch`, `scheduled` and/or `queue`. A program with no event handlers and no [Durable Object classes](./durable_objects.md) fails Worker initialization with `workero: the OCaml program registered no handler`.
+
+An uncaught HTTP handler exception rejects the response Promise, and the runtime returns `500`. An uncaught cron handler exception fails that run. An uncaught Queue handler exception fails that delivery; unacknowledged messages can be retried. Other events continue. See [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue) for their signatures.

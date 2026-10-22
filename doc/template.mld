@@ -1,40 +1,34 @@
 {0 The project template}
 
-The [template/] directory is a starter Cloudflare Worker project. Copy it
-outside the workero source checkout so Dune treats the copy as its own project.
-Follow {{!page-getting_started}Getting started} for the complete path from a
-fresh directory to a deployed Worker.
+Copy [template/] outside the workero source checkout to start a Worker.
+Follow {{!page-getting_started}Getting started} to install the source package
+and run the copy locally.
 
 {1 Files}
 
 - [dune-project] requires OCaml 5.4 or later and the [workero] package.
 - [src/dune] builds [src/main.ml] with [(modes wasm)] and links [workero].
-- [src/main.ml] registers a handler for [GET /], [POST /echo], and [GET /env].
+- [src/main.ml] handles [GET /], [POST /echo], and [GET /env].
 - [wrangler.toml] points to [_worker/index.js], runs
-  [workero build src/main.bc.wasm.js] on build, watches [src/], and sets
-  [GREETING] in [[vars]].
-- [package.json] pins Wrangler 4.151.3 and binaryen 132 as development
-  dependencies. binaryen supplies [wasm-opt] for wasm_of_ocaml.
-- [.gitignore] excludes build output, npm dependencies, Wrangler state, and
-  local [.dev.vars] and [.env] files that may hold secrets.
+  [workero build src/main.bc.wasm.js], watches [src/], and sets [GREETING]
+  in [[vars]].
+- [package.json] lists Wrangler 4.151.3 and binaryen 132. binaryen supplies
+  [wasm-opt] for wasm_of_ocaml.
 
 {1 Run the copied project}
 
-With the [workero] source package installed in an active opam switch, enter
-your copy and install the JavaScript tools:
+After installing the source package into your active opam switch, run these
+commands from your copy:
 
 {@sh[
-cd my-worker
+eval "$(opam env)"
 npm install
 npx wrangler dev
 ]}
 
-Wrangler builds the worker and serves it locally, usually at
-[http://127.0.0.1:8787]. In another terminal, run
-[curl http://127.0.0.1:8787/]. Expect
-[Hello from OCaml on Cloudflare Workers]. [GET /env] reads [GREETING] through
-{!Workero.Env.var}; it returns [hello from vars] with the default configuration.
+In another terminal, request [http://127.0.0.1:8787/]. Expect
+[Hello from OCaml on Cloudflare Workers]. Request [/env] to see
+[hello from vars], the default [GREETING] value.
 
-To deploy, authenticate with [npx wrangler login], then run
-[npx wrangler deploy]. Wrangler prints the public [workers.dev] URL. A
-Cloudflare account is needed for deployment, not for local [wrangler dev].
+To deploy, first run [npx wrangler login] with a Cloudflare account, then
+[npx wrangler deploy]. You do not need an account for local [wrangler dev].

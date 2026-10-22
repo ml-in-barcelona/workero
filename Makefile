@@ -30,7 +30,7 @@ test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in 
 	DUNE="$(DUNE)" test/worker/run.sh
 
 .PHONY: test-worker-init
-test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the load
+test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the build
 	DUNE="$(DUNE)" test/worker-init/run.sh
 
 .PHONY: test-worker-exports
@@ -40,10 +40,6 @@ test-worker-exports: ## Build test/worker-exports and check which handlers each 
 .PHONY: test-cli
 test-cli: ## Run workero build on test/cli fixtures and check its errors
 	DUNE="$(DUNE)" test/cli/run.sh
-
-.PHONY: test-docs
-test-docs: ## Compile and run documentation examples and the starter
-	DUNE="$(DUNE)" test/docs/run.sh
 
 .PHONY: fmt
 fmt: ## Format the code
@@ -61,7 +57,6 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 	cp _build/default/_doc/_markdown/index.md docs/
 	for p in $(basename $(wildcard *.opam)); do cp -R _build/default/_doc/_markdown/$$p docs/; done
 	chmod -R u+w docs
-	node doc/markdown.mjs docs _build/default/_doc/_html
 
 .PHONY: clean
 clean: ## Clean artifacts

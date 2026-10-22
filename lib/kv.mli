@@ -7,8 +7,9 @@ type t
 
 val of_env : Env.t -> string -> t
 (** [of_env env name] looks up the namespace bound as [name]. It does not
-    suspend. Raises [Invalid_argument] if the binding is missing, is not a KV
-    object, or lacks a required method. The error names the binding. *)
+    suspend. Raises [Invalid_argument] if the binding is missing, is not an
+    object, or lacks [get], [put], [delete], or [list]. The error names the
+    binding. *)
 
 val get : t -> string -> string option
 (** The value of a key as text, or [None] when the key does not exist. *)

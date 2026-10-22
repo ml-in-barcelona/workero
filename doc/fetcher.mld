@@ -1,0 +1,95 @@
+{0 Fetcher}
+
+A {!Workero.Fetcher} sends HTTP requests through a service binding, an assets
+binding, or a Durable Object stub. Use a service binding to call another
+Worker without a public endpoint; use an assets binding to serve files from
+your Worker. See the
+{{:https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/}service binding reference}.
+
+{1 Configure}
+
+Declare the target Worker in [wrangler.toml]. [binding] is the name that you pass
+to [of_env]:
+
+{@toml[
+[[services]]
+binding = "BACKEND"
+service = "backend-worker"
+]}
+
+For an assets binding, set [directory] to the folder of files and [binding] to
+the name that {!Workero.Fetcher.of_env} opens:
+
+{@toml[
+[assets]
+directory = "./public"
+binding = "ASSETS"
+]}
+
+{1 Call another Worker}
+
+{@ocaml[
+let handler req env _ctx =
+  let open Workero in
+  let backend = Fetcher.of_env env "BACKEND" in
+  match URL.path (Request.url req) with
+  | "/users" ->
+      Fetcher.fetch ~method_:POST
+        ~headers:[ ("content-type", "application/json") ]
+        ~body:{|{"name":"Ada"}|} backend "http://backend/users"
+  | _ -> Fetcher.fetch_request backend req
+
+let () = Workero.serve handler
+]}
+
+- {!Workero.Fetcher.of_env} opens the binding. It raises [Invalid_argument] when
+  there is no such binding, or when the binding has no [fetch] method.
+- {!Workero.Fetcher.fetch} sends a request and waits for the response headers.
+  It takes the same optional arguments as {!Workero.fetch}. A [GET] or [HEAD]
+  request with a body raises [Invalid_argument].
+- {!Workero.Fetcher.fetch_request} forwards a {!Workero.Request.t} as it is. The
+  runtime consumes the body of the request. Use {!Workero.Request.clone} first
+  if the handler reads it too.
+
+Use an absolute URL. The service binding selects the target Worker, regardless
+of the host in [http://backend/users]. The target's [fetch] handler receives
+the request URL. A call through {!Workero.Durable_object.Namespace.get} uses
+the same API; see {{!page-durable_objects}Durable Objects}.
+
+If the target raises, the call raises {!Workero.Js_error}. A target that answers
+with a status such as 404 or 500 is not an error: read the status with
+{!Workero.Response.status}.
+
+{1 Serve a static asset}
+
+Put a file at [public/hello.txt], configure the [assets] binding above, and
+use the fetcher in a handler:
+
+{@ocaml[
+let handler _req env _ctx =
+  let assets = Workero.Fetcher.of_env env "ASSETS" in
+  Workero.Fetcher.fetch assets "https://assets/hello.txt"
+
+let () = Workero.serve handler
+]}
+
+Run [npx wrangler dev] and request [/]. The response body is the content of
+[public/hello.txt]. The assets binding is simulated locally. On deploy,
+[npx wrangler deploy] uploads the directory in [assets]; there is no separate
+asset resource to create. See
+{{:https://developers.cloudflare.com/workers/static-assets/binding/}Static Assets binding}.
+
+{1 Verify the service binding}
+
+Run the target Worker in the same [wrangler dev] session by passing several
+configuration files:
+
+{@sh[
+npx wrangler dev -c wrangler.toml -c ../backend/wrangler.toml
+]}
+
+Request [/users] locally and check that the backend receives the [POST] and
+JSON body. Deploy both Workers before testing the service call on Cloudflare.
+The workero tests exercise a service binding in [workerd]; they do not test
+the assets binding. See
+{{:https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/}Cloudflare service bindings}.

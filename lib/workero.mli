@@ -20,6 +20,7 @@ module Response = Response
 module Status = Status
 module Env = Env
 module Context = Context
+module Router = Router
 module Scheduled = Scheduled
 module JSON = Json
 module KV = Kv
@@ -34,6 +35,13 @@ module Timer = Timer
 module Date = Date
 module Crypto = Crypto
 module Console = Console
+module Secret_store = Secret_store
+module Fetcher = Fetcher
+module Queue = Queue
+module Rate_limiter = Rate_limiter
+module Ai = Ai
+module Analytics_engine = Analytics_engine
+module Durable_object = Durable_object
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like
@@ -49,6 +57,13 @@ val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
     combined with {!serve}; a Worker may register either or both. An exception
     raised by the handler rejects the event Promise, so Cloudflare records the
     run as failed. *)
+
+val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
+(** [queue handler] registers the queue consumer, like [queue(batch, env, ctx)]
+    in a JavaScript Worker. It runs in a fiber and may call {!Promise.await},
+    {!fetch} and the body readers. It can be combined with {!serve} and
+    {!scheduled}. An exception raised by the handler rejects the event Promise,
+    so the runtime retries the messages that the handler did not ack. *)
 
 val fetch :
   ?method_:Method.t ->

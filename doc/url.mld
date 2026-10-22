@@ -1,6 +1,6 @@
 {0 URLs}
 
-{!Workero.Request.url} gives you a {!Workero.URL.t} for the incoming request.
+{!Workero.Request.url} returns a {!Workero.URL.t} for an incoming request.
 Use {!Workero.URL.path} to match a decoded path and {!Workero.URL.query} to
 read a decoded query value:
 
@@ -17,25 +17,24 @@ let handler req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-{!Workero.URL} wraps JavaScript [URL] and follows WHATWG URL parsing rules.
+{!Workero.URL} wraps the JavaScript [URL] and follows WHATWG parsing rules.
 {!Workero.URL.of_string} accepts absolute [http] and [https] URLs. It returns
 [None] for other schemes or invalid input. {!Workero.Request.url} raises
 [Invalid_argument] if the incoming URL is not an [http] or [https] URL.
 
-{1 Raw paths and decoded paths}
+{1 Raw and decoded paths}
 
 {!Workero.URL.path} decodes percent escapes: ["/a%2Fb"] becomes ["/a/b"].
 {!Workero.URL.pathname} and {!Workero.Request.path} keep the percent-encoded
-path. Use a raw path if encoded slashes must remain distinct from path
+path. Use the raw path if encoded slashes must remain distinct from path
 separators. A malformed escape such as [%zz] leaves the whole [URL.path]
 undecoded. A [+] in a path stays [+].
 
-Query values are decoded with URL search-parameter rules: [+] becomes a space.
-{!Workero.URL.query} returns the first matching value, and
+Query values follow URL search-parameter rules: [+] becomes a space.
+{!Workero.URL.query} returns the first matching value;
 {!Workero.URL.query_all} returns all matching values in order. A key without
 [=] has the value [""]. To keep the original query encoding, use
 {!Workero.Request.query_string} or {!Workero.URL.search}.
 
-See {!Workero.URL} for the complete API, including URL parts, all query pairs,
-and normalized URL output. See {{!page-requests}Requests and responses} for
-method and header handling.
+See {!Workero.URL} for URL parts, all query pairs, and normalized URL output.
+See {{!page-requests}Requests and responses} for methods and headers.

@@ -9,6 +9,7 @@
   fetch
   url
   json
+  router
   streams
   forms
   websockets
@@ -23,6 +24,12 @@
   cache
   r2
   d1
+  fetcher
+  queue
+  rate_limiter
+  ai
+  analytics_engine
+  durable_objects
   interop
   how_it_works
   libraries

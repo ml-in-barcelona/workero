@@ -23,9 +23,9 @@ let handler req _env ctx =
           let upstream = fetch "https://example.com/" in
           let control = Response.header upstream "cache-control" in
           if Response.status upstream <> 200
-             || Response.header upstream "set-cookie" <> None
+             || Response.header_all upstream "set-cookie" <> []
              || control <> None
-             || Response.header upstream "vary" = Some "*"
+             || Response.header upstream "vary" <> None
           then upstream
           else
             let headers =
@@ -38,7 +38,7 @@ let handler req _env ctx =
 
 let () = Workero.serve handler
 ```
-The example keeps the upstream status, body and headers. `Response.copy` makes the upstream response writable while preserving its status and headers; `Response.clone` gives `Cache.put` a separate body, so the client can read the returned response. The example does not cache a non-200 response, a response with `Set-Cookie`, an existing `Cache-Control` policy, or `Vary: *`. For a different origin, set a cache policy only when its response is safe to share.
+The example keeps the upstream status, body and headers. `Response.copy` makes the upstream response writable while preserving its status and headers; `Response.clone` gives `Cache.put` a separate body, so the client can read the returned response. The example does not cache a non-200 response, a response with `Set-Cookie`, an existing `Cache-Control` policy, or a `Vary` header. For a different origin, set a cache policy only when its response is safe to share.
 
 `Cache.put` uses `Cache-Control` to decide whether and how long to store a response. It rejects status 206 and `Vary: *`; a `Set-Cookie` response is not cached. A resolved `Cache.put` promise does not by itself prove that the entry was stored. `Cache.match_` returns `None` for a miss; `Cache.delete` returns `false` if no entry existed. See [`Workero.Cache`](./Workero-Cache.md) and the [Cloudflare Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/).
 

@@ -80,3 +80,10 @@ See {{!page-async}Async and background work}.
 {!Workero.Websocket.upgrade} is {!Workero.Websocket.val-pair},
 {!Workero.Websocket.accept} and {!Workero.Websocket.response} in one call. Use
 the parts to keep the [client] end, or to start the loop yourself.
+
+{1 Durable Objects}
+
+For connections that survive a Durable Object instance being evicted, use
+{!Workero.Durable_object.State.accept_websocket} and the object's WebSocket
+handlers. See {{!page-durable_objects}Durable Objects} for hibernation and
+per-connection attachments.

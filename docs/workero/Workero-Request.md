@@ -27,7 +27,7 @@ The raw query without the `"?"`; `""` when there is none.
 ```ocaml
 val header : t -> string -> string option
 ```
-`header req name` is the value of header `name`, matched without regard to letter case. Ordinary repeated headers are joined with `", "`. Use [`header_all`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-header_all) to read each `set-cookie` separately.
+`header req name` is the value of header `name`, matched without regard to letter case. Repeated headers are joined with `", "`. Use [`header_all`](./#val-header_all) for `cookie` lists and `set-cookie`.
 
 ```ocaml
 val header_all : t -> string -> string list
@@ -52,12 +52,12 @@ Reads the whole body as raw bytes.
 ```ocaml
 val body : t -> Stream.t option
 ```
-The body as a stream; `None` when the request has none. Getting the stream does not consume it. Reading from the stream does.
+The body as a stream; `None` when the request has none. Getting the stream does not consume the body. Reading it does.
 
 ```ocaml
 val form_data : t -> Form_data.t
 ```
-Parses a multipart or urlencoded body with the platform parser. Suspends like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await). Raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) for another content type.
+Parses a multipart or urlencoded body with the platform parser. Suspends like [`Promise.await`](./Workero-Promise.md#val-await). Raises [`Js_error`](./Workero.md#exception-Js_error) for another content type.
 
 ```ocaml
 val clone : t -> t

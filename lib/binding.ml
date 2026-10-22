@@ -1,16 +1,9 @@
 module Js = Js_of_ocaml.Js
 open Internal
 
-let describe v =
-  match typeof v with
-  | "object" -> "an object"
-  | "undefined" -> "undefined"
-  | t -> "a " ^ t
-
 let of_env ~who ~what ~methods env name : js =
   let env = Env.to_js env in
-  let own = Js.to_bool (meth (global "Object") "hasOwn" [| env; str name |]) in
-  if not own then
+  if not (has_own env name) then
     invalid_arg (Printf.sprintf "%s: binding %S not found" who name);
   let v = Js.Unsafe.get env name in
   let is_method m =

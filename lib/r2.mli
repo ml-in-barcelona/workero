@@ -7,8 +7,8 @@ type t
 
 val of_env : Env.t -> string -> t
 (** [of_env env name] looks up the bucket bound as [name]. It does not suspend.
-    Raises [Invalid_argument] if the binding is missing, is not an R2 object, or
-    lacks a required method. The error names the binding. *)
+    Raises [Invalid_argument] if the binding is missing, is not an object, or
+    lacks [get], [put], [head], or [delete]. The error names the binding. *)
 
 val get : t -> string -> string option
 (** The entire body of an object as bytes, or [None] when the key does not

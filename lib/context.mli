@@ -9,7 +9,9 @@ val wait_until : t -> (unit -> unit) -> unit
     A failure in [f] does not change the response. For HTTP requests, all
     [wait_until] calls share up to 30 seconds after the response is sent or the
     client disconnects; unfinished work is canceled. An active response stream
-    keeps the HTTP invocation active separately. See
+    keeps the HTTP invocation active separately. Durable Objects have their own
+    {!Durable_object.State.wait_until}; they remain active during their
+    requests, streams and pending I/O without calling it. See
     {{:https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil}Cloudflare's
      waitUntil documentation}. *)
 

@@ -88,7 +88,7 @@ type redirect = [
   | `Permanent_Redirect
  ]
 ```
-Statuses that [`Response.redirect`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-redirect) accepts.
+Statuses that [`Response.redirect`](./Workero-Response.md#val-redirect) accepts.
 
 ```ocaml
 type with_body = [ 
@@ -104,7 +104,7 @@ type with_body = [
   | `Status of int
  ]
 ```
-Statuses [`Response.text`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-text) and the other body constructors accept. `Continue` and `Switching_Protocols` are left out: the runtime rejects them in a response built without a WebSocket.
+Statuses [`Response.text`](./Workero-Response.md#val-text) and the other body constructors accept. `Continue` and `Switching_Protocols` are left out: the runtime rejects them in a response built without a WebSocket.
 
 ```ocaml
 type t = [ 

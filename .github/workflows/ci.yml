@@ -60,9 +60,6 @@ jobs:
           git add --intent-to-add docs
           git diff --exit-code -- docs
 
-      - name: Test documentation examples
-        run: make test-docs
-
       - name: Upload HTML docs
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3

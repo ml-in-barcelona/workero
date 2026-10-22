@@ -16,12 +16,12 @@ A rejection reason. JavaScript allows any value, so the type is opaque.
 ```ocaml
 exception Js_error of error
 ```
-Raised by [`await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) when the awaited promise rejects, and by the bindings when the runtime throws. It carries the original reason, so a handler can re-raise or inspect it with [`error_to_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_js). Use it through [`Workero.Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error), the documented name.
+Raised by [`await`](./#val-await) when the awaited promise rejects, and by the bindings when the runtime throws. It carries the original reason, so a handler can re-raise or inspect it with [`error_to_js`](./#val-error_to_js). Use it through [`Workero.Js_error`](./Workero.md#exception-Js_error), the documented name.
 
 ```ocaml
 val error_of_exn : exn -> error
 ```
-A rejection that carries an OCaml exception. [`await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) re-raises that exception. When it reaches the runtime, it is a JavaScript `Error` whose message is `Printexc.to_string`.
+A rejection that carries an OCaml exception. [`await`](./#val-await) re-raises that exception. When it reaches the runtime, it is a JavaScript `Error` whose message is `Printexc.to_string`.
 
 ```ocaml
 val error_of_string : string -> error
@@ -57,17 +57,17 @@ val reject : error -> 'a t
 ```ocaml
 val await : 'a t -> 'a
 ```
-`await p` suspends the current request until `p` settles. It returns the resolved value. For a rejection made by [`error_of_exn`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_of_exn), `map`, `bind`, `make` or `of_js`, it re-raises the original OCaml exception. For any other rejection it raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#exception-Js_error). It works inside the handlers given to [`Workero.serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve) and [`Workero.scheduled`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-scheduled), and inside the function given to [`Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until).
+`await p` suspends the current request until `p` settles. It returns the resolved value. For a rejection made by [`error_of_exn`](./#val-error_of_exn), `map`, `bind`, `make` or `of_js`, it re-raises the original OCaml exception. For any other rejection it raises [`Js_error`](./#exception-Js_error). It works inside the handlers given to [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue), inside the `init`, `fetch`, `alarm`, `websocket_message`, `websocket_close` and `websocket_error` handlers of [`Durable_object.make`](./Workero-Durable_object.md#val-make), and inside functions passed to [`Context.wait_until`](./Workero-Context.md#val-wait_until), [`Durable_object.State.wait_until`](./Workero-Durable_object-State.md#val-wait_until) and [`Durable_object.State.block_concurrency_while`](./Workero-Durable_object-State.md#val-block_concurrency_while). It cannot suspend inside the function passed to [`Durable_object.register`](./Workero-Durable_object.md#val-register) or [`Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync); the latter raises `Invalid_argument` and rolls back.
 
 ```ocaml
 val map : ('a -> 'b) -> 'a t -> 'b t
 ```
-An exception raised by the function rejects the result, see [`await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
+An exception raised by the function rejects the result, see [`await`](./#val-await).
 
 ```ocaml
 val bind : ('a -> 'b t) -> 'a t -> 'b t
 ```
-Like [`map`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-map), for a function that returns a promise.
+Like [`map`](./#val-map), for a function that returns a promise.
 
 ```ocaml
 val all : 'a t list -> 'a list t
@@ -95,7 +95,7 @@ val of_js :
   Js_of_ocaml.Js.Unsafe.any ->
   'a t
 ```
-`of_js ~decode p` reads a raw JavaScript Promise and applies `decode` to its resolved value. If `decode` raises, [`await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) re-raises the original OCaml exception. See [`Decode`](./Workero-Decode.md).
+`of_js ~decode p` reads a raw JavaScript Promise and applies `decode` to its resolved value. If `decode` raises, [`await`](./#val-await) re-raises the original OCaml exception. See [`Decode`](./Workero-Decode.md).
 
 ```ocaml
 val to_js : 'a t -> Js_of_ocaml.Js.Unsafe.any

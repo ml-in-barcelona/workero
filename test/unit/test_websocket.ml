@@ -1,12 +1,14 @@
 open Helpers
-module W = Workero.Websocket
+module Websocket = Workero.Websocket
 
 let test_js_round_trip () =
   let v = inject (obj [||]) in
-  Alcotest.(check bool) "same value" true (W.to_js (W.of_js v) == v)
+  Alcotest.(check bool)
+    "same value" true
+    (Websocket.to_js (Websocket.of_js v) == v)
 
 let describe = function
-  | W.Message (Text s) -> "text " ^ s
+  | Websocket.Message (Text s) -> "text " ^ s
   | Message (Binary b) -> Printf.sprintf "binary %d" (String.length b)
   | Close { code; reason; was_clean } ->
       Printf.sprintf "close %d %s %b" code reason was_clean

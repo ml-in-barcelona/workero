@@ -9,14 +9,16 @@ type event =
 
 type t = {
   js : js;
-  queue : event Queue.t;
+  queue : event Stdlib.Queue.t;
   mutable waiter : (unit -> unit) option;
   mutable closed : event option;
 }
 
 type pair = { client : t; server : t }
 
-let of_js js = { js; queue = Queue.create (); waiter = None; closed = None }
+let of_js js =
+  { js; queue = Stdlib.Queue.create (); waiter = None; closed = None }
+
 let to_js t = t.js
 
 let pair () =
@@ -25,7 +27,7 @@ let pair () =
 
 let push t e =
   (match e with Close _ -> t.closed <- Some e | _ -> ());
-  Queue.push e t.queue;
+  Stdlib.Queue.push e t.queue;
   match t.waiter with
   | Some wake ->
       t.waiter <- None;
@@ -65,7 +67,7 @@ let send t m =
   ignore (Binding.invoke t.js "send" [| data |])
 
 let rec receive t =
-  match (Queue.take_opt t.queue, t.closed) with
+  match (Stdlib.Queue.take_opt t.queue, t.closed) with
   | Some e, _ -> e
   | None, Some c -> c
   | None, None ->
@@ -112,3 +114,11 @@ let upgrade ctx f =
                [| str ("Workero.Websocket.upgrade: " ^ Printexc.to_string e) |]);
           if is_open server then close ~code:1011 server);
   response client
+
+let serialize_attachment t value =
+  ignore (Binding.invoke t.js "serializeAttachment" [| Json_js.to_js value |])
+
+let deserialize_attachment t =
+  let v = Binding.invoke t.js "deserializeAttachment" [||] in
+  if is_nullish v || typeof v = "undefined" then None
+  else Some (Json_js.of_js v)

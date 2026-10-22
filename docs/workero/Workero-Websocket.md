@@ -1,9 +1,9 @@
 
 # Module `Workero.Websocket`
 
-WebSockets served by the Worker, read by pulling events with [`receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive).
+WebSockets served by the Worker, read by pulling events with [`receive`](./#val-receive).
 
-Functions that raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) do so when the runtime throws. `receive` suspends like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await).
+Functions that raise [`Js_error`](./Workero.md#exception-Js_error) do so when the runtime throws. `receive` suspends like [`Promise.await`](./Workero-Promise.md#val-await).
 
 ```ocaml
 type t
@@ -42,7 +42,7 @@ val accept : t -> unit
 ```ocaml
 val send : t -> message -> unit
 ```
-Raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the socket is closed.
+Raises [`Js_error`](./Workero.md#exception-Js_error) when the socket is closed.
 
 ```ocaml
 val receive : t -> event
@@ -61,6 +61,16 @@ Status 101 with `webSocket` set; give it the `client` of a `pair`.
 val upgrade : Context.t -> (t -> unit) -> Response.t
 ```
 `upgrade ctx f` makes a pair, accepts the server end, runs `f server` in its own fiber (`Context.wait_until`), and returns the 101 response at once. When `f` returns, the socket closes with code 1000 if it is still open. If `f` raises, it closes with 1011 and writes the error with `console.error`.
+
+```ocaml
+val serialize_attachment : t -> Jsonkit.t -> unit
+```
+Attaches a JSON value, at most 2048 bytes serialised, to a socket that was accepted with [`Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket). The value survives hibernation. Raises [`Js_error`](./Workero.md#exception-Js_error) when the value is too large or the socket was not accepted that way.
+
+```ocaml
+val deserialize_attachment : t -> Jsonkit.t option
+```
+The value of [`serialize_attachment`](./#val-serialize_attachment), or `None` when there is none.
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t

@@ -1,7 +1,7 @@
 
 # JSON
 
-[`Workero.JSON`](./Workero-JSON.md) reads and writes JSON values of type `Jsonkit.t`. It does not re-export jsonkit. Add `jsonkit` to your dune `libraries` and `jsonkit.ppx` to `preprocess` when you derive decoders:
+[`Workero.JSON`](./Workero-JSON.md) reads and writes JSON values of type `Jsonkit.t`. It does not re-export jsonkit. Add `jsonkit` to your Dune `libraries` and `jsonkit.ppx` to `preprocess` when you derive decoders:
 
 ```dune
 (executable
@@ -11,7 +11,7 @@
   (pps jsonkit.ppx))
  (libraries workero jsonkit))
 ```
-This handler decodes a request body into a record and returns JSON. The handler chooses the response for a decode error:
+This handler decodes the request body into a record and returns JSON. The handler chooses the response for a decode error:
 
 ```ocaml
 open Jsonkit.Primitives
@@ -25,10 +25,10 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-[`Workero.JSON.decode`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-decode) reads the body once and returns a result. It returns `Error message` for invalid JSON or when the decoder raises `Jsonkit.Of_json_error`. It does not itself send a 400 response. An exception of another kind from the decoder escapes the handler unless you catch it.
+[`Workero.JSON.decode`](./Workero-JSON.md#val-decode) reads the body once and returns `Error message` for invalid JSON or when the decoder raises `Jsonkit.Of_json_error`. It does not send a 400 response. Other decoder exceptions escape unless you catch them. [`Workero.JSON.parse`](./Workero-JSON.md#val-parse) reads a `Jsonkit.t` without decoding it and also returns a result. [`Workero.JSON.request`](./Workero-JSON.md#val-request) instead raises `Jsonkit.Of_string_error` on invalid JSON; an uncaught exception makes the runtime answer with status 500\.
 
-Use [`Workero.JSON.parse`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-parse) to read a `Jsonkit.t` without decoding it. It also returns a result. [`Workero.JSON.request`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-request) instead raises `Jsonkit.Of_string_error` for invalid JSON. If this exception escapes the handler, the runtime answers with status 500\.
+[`Workero.JSON.response`](./Workero-JSON.md#val-response) sends compact JSON with status 200 and `content-type: application/json; charset=utf-8` by default. [`Workero.JSON.error`](./Workero-JSON.md#val-error) sends an `{"error": message}` object with status 400 by default. You can select another status for either response.
 
-[`Workero.JSON.response`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-response) sends compact JSON with status 200 and `content-type: application/json; charset=utf-8` by default. [`Workero.JSON.error`](https://ml-in-barcelona.github.io/workero/workero/Workero/JSON/index.html#val-error) sends an `{"error": message}` object with status 400 by default. You can choose the response status in either function.
+For a binding that gives you a JavaScript value, [`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) converts its JSON representation to `Jsonkit.t`. It follows `JSON.stringify`: it drops object fields with `undefined` or function values and raises `Invalid_argument` for values with no JSON representation, such as a cyclic object or a `BigInt`. [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) converts `Jsonkit.t` to a new JavaScript value; it raises `Invalid_argument` for `nan` or an infinite float. See [`Workero.JSON`](./Workero-JSON.md) for these functions' complete contracts.
 
-Without the ppx, write a decoder with `Jsonkit.Of_json`. See [`Workero.JSON`](./Workero-JSON.md) for an example and the complete API. See [Requests and responses](./requests.md) for other body and response formats.
+Without the ppx, write a decoder with `Jsonkit.Of_json`. See [Requests and responses](./requests.md) for other body formats.

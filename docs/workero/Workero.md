@@ -11,7 +11,7 @@ An unchecked JavaScript value: what `of_js` takes and `to_js` returns. Read it w
 ```ocaml
 exception Js_error of Promise.error
 ```
-Raised by [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) when the awaited JavaScript Promise rejects, and by the bindings when the runtime throws. The payload is the original rejection reason; [`Promise.error_to_string`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-error_to_string) shows it as JavaScript `String` does, for example `"TypeError: bad argument"`.
+Raised by [`Promise.await`](./Workero-Promise.md#val-await) when the awaited JavaScript Promise rejects, and by the bindings when the runtime throws. The payload is the original rejection reason; [`Promise.error_to_string`](./Workero-Promise.md#val-error_to_string) shows it as JavaScript `String` does, for example `"TypeError: bad argument"`.
 
 ```ocaml
 module Promise : sig ... end
@@ -21,7 +21,7 @@ A JavaScript `Promise` of an OCaml value.
 ```ocaml
 module Decode : sig ... end
 ```
-Decoders for raw JavaScript values, for [`Promise.of_js`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-of_js). A decoder raises `Invalid_argument` naming the expected and the actual JavaScript type.
+Decoders for raw JavaScript values, for [`Promise.of_js`](./Workero-Promise.md#val-of_js). A decoder raises `Invalid_argument` naming the expected and the actual JavaScript type.
 
 ```ocaml
 module URL : sig ... end
@@ -52,12 +52,17 @@ HTTP status codes as polymorphic variants, with the names and groups of Dream. `
 ```ocaml
 module Env : sig ... end
 ```
-The `env` argument of a Worker handler holds bindings: variables, secrets and configured resources.
+The `env` argument of a Worker handler: string and JSON-shaped variables, Worker secrets, and resource bindings. See [Variables and secrets](./env.md).
 
 ```ocaml
 module Context : sig ... end
 ```
 The `ctx` argument of a Worker handler.
+
+```ocaml
+module Router : sig ... end
+```
+Dispatch requests by method and decoded path. See [Router](./router.md) for a complete Worker and expected responses.
 
 ```ocaml
 module Scheduled : sig ... end
@@ -72,22 +77,22 @@ JSON requests and responses for workero (`Workero.JSON`).
 ```ocaml
 module KV : sig ... end
 ```
-Text values in a Workers KV namespace, bound with `[[kv_namespaces]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects. KV is eventually consistent across locations; 60 seconds is not a guaranteed visibility bound.
+Text values in a Workers KV namespace, bound with `[[kv_namespaces]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects. KV is eventually consistent across locations; 60 seconds is not a guaranteed visibility bound.
 
 ```ocaml
 module Cache : sig ... end
 ```
-The global `caches.default` runtime API, not an `env` binding. Entries are keyed by URL string in the data center that runs the Worker. Operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects.
+The global `caches.default` runtime API, not an `env` binding. Entries are keyed by URL string in the data center that runs the Worker. Operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects.
 
 ```ocaml
 module R2 : sig ... end
 ```
-Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
+Buffered object bytes in a Cloudflare R2 bucket, bound with `[[r2_buckets]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects. Objects are raw bytes held in OCaml strings.
 
 ```ocaml
 module D1 : sig ... end
 ```
-Basic SQL queries on a Cloudflare D1 database, bound with `[[d1_databases]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await) and raise [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the runtime rejects, for example on an SQL error.
+Basic SQL queries on a Cloudflare D1 database, bound with `[[d1_databases]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./#exception-Js_error) when the runtime rejects, for example on an SQL error.
 
 ```ocaml
 module Sql_value : sig ... end
@@ -102,17 +107,17 @@ Byte streams: a JavaScript `ReadableStream` and its readers and writers.
 ```ocaml
 module Form_data : sig ... end
 ```
-Parsed `multipart/form-data` and `application/x-www-form-urlencoded` bodies: a JavaScript `FormData`. Get one from [`Request.form_data`](https://ml-in-barcelona.github.io/workero/workero/Workero/Request/index.html#val-form_data).
+Parsed `multipart/form-data` and `application/x-www-form-urlencoded` bodies: a JavaScript `FormData`. Get one from [`Request.form_data`](./Workero-Request.md#val-form_data).
 
 ```ocaml
 module Websocket : sig ... end
 ```
-WebSockets served by the Worker, read by pulling events with [`receive`](https://ml-in-barcelona.github.io/workero/workero/Workero/Websocket/index.html#val-receive).
+WebSockets served by the Worker, read by pulling events with [`receive`](./Workero-Websocket.md#val-receive).
 
 ```ocaml
 module Timer : sig ... end
 ```
-JavaScript timers: `setTimeout`, `setInterval` and their `clear` functions. Delays are in milliseconds. Call them only from inside a handler or a [`Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until) function; the Workers runtime refuses timers at startup.
+JavaScript timers: `setTimeout`, `setInterval` and their `clear` functions. Delays are in milliseconds. Call them only from inside a handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function; the Workers runtime refuses timers at startup.
 
 ```ocaml
 module Date : sig ... end
@@ -130,14 +135,54 @@ module Console : sig ... end
 The global `console`. Each call writes one entry to the Workers logs, with its level. Unlike `print_string`, it needs no flush.
 
 ```ocaml
+module Secret_store : sig ... end
+```
+A secret of Cloudflare Secrets Store, bound in `wrangler.toml` with `[[secrets_store_secrets]]`. Local `wrangler dev` requires a local Secrets Store secret; it cannot read the remote one. The value is plain text: do not log it. For a Worker secret set with `wrangler secret put`, use [`Env.secret`](./Workero-Env.md#val-secret).
+
+```ocaml
+module Fetcher : sig ... end
+```
+A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Configure service and assets bindings in `wrangler.toml` with `[[services]]` or `[assets]`. A Durable Object stub comes from [`Durable_object.Namespace.get`](./Workero-Durable_object-Namespace.md#val-get). The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
+
+```ocaml
+module Queue : sig ... end
+```
+Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages through a producer binding in `wrangler.toml` (`[[queues.producers]]`). A [`Workero.queue`](./#val-queue) handler consumes batches from a queue configured under `[[queues.consumers]]`, not through a producer binding. See [Queue](./queue.md) for a complete Worker.
+
+```ocaml
+module Rate_limiter : sig ... end
+```
+A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The binding's `name` is passed to [`of_env`](./Workero-Rate_limiter.md#val-of_env); the limit and its period come from the binding, not from the code.
+
+```ocaml
+module Ai : sig ... end
+```
+A Workers AI binding, declared in `wrangler.toml` with `[ai]`. Models run remotely, including under `wrangler dev`, and consume account usage.
+
+```ocaml
+module Analytics_engine : sig ... end
+```
+A Workers Analytics Engine dataset, declared in `wrangler.toml` with `[[analytics_engine_datasets]]`.
+
+```ocaml
+module Durable_object : sig ... end
+```
+Durable Objects with SQLite-backed key-value and SQL storage.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
-`serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await), [`fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
+`serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
 
 ```ocaml
 val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
 ```
-`scheduled handler` registers the cron trigger handler, like `scheduled(controller, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](https://ml-in-barcelona.github.io/workero/workero/Workero/Promise/index.html#val-await), [`fetch`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-fetch) and the body readers. It can be combined with [`serve`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#val-serve); a Worker may register either or both. An exception raised by the handler rejects the event Promise, so Cloudflare records the run as failed.
+`scheduled handler` registers the cron trigger handler, like `scheduled(controller, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve); a Worker may register either or both. An exception raised by the handler rejects the event Promise, so Cloudflare records the run as failed.
+
+```ocaml
+val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
+```
+`queue handler` registers the queue consumer, like `queue(batch, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve) and [`scheduled`](./#val-scheduled). An exception raised by the handler rejects the event Promise, so the runtime retries the messages that the handler did not ack.
 
 ```ocaml
 val fetch : 
@@ -147,8 +192,8 @@ val fetch :
   string ->
   Response.t
 ```
-`fetch url` sends an HTTP request and waits for the response headers, like JavaScript `fetch`. `method_` is `GET` by default. `body` is sent as raw bytes and sets no `content-type`. Read the response body with [`Response.body_text`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-body_text) or [`Response.body_bytes`](https://ml-in-barcelona.github.io/workero/workero/Workero/Response/index.html#val-body_bytes). Call it only from inside a handler or a [`Context.wait_until`](https://ml-in-barcelona.github.io/workero/workero/Workero/Context/index.html#val-wait_until) function.
+`fetch url` sends an HTTP request and waits for the response headers, like JavaScript `fetch`. `method_` is `GET` by default. `body` is sent as raw bytes and sets no `content-type`. Read the response body with [`Response.body_text`](./Workero-Response.md#val-body_text) or [`Response.body_bytes`](./Workero-Response.md#val-body_bytes). Call it only from inside a handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function.
 
 Raises `Invalid_argument` when `body` is given with `GET` or `HEAD`.
 
-raises [`Js_error`](https://ml-in-barcelona.github.io/workero/workero/Workero/index.html#exception-Js_error) when the request fails, for example on a network error.
+raises [`Js_error`](./#exception-Js_error) when the request fails, for example on a network error.

@@ -29,6 +29,7 @@ config() {
     echo '    )),'
     echo '    (name = "test", worker = ('
     echo '      compatibilityDate = "2026-10-01",'
+    echo '      compatibilityFlags = ["service_binding_extra_handlers"],'
     echo '      modules = [(name = "tests.mjs", esModule = embed "tests.mjs")],'
     echo "      bindings = [(name = \"WORKER\", service = \"worker\"), (name = \"EXPECT\", text = \"$expect\")],"
     echo '    )),'
@@ -48,7 +49,7 @@ check() {
   cp test/worker-exports/tests.mjs "$out/"
   config "$out" "$expect"
   if [ "$expect" = none ]; then
-    if $workerd test "$out/config.capnp" >"$log" 2>&1; then
+    if $workerd test --experimental "$out/config.capnp" >"$log" 2>&1; then
       cat "$log"
       echo "FAIL - $name: the worker loaded with no handler"
       exit 1
@@ -60,7 +61,7 @@ check() {
     }
     echo "ok - $name: the load fails with the no handler message"
   else
-    $workerd test "$out/config.capnp" >"$log" 2>&1 || {
+    $workerd test --experimental "$out/config.capnp" >"$log" 2>&1 || {
       cat "$log"
       echo "FAIL - $name"
       exit 1
@@ -72,4 +73,5 @@ check() {
 check serve fetch
 check scheduled scheduled
 check both fetch+scheduled
+check queue queue
 check none none
