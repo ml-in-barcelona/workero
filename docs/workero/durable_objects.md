@@ -258,8 +258,22 @@ let () =
           Fetcher.fetch port "http://container/")
         ())
 ```
-The program in the container needs time to listen on its port. Until then `Fetcher.fetch` raises [`Workero.Js_error`](./Workero.md#exception-Js_error): retry. [`Workero.Durable_object.Container.monitor`](./Workero-Durable_object-Container.md#val-monitor) waits until the container exits, [`Workero.Durable_object.Container.signal`](./Workero-Durable_object-Container.md#val-signal) sends a Unix signal, and [`Workero.Durable_object.Container.destroy`](./Workero-Durable_object-Container.md#val-destroy) stops it.
+The program in the container needs time to listen on its port. Until then `Fetcher.fetch` raises [`Workero.Js_error`](./Workero.md#exception-Js_error): retry. [`Workero.Durable_object.Container.monitor`](./Workero-Durable_object-Container.md#val-monitor) waits until the container exits, [`Workero.Durable_object.Container.signal`](./Workero-Durable_object-Container.md#val-signal) sends a Unix signal, and [`Workero.Durable_object.Container.destroy`](./Workero-Durable_object-Container.md#val-destroy) stops it. [`Workero.Durable_object.Container.set_inactivity_timeout`](./Workero-Durable_object-Container.md#val-set_inactivity_timeout) sets how long the container may stay idle, up to 6 hours.
 
+[`Workero.Durable_object.Container.connect`](./Workero-Durable_object-Container.md#val-connect) opens a raw TCP connection to a port and gives a [`Workero.Socket.t`](./Workero-Socket.md#type-t):
+
+```ocaml
+let socket = Durable_object.Container.connect container ~port:9000 in
+Socket.opened socket;
+Stream.Writer.write (Socket.writer socket) "ping";
+let reply = Stream.Reader.read (Socket.reader socket)
+```
+The `intercept_outbound_http`, `intercept_all_outbound_http` and `intercept_outbound_https` functions of [`Workero.Durable_object.Container`](./Workero-Durable_object-Container.md) send the outbound requests of the container to a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t), for example a service binding to the Worker. The target sees the original URL:
+
+```ocaml
+Durable_object.Container.intercept_outbound_http container "api.example.com"
+  (Fetcher.of_env env "SELF")
+```
 To run a container in `workerd`, give the namespace a `container` with an image, and give the config a `containerEngine` that uses the local Docker daemon:
 
 ```capnp

@@ -434,10 +434,52 @@ let container_stub log =
     (inject
        (Js.Unsafe.callback_with_arity 1 (fun n ->
             record ("signal:" ^ string_of_int (num n)))));
+  let recorded name f =
+    set c (Js.string name)
+      (inject
+         (Js.Unsafe.callback_with_arity 2 (fun a b ->
+              record (f a b);
+              promise "resolve" (inject Js.undefined))))
+  in
+  let tag binding = Js.to_string (get binding (Js.string "tag")) in
+  recorded "setInactivityTimeout" (fun ms _ ->
+      "timeout:" ^ string_of_int (num ms));
+  recorded "interceptOutboundHttp" (fun addr binding ->
+      "http:" ^ Js.to_string addr ^ ":" ^ tag binding);
+  recorded "interceptOutboundHttps" (fun addr binding ->
+      "https:" ^ Js.to_string addr ^ ":" ^ tag binding);
+  set c
+    (Js.string "interceptAllOutboundHttp")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun binding ->
+            record ("all:" ^ tag binding);
+            promise "resolve" (inject Js.undefined))));
   set c (Js.string "getTcpPort")
     (inject
        (Js.Unsafe.callback_with_arity 1 (fun port ->
             let tcp = obj [||] in
+            set tcp (Js.string "connect")
+              (inject
+                 (Js.Unsafe.callback_with_arity 1 (fun address ->
+                      record
+                        (Printf.sprintf "connect:%d:%s" (num port)
+                           (Js.to_string address));
+                      let echo =
+                        new_obj (g "TransformStream")
+                          [|
+                            inject (obj [||]);
+                            inject (obj [||]);
+                            inject (obj [| ("highWaterMark", inject 16) |]);
+                          |]
+                      in
+                      let socket = obj [||] in
+                      set socket (Js.string "opened")
+                        (promise "resolve" (inject Js.undefined));
+                      set socket (Js.string "readable")
+                        (get echo (Js.string "readable"));
+                      set socket (Js.string "writable")
+                        (get echo (Js.string "writable"));
+                      socket)));
             set tcp (Js.string "fetch")
               (inject
                  (Js.Unsafe.callback_with_arity 1 (fun url ->
@@ -473,7 +515,39 @@ let container_probe () =
   let body = Response.body_text (Fetcher.fetch tcp "http://container/x") in
   D.Container.destroy ~message:"bye" container;
   D.Container.destroy container;
-  Printf.sprintf "%s|%s|%s" (String.concat ";" (List.rev !log)) monitored body
+  let socket = D.Container.connect container ~port:9000 in
+  Socket.opened socket;
+  let writer = Socket.writer socket in
+  Stream.Writer.write writer "ping";
+  Stream.Writer.close writer;
+  let echoed = Stream.Reader.read (Socket.reader socket) in
+  D.Container.set_inactivity_timeout container ~ms:60_000;
+  let binding tag =
+    Fetcher.of_js
+      (Js.Unsafe.obj [| ("tag", Js.Unsafe.inject (Js.string tag)) |])
+  in
+  D.Container.intercept_outbound_http container "*.example.com" (binding "a");
+  D.Container.intercept_all_outbound_http container (binding "b");
+  D.Container.intercept_outbound_https container "*" (binding "c");
+  let invalid f =
+    match f () with
+    | () -> "no raise"
+    | exception Invalid_argument _ -> "invalid"
+  in
+  let invalids =
+    String.concat ","
+      [
+        invalid (fun () -> D.Container.set_inactivity_timeout container ~ms:0);
+        invalid (fun () ->
+            D.Container.set_inactivity_timeout container ~ms:21_600_001);
+        invalid (fun () -> ignore (D.Container.connect container ~port:0));
+      ]
+  in
+  Printf.sprintf "%s|%s|%s|%s|%s"
+    (String.concat ";" (List.rev !log))
+    monitored body
+    (Option.value echoed ~default:"-")
+    invalids
 
 let handle req env _ctx =
   let segments = String.split_on_char '/' (Request.path req) in

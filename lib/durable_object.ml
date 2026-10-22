@@ -178,6 +178,45 @@ module Container = struct
       (Binding.invoke t "getTcpPort"
          [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |])
 
+  let connect t ~port =
+    if port < 1 || port > 65535 then
+      invalid_arg
+        (Printf.sprintf
+           "Workero.Durable_object.Container.connect: port %d is outside 1 to \
+            65535"
+           port);
+    let tcp =
+      Binding.invoke t "getTcpPort"
+        [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |]
+    in
+    Socket.of_js
+      (Binding.invoke tcp "connect"
+         [| str (Printf.sprintf "10.0.0.1:%d" port) |])
+
+  let max_inactivity_timeout_ms = 21_600_000
+
+  let set_inactivity_timeout t ~ms =
+    if ms < 1 || ms > max_inactivity_timeout_ms then
+      invalid_arg
+        (Printf.sprintf
+           "Workero.Durable_object.Container.set_inactivity_timeout: %d ms is \
+            outside 1 to %d"
+           ms max_inactivity_timeout_ms);
+    Binding.call ~decode:Decode.unit t "setInactivityTimeout"
+      [| Js.Unsafe.inject (Js.number_of_float (float_of_int ms)) |]
+
+  let intercept_outbound_http t address fetcher =
+    Binding.call ~decode:Decode.unit t "interceptOutboundHttp"
+      [| str address; Fetcher.to_js fetcher |]
+
+  let intercept_all_outbound_http t fetcher =
+    Binding.call ~decode:Decode.unit t "interceptAllOutboundHttp"
+      [| Fetcher.to_js fetcher |]
+
+  let intercept_outbound_https t address fetcher =
+    Binding.call ~decode:Decode.unit t "interceptOutboundHttps"
+      [| str address; Fetcher.to_js fetcher |]
+
   let of_js (v : js) : t = v
   let to_js (t : t) : js = t
 end
