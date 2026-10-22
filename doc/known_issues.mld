@@ -31,6 +31,9 @@ not supported yet.
 - {{!page-ai}Workers AI}: no streaming answers and no gateway options. {!Workero.Ai.run} raises [Invalid_argument] on a stream.
 - {{!page-analytics_engine}Analytics Engine}: [write] returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
 
+- {{!page-socket}Sockets}: outbound connections only, from a handler. There is no [connect] handler for incoming TCP and no [Socket.upgraded]. {!Workero.Socket.opened} gives no address information. [workerd] cannot test TLS: with a Worker as outbound, [secure_transport:On] and [start_tls] fail. Cloudflare limits the destination (no Cloudflare addresses, loopback or port 25) and the number of open connections for each request; see its documentation.
+- Sockets: [index.js] always imports [cloudflare:sockets]. It is available on Cloudflare and in [workerd] without a flag. A program run outside a Worker, for example in Node.js, raises [Failure] from {!Workero.Socket.connect}.
+
 {1 Limits of Durable Objects}
 
 - Only classes with SQLite storage work. A class listed in [new_classes] builds, then fails at run time with a JavaScript error. See {{!page-durable_objects}Durable Objects}.
@@ -52,7 +55,6 @@ not supported yet.
 - Durable Objects without SQLite storage, and [State.container].
 - Vectorize, Hyperdrive and the Send Email binding.
 - [HTMLRewriter].
-- Outbound TCP sockets ([connect]).
 - [AbortController] and request cancellation.
 - [crypto.subtle]. {!Workero.Crypto} has [random_uuid] and [random_bytes] only.
 - Containers.

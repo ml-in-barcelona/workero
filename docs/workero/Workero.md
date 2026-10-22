@@ -148,6 +148,11 @@ module Queue : sig ... end
 Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages to a queue, bound in `wrangler.toml` with `[[queues.producers]]`. A Worker reads messages with the handler that [`Workero.queue`](./#val-queue) registers.
 
 ```ocaml
+module Socket : sig ... end
+```
+Outbound TCP sockets, like `connect` from `cloudflare:sockets`. `index.js` imports `connect` on every build, so a program needs no setup. See [Sockets](./socket.md).
+
+```ocaml
 module Rate_limiter : sig ... end
 ```
 A Workers Rate Limiting binding, declared in `wrangler.toml` with `[[ratelimits]]`. The limit and its period come from the binding, not from the code.

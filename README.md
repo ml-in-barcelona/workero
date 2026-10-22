@@ -101,6 +101,20 @@ let () =
         (Workero.Queue.Batch.messages batch))
 ```
 
+Open an outbound TCP connection with `Socket`. Reads and writes use the
+`Stream` reader and writer:
+
+```ocaml
+let handler _req _env _ctx =
+  let open Workero in
+  let socket = Socket.connect ~host:"gopher.floodgap.com" ~port:70 () in
+  Socket.opened socket;
+  Stream.Writer.write (Socket.writer socket) "/\r\n";
+  let reply = Stream.Reader.read (Socket.reader socket) in
+  Socket.close socket;
+  Response.text (Option.value reply ~default:"")
+```
+
 `Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
 model with JSON input and output, and `Analytics_engine.write` records a data
 point:

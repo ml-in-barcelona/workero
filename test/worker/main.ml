@@ -12,6 +12,7 @@ let handlers =
     Routes_rate_limiter.handle;
     Routes_ai.handle;
     Routes_analytics.handle;
+    Routes_socket.handle;
     Routes_do.handle;
   ]
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `Workero.Socket`: outbound TCP sockets (`connect` from `cloudflare:sockets`) with `connect ~host ~port` (`?secure_transport` of `Off | On | Starttls`, `?allow_half_open`), `opened`, `closed`, `reader`, `writer`, `close` and `start_tls`. `index.js` now always imports `cloudflare:sockets`.
+- `Stream.Reader.release`, `Stream.Writer.release` and `Stream.Writer.of_js`.
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).

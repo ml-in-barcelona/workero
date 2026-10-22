@@ -1,3 +1,5 @@
+import { connect } from "cloudflare:sockets";
+(globalThis.__workero ??= {}).connect = connect;
 const registered = globalThis.__workero ?? {};
 const handlers = {};
 for (const name of ["fetch", "scheduled", "queue"]) {

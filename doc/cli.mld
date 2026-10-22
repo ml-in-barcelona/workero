@@ -84,6 +84,7 @@ without [.bc.wasm.js].
   every build. It looks for it in [WORKERD], on [PATH], then in
   [node_modules/.bin] of the current directory and its parents.
 + Writes [index.js], the worker entry point. It imports every [.wasm] file and
+  [connect] from [cloudflare:sockets] (see {{!page-socket}Sockets}), and
   exports the handlers that the program registered with {!Workero.serve} and
   {!Workero.scheduled}, {!Workero.queue}, and one class for each registered
   Durable Object. For those it also writes [durable-object.js], and it removes a
