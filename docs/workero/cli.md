@@ -14,7 +14,7 @@ workero package <path>/<name>.bc.wasm.js [--out <dir>] [--allow-missing-primitiv
 
 `workero` has two options of its own, and both commands take them:
 
-- `--out <dir>` (or `--out=<dir>`) sets the output directory. The default is `_worker`.
+- `--out <dir>` (or `--out=<dir>`) sets the output directory. The default is `_worker`. If you give it more than once, the last one wins.
 - `--allow-missing-primitives` turns the missing-primitives error into a warning.
 They can be anywhere in the arguments.
 
@@ -56,7 +56,7 @@ With an explicit root (`--root`, `DUNE_ROOT`, `--release`, `-p`, or `--for-relea
 4. Writes `load-wasm.js`, which loads the precompiled wasm modules in workerd.
 5. Writes an initial `index.js` and runs the program once in `workerd test` to read class names registered at module initialization with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register). The probe runs for at most 30 seconds by default. Set `WORKERO_PROBE_TIMEOUT` to a positive number of seconds to change it; absent, invalid and nonpositive values use 30 seconds. The probe does not call a fetch, scheduled or queue handler.
 6. Writes the final `index.js`. It imports every `.wasm` file, exports the registered [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue) handlers through its default export, and adds named exports for registered Durable Object classes. If classes exist, it writes `durable-object.js` for their initialization, fetch, alarm, and WebSocket event handlers. It removes a stale `durable-object.js` when no classes are registered.
-On success it prints `workero: wrote <dir> (<n> wasm file(s))` and, if classes were found, `workero: Durable Object classes: <names>`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, are not wrapped by that error handler.
+On success it prints `workero: wrote <dir> (<n> wasm file(s))` and, if classes were found, `workero: Durable Object classes: <names>`. Its explicit usage and packaging errors print `workero: <reason>` to stderr and exit with code 1\. Other errors, such as file-system exceptions during a copy, print `workero: internal error, uncaught exception:` and the exception, and exit with code 125\.
 
 A build with no registered fetch, scheduled, queue or Durable Object handler can complete, but its generated worker fails to load with `registered no handler`. Register at least one handler at module initialization.
 

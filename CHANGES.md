@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The `workero` CLI uses Cmdliner. `workero --help`, `workero build --help` and `workero package --help` describe the commands. Usage errors print the usage line and exit with code 1. An unexpected exception, such as a file-system error, exits with code 125. When `--out` is given more than once, the last one wins. `cmdliner` is a new dependency.
+- Faster requests: a response without headers makes no `Headers` object, a handler that does not suspend makes no extra Promise, and `URL.path` decodes only paths that contain `%`.
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).

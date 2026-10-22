@@ -17,7 +17,7 @@ the commands and options.
 [workero] has two options of its own, and both commands take them:
 
 - [--out <dir>] (or [--out=<dir>]) sets the output directory. The default is
-  [_worker].
+  [_worker]. If you give it more than once, the last one wins.
 - [--allow-missing-primitives] turns the missing-primitives error into a
   warning.
 
@@ -103,8 +103,9 @@ file name without [.bc.wasm.js].
 On success it prints [workero: wrote <dir> (<n> wasm file(s))] and, if classes
 were found, [workero: Durable Object classes: <names>]. Its explicit
 usage and packaging errors print [workero: <reason>] to stderr and exit with
-code 1. Other errors, such as file-system exceptions during a copy, are not
-wrapped by that error handler.
+code 1. Other errors, such as file-system exceptions during a copy, print
+[workero: internal error, uncaught exception:] and the exception, and exit with
+code 125.
 
 A build with no registered fetch, scheduled, queue or Durable Object handler
 can complete, but its generated worker fails to load with [registered no
