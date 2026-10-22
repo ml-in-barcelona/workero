@@ -17,6 +17,7 @@ module Env = Env
 module Context = Context
 module Router = Router
 module Scheduled = Scheduled
+module Email = Email
 module JSON = Json
 module KV = Kv
 module Cache = Cache
@@ -64,6 +65,13 @@ let queue handler =
           flushing (fun () ->
               handler (Queue.Batch.of_js batch) (Env.of_js env)
                 (Context.of_js ctx);
+              Js.Unsafe.inject Js.undefined)))
+
+let email handler =
+  register "email" (fun message env ctx : js ->
+      Async.run (fun () ->
+          flushing (fun () ->
+              handler (Email.of_js message) (Env.of_js env) (Context.of_js ctx);
               Js.Unsafe.inject Js.undefined)))
 
 let fetch ?method_ ?headers ?body url =

@@ -21,6 +21,7 @@
   d1
   fetcher
   queue
+  email
   rate_limiter
   ai
   analytics_engine

@@ -15,12 +15,13 @@ The pages follow the order of a Worker project.
 - {{!page-getting_started}Getting started}: prerequisites, create a project,
   develop locally, deploy.
 - {{!page-handlers}Handlers}: [Workero.serve], [Workero.scheduled],
-  [Workero.queue], and the arguments of a handler.
+  [Workero.queue], [Workero.email], and the arguments of a handler.
 - {{!page-requests}Requests and responses}: requests, responses, URLs, JSON and
   [Workero.fetch].
 - {{!page-router}Router}: path parameters, catch-all paths and [405] answers.
 - {{!page-streams}Streams}: read a body in chunks, send a body in steps.
 - {{!page-forms}Forms}: forms and file uploads.
+- {{!page-email}Email}: receive, forward, reply to and reject email.
 - {{!page-websockets}WebSockets}: accept a connection and read its messages.
 - {{!page-env}Variables and secrets}: [Env.var], [Env.secret], [Env.json] and
   Secrets Store.

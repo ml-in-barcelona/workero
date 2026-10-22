@@ -31,6 +31,9 @@ not supported yet.
 - {{!page-ai}Workers AI}: no streaming answers and no gateway options. {!Workero.Ai.run} raises [Invalid_argument] on a stream.
 - {{!page-analytics_engine}Analytics Engine}: [write] returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
 
+- {{!page-email}Email}: [workerd] has no way to deliver a test email, and it has no [cloudflare:email] module. {!Workero.Email.reply} fails there with a {!Workero.Js_error}. The tests call the handler from a JavaScript harness with a mock message and a stand-in module, so they do not prove what the real runtime accepts.
+- Email: {!Workero.Email.reply} takes the raw message as a string, not a stream. {!Workero.Email.raw_text} and {!Workero.Email.raw_bytes} copy the whole message into the memory of the program; use {!Workero.Email.raw} for a large message. The raw message can be read once. The runtime checks the rules for [forward] headers and for the [reply] message.
+
 {1 Limits of Durable Objects}
 
 - Only classes with SQLite storage work. A class listed in [new_classes] builds, then fails at run time with a JavaScript error. See {{!page-durable_objects}Durable Objects}.
@@ -46,7 +49,7 @@ not supported yet.
 
 {1 Not supported yet}
 
-- The [tail] and [email] handlers.
+- The [tail] handler.
 - Workflows.
 - RPC: [WorkerEntrypoint] and RPC methods on Durable Object stubs.
 - Durable Objects without SQLite storage, and [State.container].

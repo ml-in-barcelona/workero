@@ -101,6 +101,18 @@ let () =
         (Workero.Queue.Batch.messages batch))
 ```
 
+Receive email from Email Routing with `Workero.email`. The handler forwards,
+replies to or rejects each message:
+
+```ocaml
+let () =
+  Workero.email (fun message _env _ctx ->
+      let open Workero in
+      if Email.raw_size message > 1_000_000 then
+        Email.set_reject message "message too large"
+      else Email.forward message "me@example.org")
+```
+
 `Rate_limiter.limit` checks a rate limit binding, `Ai.run` runs a Workers AI
 model with JSON input and output, and `Analytics_engine.write` records a data
 point:

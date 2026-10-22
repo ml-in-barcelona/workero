@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `Workero.Email` and `Workero.email`: the Email Routing handler. `Email.t` has `from`, `to_`, `header`, `header_all`, `headers`, `raw_size`, `raw` (a `Stream.t`), `raw_text`, `raw_bytes`, `set_reject`, `forward ?headers` and `reply`. `workero build` exports `email` only when the program registers it. `index.js` loads `cloudflare:email` when `reply` is called, so `workerd` runs the handler but cannot run `reply`.
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).

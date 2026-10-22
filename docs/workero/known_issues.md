@@ -23,6 +23,8 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [Rate limiter](./rate_limiter.md): the key is the only argument. The limit and period come from `wrangler.toml`. The count is per location and approximate.
 - [Workers AI](./ai.md): no streaming answers and no gateway options. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` on a stream.
 - [Analytics Engine](./analytics_engine.md): `write` returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
+- [Email](./email.md): `workerd` has no way to deliver a test email, and it has no `cloudflare:email` module. [`Workero.Email.reply`](./Workero-Email.md#val-reply) fails there with a [`Workero.Js_error`](./Workero.md#exception-Js_error). The tests call the handler from a JavaScript harness with a mock message and a stand-in module, so they do not prove what the real runtime accepts.
+- Email: [`Workero.Email.reply`](./Workero-Email.md#val-reply) takes the raw message as a string, not a stream. [`Workero.Email.raw_text`](./Workero-Email.md#val-raw_text) and [`Workero.Email.raw_bytes`](./Workero-Email.md#val-raw_bytes) copy the whole message into the memory of the program; use [`Workero.Email.raw`](./Workero-Email.md#val-raw) for a large message. The raw message can be read once. The runtime checks the rules for `forward` headers and for the `reply` message.
 
 ## Limits of Durable Objects
 
@@ -39,7 +41,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Not supported yet
 
-- The `tail` and `email` handlers.
+- The `tail` handler.
 - Workflows.
 - RPC: `WorkerEntrypoint` and RPC methods on Durable Object stubs.
 - Durable Objects without SQLite storage, and `State.container`.
