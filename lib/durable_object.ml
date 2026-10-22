@@ -134,12 +134,64 @@ module Storage = struct
   let to_js (t : t) : js = t
 end
 
+module Container = struct
+  type t = js
+
+  let running t = to_bool (Js.Unsafe.get t "running")
+
+  let start ?entrypoint ?env ?enable_internet t =
+    let strings l =
+      Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string l)))
+    in
+    let field name f = Option.map (fun v -> (name, f v)) in
+    let options =
+      Binding.options
+        (List.filter_map Fun.id
+           [
+             field "entrypoint" strings entrypoint;
+             field "env"
+               (fun kvs ->
+                 Binding.options (List.map (fun (k, v) -> (k, str v)) kvs))
+               env;
+             field "enableInternet" bool_js enable_internet;
+           ])
+    in
+    ignore (Binding.invoke t "start" [| options |])
+
+  let monitor t = Binding.call ~decode:Decode.unit t "monitor" [||]
+
+  let destroy ?message t =
+    let args =
+      match message with
+      | None -> [||]
+      | Some m -> [| Js.Unsafe.new_obj (global "Error") [| str m |] |]
+    in
+    Binding.call ~decode:Decode.unit t "destroy" args
+
+  let signal t signo =
+    ignore
+      (Binding.invoke t "signal"
+         [| Js.Unsafe.inject (Js.number_of_float (float_of_int signo)) |])
+
+  let get_tcp_port t port =
+    Fetcher.of_js
+      (Binding.invoke t "getTcpPort"
+         [| Js.Unsafe.inject (Js.number_of_float (float_of_int port)) |])
+
+  let of_js (v : js) : t = v
+  let to_js (t : t) : js = t
+end
+
 module State = struct
   type t = js
 
   let id t = Id.of_js (Js.Unsafe.get t "id")
   let storage t = Storage.of_js (Js.Unsafe.get t "storage")
   let wait_until t f = Context.wait_until (Context.of_js t) f
+
+  let container t =
+    let c = Js.Unsafe.get t "container" in
+    if is_nullish c then None else Some (Container.of_js c)
 
   let block_concurrency_while t f =
     let result = ref None in

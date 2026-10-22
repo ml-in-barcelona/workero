@@ -42,6 +42,11 @@ let counter state _env =
           | exception Invalid_argument _ -> ok "Invalid_argument")
       | "creations" ->
           ok (string_of_int (count_of (D.Storage.get storage "creations")))
+      | "container" ->
+          ok
+            (match D.State.container state with
+            | None -> "none"
+            | Some _ -> "some")
       | "id" ->
           let id = D.State.id state in
           ok
@@ -394,9 +399,86 @@ let () =
 let show res =
   Printf.sprintf "%d|%s" (Response.status res) (Response.body_text res)
 
+let container_stub log =
+  let open Js.Unsafe in
+  let g name = get global (Js.string name) in
+  let num v = int_of_float (Js.float_of_number (coerce v)) in
+  let record entry = log := entry :: !log in
+  let promise m arg = meth_call (g "Promise") m [| arg |] in
+  let c = obj [||] in
+  set c (Js.string "start")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun options ->
+            record
+              ("start:"
+              ^ Js.to_string
+                  (meth_call (g "JSON") "stringify" [| inject options |]));
+            ())));
+  set c (Js.string "monitor")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun () ->
+            record "monitor";
+            promise "reject"
+              (new_obj (g "Error") [| inject (Js.string "exit 3") |]))));
+  set c (Js.string "destroy")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun error ->
+            record
+              ("destroy:"
+              ^
+              if Js.Optdef.test error then
+                Js.to_string (get error (Js.string "message"))
+              else "-");
+            promise "resolve" (inject Js.undefined))));
+  set c (Js.string "signal")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun n ->
+            record ("signal:" ^ string_of_int (num n)))));
+  set c (Js.string "getTcpPort")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun port ->
+            let tcp = obj [||] in
+            set tcp (Js.string "fetch")
+              (inject
+                 (Js.Unsafe.callback_with_arity 1 (fun url ->
+                      promise "resolve"
+                        (new_obj (g "Response")
+                           [|
+                             inject
+                               (Js.string
+                                  (Printf.sprintf "port %d %s" (num port)
+                                     (Js.to_string url)));
+                           |]))));
+            tcp)));
+  Js.Unsafe.set c (Js.string "running") (Js.bool false);
+  c
+
+let container_probe () =
+  let log = ref [] in
+  let c = container_stub log in
+  let ctx = Js.Unsafe.obj [| ("container", Js.Unsafe.inject c) |] in
+  let state = D.State.of_js (Js.Unsafe.inject ctx) in
+  let container = Option.get (D.State.container state) in
+  D.Container.start ~entrypoint:[ "sh"; "-c"; "x" ]
+    ~env:[ ("A", "1") ]
+    ~enable_internet:true container;
+  D.Container.start container;
+  let monitored =
+    match D.Container.monitor container with
+    | () -> "no raise"
+    | exception Js_error e -> Promise.error_to_string e
+  in
+  D.Container.signal container 15;
+  let tcp = D.Container.get_tcp_port container 8080 in
+  let body = Response.body_text (Fetcher.fetch tcp "http://container/x") in
+  D.Container.destroy ~message:"bye" container;
+  D.Container.destroy container;
+  Printf.sprintf "%s|%s|%s" (String.concat ";" (List.rev !log)) monitored body
+
 let handle req env _ctx =
   let segments = String.split_on_char '/' (Request.path req) in
   match segments with
+  | [ ""; "do-container-stub" ] -> Some (Response.text (container_probe ()))
   | [ ""; "do"; binding; name; op ] -> (
       let namespace = D.Namespace.of_env env binding in
       let stub = D.Namespace.get_by_name namespace name in

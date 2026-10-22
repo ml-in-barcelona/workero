@@ -47,18 +47,18 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - A `block_concurrency_while` function that raises resets the object.
 - SQL: `Int` values are exact only between \-2^53 and 2^53; a larger integer reads back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. There is no asynchronous transaction. `Sql.run` gives the number of rows written only.
 - [WebSockets](./websockets.md): a socket from [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate. Do not mix it with `accept_websocket`. A class without `websocket_message` accepts hibernatable sockets and drops their messages.
+- [Containers](./durable_objects.md): [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) supports HTTP `fetch` only; raw TCP `connect`, `setInactivityTimeout` and outbound interception are not wrapped. The tests run `State.container` against `None` in `workerd` and against a JavaScript stub; a separate test, `test/worker-containers`, starts real containers in CI and prints `SKIP containers` where Docker or its images are missing. `workerd` runs containers only with Docker and an egress interceptor image.
 - `workerd` cannot test hibernation (eviction and re-creation), jurisdictions, or the tag and 2048-byte attachment limits.
 
 ## Not supported yet
 
 - The `tail` handler.
 - Workflows.
-- Durable Objects without SQLite storage, and `State.container`.
+- Durable Objects without SQLite storage.
 - Vectorize and the Send Email binding.
 - `HTMLRewriter`.
 - `AbortController` and request cancellation.
 - Most of `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has digests, HMAC, AES-GCM, PBKDF2 and HKDF with raw keys. It has no key generation, no `exportKey`, no `jwk`, `pkcs8` or `spki` import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no `wrapKey` and no `DigestStream`. Keys are never extractable.
-- Containers.
 
 ## Differences from native OCaml
 
