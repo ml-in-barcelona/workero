@@ -11,6 +11,9 @@ workero build [<dune build args>...] <dir>/<name>.bc.wasm.js [--out <dir>] [--al
 workero package <path>/<name>.bc.wasm.js [--out <dir>] [--allow-missing-primitives]
 ]}
 
+[workero --help], [workero build --help] and [workero package --help] describe
+the commands and options.
+
 [workero] has two options of its own, and both commands take them:
 
 - [--out <dir>] (or [--out=<dir>]) sets the output directory. The default is
@@ -33,8 +36,9 @@ workero build src/main.bc.wasm.js --profile dev --display short
 Exactly one argument must end in [.bc.wasm.js]. It is the target to package,
 written as you would write it for [dune build], relative to the current
 directory. With none, or with more than one, [workero] prints a usage error
-and exits with code 1. Other targets and aliases in the arguments go to dune,
-but [workero] does not package them.
+and exits with code 1. The error is the usage line followed by
+[workero: expected exactly one .bc.wasm.js target]. Other targets and aliases
+in the arguments go to dune, but [workero] does not package them.
 
 Run it from any directory inside the dune project.
 
@@ -48,7 +52,7 @@ with [--profile], [--release], [-p] or [--for-release-of-packages], or
 [_build/default/src/main.bc.wasm.js] and
 [_build/default/src/main.bc.wasm.assets] and never runs dune. Use it when
 another step builds the executable, such as a Makefile or CI job. A path that
-does not end in [.bc.wasm.js] is a usage error.
+does not end in [.bc.wasm.js] is a usage error, as are extra arguments.
 
 {1 Where it finds the build output}
 

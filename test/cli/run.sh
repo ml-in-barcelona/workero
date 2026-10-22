@@ -4,6 +4,7 @@ set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out="$root/_worker-cli-test"
 dune=${DUNE:-dune}
+export NO_COLOR=1
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
@@ -56,20 +57,32 @@ workero --profile dev test/cli/present/main.bc.wasm.js --out="$out" ||
 echo "ok - build accepts --out=<dir> and arguments before the target"
 
 if workero --profile dev; then fail "build without a .bc.wasm.js target fails"; fi
-grep -q "^workero: usage: workero build" "$log" || fail "build without a target prints the usage"
+grep -q "^Usage: workero build" "$log" && grep -q "^workero: expected exactly one .bc.wasm.js target" "$log" ||
+  fail "build without a target prints the usage"
 echo "ok - build without a .bc.wasm.js target is a usage error"
 
 if workero test/cli/present/main.bc.wasm.js test/cli/missing/main.bc.wasm.js; then
   fail "build with two targets fails"
 fi
-grep -q "^workero: usage: workero build" "$log" || fail "build with two targets prints the usage"
+grep -q "^Usage: workero build" "$log" && grep -q "^workero: expected exactly one .bc.wasm.js target" "$log" ||
+  fail "build with two targets prints the usage"
 echo "ok - build with two .bc.wasm.js targets is a usage error"
 
 if $dune exec workero -- package _build/default/test/cli/present/main --out "$out" >"$log" 2>&1; then
   fail "package fails without .bc.wasm.js"
 fi
-grep -q "workero: usage: workero build" "$log" || fail "package without .bc.wasm.js prints the usage"
+grep -q "^Usage: workero package" "$log" && grep -q "^workero: TARGET must end in .bc.wasm.js" "$log" ||
+  fail "package without .bc.wasm.js prints the usage"
 echo "ok - package with a path that is not a .bc.wasm.js is a usage error"
+
+$dune exec workero -- build --help=plain >"$log" 2>&1 || fail "build --help exits 0"
+grep -q -- "--allow-missing-primitives" "$log" || fail "build --help mentions --allow-missing-primitives"
+echo "ok - build --help lists the options"
+
+status=0
+workero --profile dev || status=$?
+[ "$status" -eq 1 ] || fail "a usage error exits with code 1 (got $status)"
+echo "ok - a usage error exits with code 1"
 
 for fixture in missing missing-pretty; do
 for run in first second; do

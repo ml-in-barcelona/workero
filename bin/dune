@@ -2,7 +2,7 @@
  (name main)
  (public_name workero)
  (package workero)
- (libraries unix str))
+ (libraries unix str cmdliner))
 
 (rule
  (targets embedded.ml)
