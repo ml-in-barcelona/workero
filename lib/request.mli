@@ -34,7 +34,8 @@ val bytes : t -> string
 (** Reads the whole body as raw bytes. *)
 
 val body : t -> Stream.t option
-(** The body as a stream; [None] when the request has none (GET, HEAD). *)
+(** The body as a stream; [None] when the request has none. Getting the stream
+    does not consume the body. Reading it does. *)
 
 val form_data : t -> Form_data.t
 (** Parses a multipart or urlencoded body with the platform parser. Suspends

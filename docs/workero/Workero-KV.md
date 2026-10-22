@@ -1,7 +1,7 @@
 
 # Module `Workero.KV`
 
-A Workers KV namespace, bound in `wrangler.toml` with `[[kv_namespaces]]`. Each function suspends like [`Promise.await`](./Workero-Promise.md#val-await) and raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects.
+Text values in a Workers KV namespace, bound with `[[kv_namespaces]]` in `wrangler.toml`. Storage operations suspend like [`Promise.await`](./Workero-Promise.md#val-await) and raise [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects. KV is eventually consistent across locations; 60 seconds is not a guaranteed visibility bound.
 
 ```ocaml
 type t
@@ -9,9 +9,7 @@ type t
 ```ocaml
 val of_env : Env.t -> string -> t
 ```
-`of_env env name` is the namespace bound as `name`.
-
-Raises `Invalid_argument` when `env` has no binding `name`.
+`of_env env name` looks up the namespace bound as `name`. It does not suspend. Raises `Invalid_argument` if the binding is missing, is not an object, or lacks `get`, `put`, `delete`, or `list`. The error names the binding.
 
 ```ocaml
 val get : t -> string -> string option

@@ -41,12 +41,12 @@ val request : Request.t -> Jsonkit.t
 ```
 Reads the whole body and parses it as JSON.
 
-Raises `Jsonkit.Of_string_error` when the body is not valid JSON. The payload describes the syntax error. A handler that lets it escape makes the runtime answer with status 500; use [`parse`](./#val-parse) or [`decode`](./#val-decode) to answer with 400\.
+Raises `Jsonkit.Of_string_error` when the body is not valid JSON. The payload describes the syntax error. A handler that lets it escape makes the runtime answer with status 500; use [`parse`](./#val-parse) or [`decode`](./#val-decode) to handle the error and choose a response status in the handler.
 
 ```ocaml
 val parse : Request.t -> (Jsonkit.t, string) Stdlib.result
 ```
-Like [`request`](./#val-request). `Error message` when the body is not valid JSON.
+Like [`request`](./#val-request). `Error message` when the body is not valid JSON. It does not send a response; the handler chooses the status.
 
 ```ocaml
 val decode : (Jsonkit.t -> 'a) -> Request.t -> ('a, string) Stdlib.result

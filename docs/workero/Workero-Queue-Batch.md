@@ -14,7 +14,7 @@ The name of the queue.
 ```ocaml
 val messages : t -> Message.t list
 ```
-The messages, in the order of delivery.
+The messages, in the order of delivery. If the handler returns without explicit acknowledgement or retry, the remaining messages count as delivered. If it raises, the runtime retries messages not already acknowledged, subject to the queue's retry configuration.
 
 ```ocaml
 val ack_all : t -> unit

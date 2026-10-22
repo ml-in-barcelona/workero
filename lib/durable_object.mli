@@ -1,19 +1,20 @@
-(** Durable Objects with SQLite storage.
+(** Durable Objects with SQLite-backed key-value and SQL storage.
 
     A Durable Object class is a function from its {!State} and the {!Env} to the
     handlers of one object, built with {!make} and bound to a name with
     {!register}. Declare the class in [wrangler.toml] with [[durable_objects]]
     and a migration with [new_sqlite_classes], or with the [exports] map and
-    [storage = "sqlite"]. [workero build] exports every registered class. Only
-    SQLite-backed classes are supported: {!Storage} fails on a class backed by
-    the legacy key-value storage.
+    [storage = "sqlite"]. [workero build] exports every registered class.
+    {!Storage} requires a SQLite-backed class; its key-value and SQL methods
+    fail on legacy storage. [fetch], [alarm], and hibernatable WebSocket event
+    handlers are exported. Durable Object RPC methods are not exported.
 
     Handlers on one object interleave only where they suspend, so a handler that
-    uses {!Storage} and never calls {!Promise.await} runs without interruption.
-    Keep the state of an object in values created inside the function given to
-    {!register}, never in module-level values: one isolate may host many
-    objects, and the runtime may evict an object from memory and create it again
-    later. *)
+    uses only the synchronous key-value methods and never calls {!Promise.await}
+    runs without interruption. Keep the state of an object in values created
+    inside the function given to {!register}, never in module-level values: one
+    isolate may host many objects, and the runtime may evict an object from
+    memory and create it again later. *)
 
 module Id : sig
   type t
@@ -34,7 +35,7 @@ end
 module Sql : sig
   (** The SQLite database of an object. Calls are synchronous: they never
       suspend. An SQL error raises {!Js_error}. Numbers are JavaScript numbers,
-      so an [Int] is exact only within ±2{^ 53}; see {!Sql_value}. *)
+      so an [Int] is exact only within ±[2^53]; see {!Sql_value}. *)
 
   type t
 
@@ -54,13 +55,14 @@ module Sql : sig
 end
 
 module Storage : sig
-  (** The storage of one object. The key-value functions are synchronous: they
-      never suspend. Values are JSON, converted with [JSON.stringify] and
-      [JSON.parse]. A [Date] stored by JavaScript code reads as its ISO string
-      and a [Map] as [{}]. [get] and [list] raise [Invalid_argument] for a
-      stored value that [JSON.stringify] rejects, such as a [BigInt] or a cyclic
-      object. The functions raise {!Js_error} when the runtime throws, for
-      example on a class that is not backed by SQLite. *)
+  (** The storage of one object. [get], [put], [delete], and [list] do not
+      suspend; [delete_all], [sync], and the alarm methods do. Values are JSON,
+      converted with [JSON.stringify] and [JSON.parse]. A [Date] stored by
+      JavaScript code reads as its ISO string and a [Map] as [{}]. [get] and
+      [list] raise [Invalid_argument] for a stored value that [JSON.stringify]
+      rejects, such as a [BigInt] or a cyclic object. The functions raise
+      {!Js_error} when the runtime throws, for example on a class that is not
+      backed by SQLite. *)
 
   type t
 
@@ -155,7 +157,7 @@ module State : sig
       the two on one socket. *)
 
   val accept_websocket : ?tags:string list -> t -> Websocket.t -> unit
-  (** Accepts the server end of a {!Websocket.pair}. [tags] are at most 10
+  (** Accepts the server end of a {!Websocket.val-pair}. [tags] are at most 10
       strings of at most 256 characters; a violation raises {!Js_error}. *)
 
   val websockets : ?tag:string -> t -> Websocket.t list

@@ -1,109 +1,92 @@
 {0 Getting started}
 
-Write a Cloudflare Worker entirely in OCaml. workero compiles your program to
-WebAssembly with wasm_of_ocaml, and its library gives you the
-{{:https://developers.cloudflare.com/workers/runtime-apis/}runtime APIs}:
-requests, responses, [fetch], variables, secrets and cron triggers.
-
-This guide builds a Worker, runs it locally and deploys it.
+Build a Cloudflare Worker in OCaml, run it locally, then change its response.
+Start outside the workero source checkout so Dune treats your Worker as its
+own project. Deployment is optional and needs a Cloudflare account.
 
 {1 Prerequisites}
 
-- {{:https://opam.ocaml.org}opam} with OCaml 5.4 or later.
-- {{:https://nodejs.org}Node.js} and [npm].
-- [workero], from opam: [opam install workero].
-- [wasm-opt] from binaryen 119 or later on [PATH]. wasm_of_ocaml runs it. The
-  [binaryen] npm package provides it, and the template lists it as a
-  dependency.
+- {{:https://opam.ocaml.org/doc/Install.html}opam} with an active OCaml 5.4 or
+  later switch. The source package requires Dune 3.24 or later,
+  [js_of_ocaml] and [wasm_of_ocaml-compiler] 6.4.1 or later and below 6.5,
+  and [jsonkit] 1.1 or later and below 2. opam resolves these dependencies.
+- Git to clone workero.
+- Node.js 22 or later with npm to install Wrangler and binaryen. binaryen supplies
+  [wasm-opt], which wasm_of_ocaml needs on [PATH].
 
-{1 1. Create a new project}
+The [workero] package is not yet available from the opam package index. Install
+it from source instead.
 
-Copy the [template/] directory of the repository. It is a complete project:
+{1 1. Create a project}
+
+From a directory outside any Dune project, clone workero and install its
+package into your active switch. Copy the template into a sibling directory:
 
 {@sh[
-cp -r template my-worker
+eval "$(opam env)"
+git clone https://github.com/ml-in-barcelona/workero.git workero-source
+opam pin add workero ./workero-source -y
+cp -R workero-source/template my-worker
 cd my-worker
 npm install
 ]}
 
-[npm install] installs Wrangler, the Cloudflare tool that runs and deploys
-Workers, and [binaryen]. The project has these files:
+The pin installs the [workero] library and CLI. [npm install] installs Wrangler
+and binaryen in [node_modules]. Keep [my-worker] outside [workero-source] so
+Dune does not select the source checkout as the project root. See
+{{!page-template}The project template} for the files in your copy.
 
-- [dune-project]: the dune project. It depends on [workero].
-- [src/dune]: builds [src/main.ml] as an executable with [(modes wasm)].
-- [src/main.ml]: the Worker.
-- [wrangler.toml]: the Wrangler configuration. It runs [workero build src/main.bc.wasm.js]
-  as the build command, and sets [GREETING] in [[vars]].
-- [package.json]: [wrangler] and [binaryen].
+{1 2. Run locally}
 
-See {{!page-template}the template} for details.
-
-{1 2. Develop locally}
-
-Run {{:https://developers.cloudflare.com/workers/wrangler/commands/general/#dev}[wrangler dev]}
-to start a local server:
+Start Wrangler from [my-worker]:
 
 {@sh[
 npx wrangler dev
 ]}
 
-Wrangler runs [workero build src/main.bc.wasm.js] and serves the Worker on
-{{:http://localhost:8787}http://localhost:8787}. A change in [src/] triggers a
-rebuild. If you have not used Wrangler before, it opens a browser to log in to
-your Cloudflare account. See
-{{:https://developers.cloudflare.com/workers/wrangler/commands/general/#login}[wrangler login]}
-when you have no browser.
+Wrangler runs [workero build src/main.bc.wasm.js], packages the Worker in
+[_worker/], and prints a local URL, usually [http://127.0.0.1:8787]. Leave
+the server running. In another terminal, request the template's routes:
 
 {@sh[
-curl localhost:8787/
-curl -d ping localhost:8787/echo
+curl http://127.0.0.1:8787/
+curl -d ping http://127.0.0.1:8787/echo
+curl http://127.0.0.1:8787/env
 ]}
 
-{1 3. Write your Worker code}
+Expect [Hello from OCaml on Cloudflare Workers], [ping], and
+[hello from vars], in that order. The third value comes from [[vars]] in
+[wrangler.toml]. Local development does not require Cloudflare login.
 
-The entry point is [src/main.ml]. It registers a handler with {!Workero.serve}:
+{1 3. Change the home page}
+
+Open [src/main.ml] and change the [GET, "/"] branch to:
 
 {@ocaml[
-let handler req env _ctx =
-  let open Workero in
-  match (Request.method_ req, URL.path (Request.url req)) with
-  | GET, "/" -> Response.text "Hello from OCaml on Cloudflare Workers\n"
-  | POST, "/echo" -> Response.text (Request.text req)
-  | GET, "/env" ->
-      Response.text
-        (Option.value (Env.var env "GREETING") ~default:"unset" ^ "\n")
-  | _ -> Response.text ~status:`Not_Found "not found\n"
-
-let () = Workero.serve handler
+| GET, "/" -> Response.text "Hello from my worker\n"
 ]}
 
-{!Workero.serve} takes a function with the same three arguments as the
-JavaScript [fetch(request, env, ctx)] handler. It runs in direct style, so
-[Request.text] and [Workero.fetch] return values, not promises. The next pages
-explain each part:
-
-- {{!page-handlers}Handlers}: [serve], [scheduled], and the arguments of a
-  handler.
-- {{!page-requests}Requests and responses}: read a request, build a response,
-  call other servers, read and write JSON.
-- {{!page-env}Variables and secrets}.
-- {{!page-async}Waiting for JavaScript}: [Promise.await] and background work.
-- {{!page-logging}Logging}.
-
-{1 4. Deploy}
-
-Deploy to a [*.workers.dev] subdomain, or to a
-{{:https://developers.cloudflare.com/workers/configuration/routing/custom-domains/}Custom Domain}
-if you have one. Wrangler asks you to set up a subdomain the first time.
+Wrangler watches [src/] and rebuilds after you save. Request the root path
+again:
 
 {@sh[
+curl http://127.0.0.1:8787/
+]}
+
+Expect [Hello from my worker]. The template registers the handler with
+{!Workero.serve}. Continue with {{!page-runtime_apis}Runtime APIs} for HTTP,
+JSON, and handlers, or {{!page-bindings}Bindings} for Cloudflare resources.
+
+{1 4. Deploy (optional)}
+
+If you have a Cloudflare account and want a public Worker, authenticate and
+deploy from [my-worker]:
+
+{@sh[
+npx wrangler login
 npx wrangler deploy
 ]}
 
-Preview the Worker at [<your-worker>.<your-subdomain>.workers.dev]. The first
-deploy to a new subdomain can answer with
-{{:https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-523/}523}
-errors until DNS propagates, which takes about a minute.
-
-To learn how it works, read {{!page-how_it_works}How it works}. To test it,
-read {{!page-testing}Testing and limits}.
+Wrangler prints the public URL. It may ask you to set up a [workers.dev]
+subdomain on your first deployment. Request that URL to see
+[Hello from my worker]. See {{!page-cli}CLI} for packaging details.

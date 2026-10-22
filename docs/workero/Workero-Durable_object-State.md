@@ -30,7 +30,7 @@ Sockets accepted with [`accept_websocket`](./#val-accept_websocket) stay connect
 ```ocaml
 val accept_websocket : ?tags:string list -> t -> Websocket.t -> unit
 ```
-Accepts the server end of a [`Websocket.pair`](./Workero-Websocket.md#type-pair). `tags` are at most 10 strings of at most 256 characters; a violation raises [`Js_error`](./Workero.md#exception-Js_error).
+Accepts the server end of a [`Websocket.pair`](./Workero-Websocket.md#val-pair). `tags` are at most 10 strings of at most 256 characters; a violation raises [`Js_error`](./Workero.md#exception-Js_error).
 
 ```ocaml
 val websockets : ?tag:string -> t -> Websocket.t list

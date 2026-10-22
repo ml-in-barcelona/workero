@@ -1,14 +1,16 @@
 {0 Workers AI}
 
 {!Workero.Ai} runs models on
-{{:https://developers.cloudflare.com/workers-ai/}Workers AI}. Requests are billed
-to your account, also in [wrangler dev].
+{{:https://developers.cloudflare.com/workers-ai/}Workers AI}. In both local
+development and deployment, inference uses Cloudflare's remote models and
+consumes account usage. Local [wrangler dev] does not simulate inference.
 
 {1 Configure}
 
 {@toml[
 [ai]
 binding = "AI"
+remote = true
 ]}
 
 {1 Use}
@@ -34,14 +36,21 @@ let () = Workero.serve handler
   the model. See the
   {{:https://developers.cloudflare.com/workers-ai/models/}model catalog}.
 - {!Workero.Ai.run_bytes} is the same call for a model that returns an image or
-  audio. It returns the raw bytes.
+  audio. It returns the raw bytes; choose a model whose output is binary.
 
 If the runtime fails, for example on an unknown model, the call raises
 {!Workero.Js_error}. [run] raises [Invalid_argument] when the model answers with
 a stream, and [run_bytes] when the answer is not binary data. Streaming
 answers are not supported yet. Do not set [stream] in the input of [run].
 
-{1 Test}
+{1 Verify and deploy}
 
-The binding is not available in a plain [workerd] configuration. The tests of
-workero use a stub that implements [run]. See [test/worker/services/ai.mjs].
+With account access, run [npx wrangler dev] and request [/?q=hello]. Confirm
+that the response contains the model's JSON answer. Setting [remote = false]
+does not provide a local model. Deploy with [npx wrangler deploy] and repeat
+the request on the deployed Worker. A plain [workerd] configuration cannot run
+the actual model; workero's tests use a stub in [test/worker/services/ai.mjs]
+to check request and response conversion, not model output. Wrangler supports
+one AI binding per Worker. See the
+{{:https://developers.cloudflare.com/workers-ai/models/}model catalog} and
+{{:https://developers.cloudflare.com/workers/local-development/bindings-per-env/}local binding support}.

@@ -1,14 +1,14 @@
 
 # Supported libraries
 
-This page lists OCaml libraries and standard library features that run in a Worker. The list is not complete. A library works when it compiles with wasm\_of\_ocaml and needs no operating system feature that a Worker does not have, such as threads or sockets. A new dependency increases the size of your Worker. See [Testing and limits](./testing.md).
+This page gives examples of OCaml standard library features and libraries you can use in a Worker. The list is not complete. A successful wasm\_of\_ocaml build alone does not show that every function works in the Workers runtime. Check each feature your code calls, especially if it needs operating system features such as sockets or processes. Dependencies add to the Worker bundle. See [Limits](./limits.md).
 
 
-## Checked in workerd
+## Features in the example worker
 
-The route list of `examples/features` runs each of these in a deployed Worker:
+The routes in `examples/features/main.mlx` demonstrate these features. The example builds a Worker; the repository test suite does not run these routes. Test the routes you use in `workerd` and in your deployment:
 
-- Effects: OCaml 5 effect handlers, with and without awaiting Promises.
+- Effects: OCaml 5 effect handlers; a separate route awaits a Promise.
 - `Hashtbl`, `Lazy`, `Seq`, `Printexc` and `Random.State`.
 - `Int32`, `Int64`, `Float` and `Bigarray`.
 - `Marshal`.
@@ -19,12 +19,12 @@ The route list of `examples/features` runs each of these in a deployed Worker:
 
 ## `jsonkit`
 
-[jsonkit](https://github.com/melange-community/jsonkit) reads and writes JSON, with a ppx that derives the functions. [`Workero.JSON`](./Workero-JSON.md) builds on it and gives values as `Jsonkit.t`. It does not re-export jsonkit. opam installs jsonkit with workero. Add `jsonkit` to the `libraries` of your `dune` file to use it. See [Requests and responses](./requests.md).
+[jsonkit](https://github.com/melange-community/jsonkit) reads and writes JSON, with a ppx that derives the functions. [`Workero.JSON`](./Workero-JSON.md) builds on it and gives values as `Jsonkit.t`. It does not re-export jsonkit. opam installs jsonkit with workero. Add `jsonkit` to the `libraries` of your `dune` file to use it. See [JSON](./json.md).
 
 
 ## Server-side React
 
-`examples/react` renders a page from `.mlx` components with a trimmed copy of server-reason-react. It uses the synchronous render path only.
+`examples/react` renders a page from `.mlx` components with a trimmed copy of server-reason-react. It uses the synchronous render path only. This example builds but is not part of the repository's `workerd` test suite.
 
 
 ## Embedded files

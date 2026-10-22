@@ -1,6 +1,7 @@
-(** Cloudflare Queues. A {!t} sends messages to a queue, bound in
-    [wrangler.toml] with [[[queues.producers]]]. A Worker reads messages with
-    the handler that {!Workero.queue} registers.
+(** Cloudflare Queues. A {!t} sends messages through a producer binding in
+    [wrangler.toml] ([[[queues.producers]]]). A {!Workero.queue} handler
+    consumes batches from a queue configured under [[[queues.consumers]]], not
+    through a producer binding. See {{!page-queue}Queue} for a complete Worker.
 
     Under [open Workero], this module hides [Stdlib.Queue]. Write [Stdlib.Queue]
     to reach the standard one. *)
@@ -33,7 +34,8 @@ val message : ?delay_seconds:int -> body -> message
 
 val send : ?delay_seconds:int -> t -> body -> unit
 (** [send queue body] adds one message to the queue. It suspends until the queue
-    accepts it. [delay_seconds] delays delivery, from 0 to 86400.
+    accepts it. Call it inside an event handler or a {!Context.wait_until}
+    function. [delay_seconds] delays delivery, from 0 to 86400.
 
     Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400.
     @raise Js_error
@@ -41,7 +43,8 @@ val send : ?delay_seconds:int -> t -> body -> unit
 
 val send_batch : ?delay_seconds:int -> t -> message list -> unit
 (** [send_batch queue messages] adds the messages in one call. [delay_seconds]
-    applies to the messages that set no delay with {!val:message}.
+    applies to the messages that set no delay with {!val:message}. It suspends
+    until the queue accepts the batch.
 
     Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400.
     @raise Js_error when the runtime rejects the batch. *)
@@ -66,8 +69,8 @@ module Message : sig
   (** The body as JSON, for a message sent as [Json]. A [Text] body gives a JSON
       string.
 
-      Raises [Invalid_argument] when the body has no JSON form, as in
-      {!JSON.of_js}. *)
+      The consumer receives no content-type field. Raises [Invalid_argument]
+      when the body has no JSON form, as in {!JSON.of_js}. *)
 
   val body_text : t -> string
   (** The body of a message sent as [Text].
@@ -84,8 +87,8 @@ module Message : sig
       producer sent with the [v8] content type. *)
 
   val ack : t -> unit
-  (** Marks the message as delivered, so the runtime does not retry it, even
-      when the handler raises later. *)
+  (** Mark the message as delivered after processing succeeds. The runtime does
+      not retry it even if the handler raises later. *)
 
   val retry : ?delay_seconds:int -> t -> unit
   (** Asks the runtime to deliver the message again, after [delay_seconds] (0 to
@@ -105,7 +108,10 @@ module Batch : sig
   (** The name of the queue. *)
 
   val messages : t -> Message.t list
-  (** The messages, in the order of delivery. *)
+  (** The messages, in the order of delivery. If the handler returns without
+      explicit acknowledgement or retry, the remaining messages count as
+      delivered. If it raises, the runtime retries messages not already
+      acknowledged, subject to the queue's retry configuration. *)
 
   val ack_all : t -> unit
   (** Marks every message as delivered. *)

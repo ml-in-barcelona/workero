@@ -9,7 +9,7 @@ type t
 ```ocaml
 val wait_until : t -> (unit -> unit) -> unit
 ```
-`wait_until ctx f` runs `f` in its own fiber and keeps the Worker alive until `f` returns, after the response is sent. `f` may suspend with [`Promise.await`](./Workero-Promise.md#val-await). If `f` raises, the runtime logs the error. The request that called `wait_until` and other requests are not affected.
+`wait_until ctx f` starts `f` immediately in its own fiber and registers its Promise with the runtime. Synchronous work in `f` runs before `wait_until` returns; [`Promise.await`](./Workero-Promise.md#val-await) suspends the fiber and lets the handler continue. A failure in `f` does not change the response. For HTTP requests, all `wait_until` calls share up to 30 seconds after the response is sent or the client disconnects; unfinished work is canceled. An active response stream keeps the HTTP invocation active separately. Durable Objects have their own [`Durable_object.State.wait_until`](./Workero-Durable_object-State.md#val-wait_until); they remain active during their requests, streams and pending I/O without calling it. See [Cloudflare's waitUntil documentation](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
 
 ```ocaml
 val pass_through_on_exception : t -> unit

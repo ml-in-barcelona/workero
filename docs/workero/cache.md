@@ -1,26 +1,54 @@
 
 # Cache
 
-[`Workero.Cache`](./Workero-Cache.md) is the [Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) of the data center that runs the Worker (`caches.default`). It needs no binding. Entries are keyed by URL string, and each data center has its own cache.
+Cache an eligible response in the data center that runs the Worker with [`Workero.Cache`](./Workero-Cache.md). This API uses the global `caches.default`, not an `env` binding. It stores a response under a URL string. Each data center has its own cache.
+
+
+## Configure
+
+No `wrangler.toml` binding or remote resource creation is needed. Use an absolute URL as the cache key. The example below uses the incoming request URL and caches a successful response from a public origin.
+
+
+## Write the Worker
 
 ```ocaml
-let url = "https://example.com/data.json"
-
-let handler _req _env ctx =
+let handler req _env ctx =
   let open Workero in
-  match Cache.match_ url with
-  | Some cached -> cached
-  | None ->
-      let upstream = fetch url in
-      let body = Response.body_bytes upstream in
-      let headers = [ ("cache-control", "max-age=60") ] in
-      Context.wait_until ctx (fun () ->
-          Cache.put url (Response.make ~headers body));
-      Response.make ~headers body
+  let key = URL.to_string (Request.url req) in
+  match Request.method_ req with
+  | GET -> (
+      match Cache.match_ key with
+      | Some cached -> cached
+      | None ->
+          let upstream = fetch "https://example.com/" in
+          let control = Response.header upstream "cache-control" in
+          if Response.status upstream <> 200
+             || Response.header_all upstream "set-cookie" <> []
+             || control <> None
+             || Response.header upstream "vary" <> None
+          then upstream
+          else
+            let headers =
+              ("cache-control", "public, max-age=60") :: Response.headers upstream
+            in
+            let response = Response.copy ~headers upstream in
+            Context.wait_until ctx (fun () -> Cache.put key (Response.clone response));
+            response)
+  | _ -> Response.text ~status:`Method_Not_Allowed "method not allowed\n"
 
 let () = Workero.serve handler
 ```
-- [`Workero.Cache.match_`](./Workero-Cache.md#val-match_) gives `Some response` for a URL, or `None`.
-- [`Workero.Cache.put`](./Workero-Cache.md#val-put) caches a response. The runtime reads the body of the response you give it, so send the client a different [`Workero.Response.t`](./Workero-Response.md#type-t) made from the same bytes, as the sample does. It rejects a response with status 206 or a `Vary: *` header. It keeps the entry only as long as the `cache-control` header allows, so set `max-age`.
-- [`Workero.Cache.delete`](./Workero-Cache.md#val-delete) removes an entry. It gives `false` when there was none.
-The cache is not shared between data centers. On a `*.workers.dev` domain, the Cache API does not store anything. Use a [custom domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/) to see it work in production. In `wrangler dev`, it works locally.
+The example keeps the upstream status, body and headers. `Response.copy` makes the upstream response writable while preserving its status and headers; `Response.clone` gives `Cache.put` a separate body, so the client can read the returned response. The example does not cache a non-200 response, a response with `Set-Cookie`, an existing `Cache-Control` policy, or a `Vary` header. For a different origin, set a cache policy only when its response is safe to share.
+
+`Cache.put` uses `Cache-Control` to decide whether and how long to store a response. It rejects status 206 and `Vary: *`; a `Set-Cookie` response is not cached. A resolved `Cache.put` promise does not by itself prove that the entry was stored. `Cache.match_` returns `None` for a miss; `Cache.delete` returns `false` if no entry existed. See [`Workero.Cache`](./Workero-Cache.md) and the [Cloudflare Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/).
+
+
+## Verify locally
+
+Run `npx wrangler dev` in one terminal. In a second terminal:
+
+```sh
+curl -i http://localhost:8787/
+curl -i http://localhost:8787/
+```
+Both requests return the origin's status, body and headers. If the origin returns an eligible 200 response without `Cache-Control`, the response also has `Cache-Control: public, max-age=60`. If it returns an existing cache policy or an ineligible response, the Worker passes that response through unchanged. Local cache behavior may differ from a deployed data center; these requests do not prove a production cache hit. Deploy only after you have set a suitable cache policy for your origin. See the [Cloudflare Cache API example](https://developers.cloudflare.com/workers/examples/cache-api/) for deployment patterns. See [Getting started](./getting_started.md) for deployment steps.

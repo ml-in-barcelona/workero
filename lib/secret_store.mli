@@ -1,6 +1,8 @@
 (** A secret of Cloudflare Secrets Store, bound in [wrangler.toml] with
-    [[[secrets_store_secrets]]]. The value is plain text: do not log it. For a
-    secret set with [wrangler secret put], use {!Env.secret}. *)
+    [[[secrets_store_secrets]]]. Local [wrangler dev] requires a local Secrets
+    Store secret; it cannot read the remote one. The value is plain text: do not
+    log it. For a Worker secret set with [wrangler secret put], use
+    {!Env.secret}. *)
 
 type t
 
