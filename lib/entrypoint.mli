@@ -13,16 +13,16 @@
     Another Worker, in JavaScript or OCaml, calls the methods of that binding.
     Use {!call} from OCaml.
 
-    Arguments and results are JSON values. Other types that RPC supports, such
-    as [Uint8Array], [Date] or stubs, are not supported. A method that returns
-    nothing in JavaScript gives [`Null] to {!call}. *)
+    Arguments and results are {!Rpc.t} values: JSON, and also bytes, [Date],
+    [BigInt], [Map], [Set], streams, stubs and functions. A method that returns
+    nothing in JavaScript gives [`Undefined] to {!call}. *)
 
 type t
 (** The handlers of one entrypoint instance. *)
 
 val make :
   ?fetch:(Request.t -> Response.t) ->
-  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
+  ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   unit ->
   t
 (** [make ()] gives an entrypoint that answers no call. [fetch] answers requests
@@ -55,12 +55,12 @@ val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
     [__proto__], [then], [env], [ctx], [fetch], [scheduled], [queue], [email],
     [tail], [trace], [tailStream], [test], [connect] and [dup] are reserved. *)
 
-val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 (** [call binding name args] calls the RPC method [name] of the entrypoint
     behind [binding], a service binding read with {!Fetcher.of_env}, and waits
-    for the result. A result that is [undefined] in JavaScript gives [`Null].
-    Suspends like {!Promise.await}.
+    for the result. It is {!Rpc.call}. A result that is [undefined] in
+    JavaScript gives [`Undefined]. Suspends like {!Promise.await}.
 
     Raises {!Js_error} when the method does not exist, when it raises, or when
     the runtime rejects the call. Raises [Invalid_argument] when the result has
-    no JSON form, or when an argument has none. *)
+    no {!Rpc.t} form, or when an argument has none. *)

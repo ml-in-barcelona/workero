@@ -242,7 +242,7 @@ type t = {
   websocket_close :
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) option;
   websocket_error : (Websocket.t -> string -> unit) option;
-  rpc : (string -> Jsonkit.t list -> Jsonkit.t) option;
+  rpc : (string -> Rpc.t list -> Rpc.t) option;
 }
 
 let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
@@ -256,8 +256,6 @@ let make ?init ?fetch ?alarm ?websocket_message ?websocket_close
     websocket_error;
     rpc;
   }
-
-let json_of_js v = if typeof v = "undefined" then `Null else Json_js.of_js v
 
 let alarm_info_of_js info =
   if typeof info <> "object" || is_nullish info then
@@ -338,8 +336,8 @@ let handlers_js t =
            (fun rpc name args : js ->
              Async.run (fun () ->
                  flushing (fun () ->
-                     let args = List.map json_of_js (Decode.(list js) args) in
-                     Json_js.to_js (rpc (Decode.string name) args))))
+                     let args = List.map Rpc.of_js (Decode.(list js) args) in
+                     Rpc.to_js (rpc (Decode.string name) args))))
            t.rpc);
     ]
   in
@@ -453,12 +451,4 @@ module Namespace = struct
     get ?location_hint ns (id_from_name ns name)
 end
 
-let call stub name args =
-  let stub = Fetcher.to_js stub in
-  let args =
-    Js.Unsafe.inject (Js.array (Array.of_list (List.map Json_js.to_js args)))
-  in
-  Promise.await
-    (Promise.of_js ~decode:json_of_js
-       (Binding.invoke (global "Reflect") "apply"
-          [| Js.Unsafe.get stub name; stub; args |]))
+let call = Rpc.call

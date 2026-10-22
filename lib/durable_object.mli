@@ -241,7 +241,7 @@ val make :
   ?websocket_close:
     (Websocket.t -> code:int -> reason:string -> was_clean:bool -> unit) ->
   ?websocket_error:(Websocket.t -> string -> unit) ->
-  ?rpc:(string -> Jsonkit.t list -> Jsonkit.t) ->
+  ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   unit ->
   t
 (** [make ()] gives an object that handles no event. [init] runs under
@@ -252,9 +252,10 @@ val make :
     handlers get the events of sockets accepted with {!State.accept_websocket};
     [websocket_error] gets the error message. [rpc] answers the calls of the
     methods that {!register} declared: [rpc name args] gets the method name and
-    the arguments as JSON, and returns the result as JSON. See {!register}.
-    Every handler runs in its own fiber and may call {!Promise.await}. A stub
-    fetch on an object without a [fetch] handler fails. *)
+    the arguments as {!Rpc.t} values, and returns the result as one. See
+    {!register}. Every handler runs in its own fiber and may call
+    {!Promise.await}. A stub fetch on an object without a [fetch] handler fails.
+*)
 
 val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 (** [register class_name create] binds [create] to the class that
@@ -285,14 +286,15 @@ val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
     under that name without declaring a variable of it. It also raises
     [Invalid_argument] for an invalid or repeated name in [rpc]. *)
 
-val call : Fetcher.t -> string -> Jsonkit.t list -> Jsonkit.t
+val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 (** [call stub name args] calls the RPC method [name] of the object that [stub]
-    reaches, with [args], and waits for the result. Arguments and result are
-    JSON, converted like {!Storage} values: a JavaScript [undefined] result
-    reads as [`Null], and a value that [JSON.stringify] rejects raises
-    [Invalid_argument]. The runtime creates the object on the first call.
-    Suspends. Raises {!Js_error} when the method is missing or when it raises or
-    rejects; the error message is that of the remote exception. *)
+    reaches, with [args], and waits for the result. It is {!Rpc.call}: arguments
+    and result are {!Rpc.t} values, so [Date], [Map], bytes, streams, stubs and
+    functions cross the call, and a JavaScript [undefined] result reads as
+    [`Undefined]. The runtime creates the object on the first call. Suspends.
+    Raises {!Js_error} when the method is missing or when it raises or rejects;
+    the error message is that of the remote exception. Raises [Invalid_argument]
+    when an argument or the result has no {!Rpc.t} form. *)
 
 module Namespace : sig
   type t

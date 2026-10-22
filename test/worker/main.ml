@@ -17,6 +17,7 @@ let handlers =
     Routes_socket.handle;
     Routes_do.handle;
     Routes_entrypoint.handle;
+    Routes_rpc.handle;
   ]
 
 let handler req env ctx =

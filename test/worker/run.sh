@@ -44,6 +44,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
   echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
   echo '        (name = "JSRPC", service = (name = "rpc", entrypoint = "Js")),'
+  echo '        (name = "JSDO", durableObjectNamespace = (className = "JsObject", serviceName = "rpc")),'
   echo '        (name = "KV", kvNamespace = "kv"),'
   echo '        (name = "BUCKET", r2Bucket = "r2"),'
   echo '        (name = "DB", wrapped = ('
@@ -75,12 +76,19 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "upstream.mjs", esModule = embed "upstream.mjs")],'
   echo '    )),'
-  for svc in kv r2 cache backend queue-sink limiter ai rpc db-proxy; do
+  for svc in kv r2 cache backend queue-sink limiter ai db-proxy; do
     echo "    (name = \"$svc\", worker = ("
     echo '      compatibilityDate = "2026-10-01",'
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
     echo '    )),'
   done
+  echo '    (name = "rpc", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "rpc.mjs", esModule = embed "rpc.mjs")],'
+  echo '      bindings = [(name = "BACKEND", service = "backend")],'
+  echo '      durableObjectNamespaces = [(className = "JsObject", uniqueKey = "rpc-js-object", enableSql = true)],'
+  echo '      durableObjectStorage = (inMemory = void),'
+  echo '    )),'
   echo '    (name = "email-harness", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = ['
