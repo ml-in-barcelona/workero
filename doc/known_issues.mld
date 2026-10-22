@@ -80,7 +80,7 @@ not supported yet.
   above 1073741823 do not parse (see {{!page-workflows}Workflows}).
 - Not wrapped: [retention], [createBatch] with [count], [deleteBatch],
   [Instance.delete], [subscribe], [terminate] and [restart] options, rollback
-  handlers, the step context ([attempt]), a function as [delay], the cron
+  handlers, the rest of the step context ([step], [config]), a function as [delay], the cron
   [schedule] and the [workflowName] of the event. [wait_for_event] returns the
   payload, not the event.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.

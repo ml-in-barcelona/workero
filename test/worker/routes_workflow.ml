@@ -22,11 +22,11 @@ let run env (event : W.event) step =
   | "basic" ->
       let n =
         int_of
-          (S.do_ step "first" (fun () ->
+          (S.do_ step "first" (fun _ ->
                Promise.await (Timer.sleep 2);
                `Int 21))
       in
-      let doubled = S.do_ step "double" (fun () -> `Int (n * 2)) in
+      let doubled = S.do_ step "double" (fun _ -> `Int (n * 2)) in
       `Assoc
         [
           ("doubled", doubled);
@@ -37,42 +37,42 @@ let run env (event : W.event) step =
             `String (Option.value (Env.var env "GREETING") ~default:"none") );
         ]
   | "sleep" ->
-      let before = S.do_ step "before" (fun () -> `String "b") in
+      let before = S.do_ step "before" (fun _ -> `String "b") in
       S.sleep step "nap" (W.Duration.ms 20);
       let at =
-        S.do_ step "when" (fun () ->
+        S.do_ step "when" (fun _ ->
             `String (Printf.sprintf "%.0f" (Date.now () +. 30.)))
       in
       (match at with
       | `String at -> S.sleep_until step "until" (float_of_string at)
       | _ -> ());
-      let after = S.do_ step "after" (fun () -> `String "a") in
+      let after = S.do_ step "after" (fun _ -> `String "a") in
       `List [ before; after ]
   | "retry" ->
-      let tries = ref 0 in
+      let seen = ref [] in
       S.do_ step "flaky"
         ~retries:
           (S.retries ~backoff:S.Linear ~limit:3 ~delay:(W.Duration.ms 1) ())
         ~timeout:(W.Duration.seconds 5)
-        (fun () ->
-          incr tries;
-          if !tries < 3 then failwith "flaky";
-          `Int !tries)
+        (fun { attempt } ->
+          seen := attempt :: !seen;
+          if attempt < 3 then failwith "flaky";
+          `List (List.rev_map (fun n -> `Int n) !seen))
   | "exhausted" -> (
       match
         S.do_ step "always"
           ~retries:(S.retries ~limit:1 ~delay:(W.Duration.ms 1) ())
-          (fun () -> failwith "boom")
+          (fun _ -> failwith "boom")
       with
       | _ -> `String "unreachable"
       | exception Js_error _ -> `String "gave up")
   | "stop" ->
-      S.do_ step "stop" (fun () -> raise (W.Non_retryable "do not retry"))
+      S.do_ step "stop" (fun _ -> raise (W.Non_retryable "do not retry"))
   | "stop_caught" -> (
-      match S.do_ step "stop" (fun () -> raise (W.Non_retryable "no")) with
+      match S.do_ step "stop" (fun _ -> raise (W.Non_retryable "no")) with
       | _ -> `String "unreachable"
       | exception Js_error e ->
-          let after = S.do_ step "after" (fun () -> `String "recovered") in
+          let after = S.do_ step "after" (fun _ -> `String "recovered") in
           `List [ after; `Bool (String.length (Promise.error_to_string e) > 0) ]
       )
   | "event" ->
@@ -85,7 +85,7 @@ let run env (event : W.event) step =
       with
       | _ -> `String "unreachable"
       | exception Js_error _ ->
-          S.do_ step "after" (fun () -> `String "timed out"))
+          S.do_ step "after" (fun _ -> `String "timed out"))
   | "invalid" ->
       `List
         [
@@ -96,7 +96,7 @@ let run env (event : W.event) step =
               `Null);
         ]
   | "slow" ->
-      S.do_ step "slow" (fun () ->
+      S.do_ step "slow" (fun _ ->
           Promise.await (Timer.sleep 200);
           `String "slow done")
   | "fail" -> failwith "run failed"

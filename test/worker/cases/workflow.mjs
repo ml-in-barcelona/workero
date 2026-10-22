@@ -83,7 +83,7 @@ export default async (env, failures) => {
 
   await check("Workflow: retries and timeout reach the runtime and a flaky step succeeds", failures, async (p) => {
     await create(env, "retry-1", { scenario: "retry" });
-    equal((await until(env, "retry-1", "complete")).output, 3, p);
+    equal((await until(env, "retry-1", "complete")).output, [1, 2, 3], p);
     const inspected = await env.ENGINE.inspect("retry-1");
     equal(attempts(inspected, "flaky"), [1, 2, 3], p, "attempts: ");
     equal(inspected.log[0].config, { retries: { limit: 3, delay: 1, backoff: "linear" }, timeout: 5000 }, p, "config: ");

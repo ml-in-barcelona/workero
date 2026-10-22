@@ -70,18 +70,24 @@ module Step : sig
 
       Raises [Invalid_argument] when [limit] is not in [0..10000]. *)
 
+  type context = {
+    attempt : int;  (** 1 on the first try, 2 on the first retry. *)
+  }
+  (** What the runtime tells a step callback about the call. *)
+
   val do_ :
     ?retries:retries ->
     ?timeout:Duration.t ->
     t ->
     string ->
-    (unit -> Jsonkit.t) ->
+    (context -> Jsonkit.t) ->
     Jsonkit.t
-  (** [do_ step name f] runs [f] as a step and returns its result. The result is
-      stored and a replay returns it without calling [f]. [name] identifies the
-      step, so it must be the same on each replay. Without [retries] and
-      [timeout], the runtime defaults apply: 5 retries, 10 seconds, exponential
-      backoff and a timeout of 10 minutes per attempt.
+  (** [do_ step name f] runs [f] as a step and returns its result. [f] gets the
+      {!context} of the attempt. The result is stored and a replay returns it
+      without calling [f]. [name] identifies the step, so it must be the same on
+      each replay. Without [retries] and [timeout], the runtime defaults apply:
+      5 retries, 10 seconds, exponential backoff and a timeout of 10 minutes per
+      attempt.
 
       [f] runs in its own fiber and may call {!Promise.await}. An exception
       raised by [f] fails the attempt; {!Non_retryable} stops the retries. When

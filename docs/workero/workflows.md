@@ -15,7 +15,7 @@ module Step = Workflow.Step
 let () =
   Workflow.register "Greet" (fun env event step ->
       let name =
-        Step.do_ step "read name" (fun () ->
+        Step.do_ step "read name" (fun _ ->
             match event.Workflow.payload with
             | `Assoc [ ("name", `String n) ] -> `String n
             | _ -> `String "world")
@@ -27,8 +27,9 @@ let () =
             (Step.retries ~limit:3 ~delay:(Workflow.Duration.seconds 5)
                ~backoff:Step.Exponential ())
           ~timeout:(Workflow.Duration.minutes 1)
-          (fun () ->
+          (fun { Step.attempt } ->
             let res = fetch "https://example.com/greeting" in
+            Console.log (Printf.sprintf "greeting, attempt %d" attempt);
             `String (Response.body_text res))
       in
       `Assoc [ ("name", name); ("greeting", greeting) ])
@@ -55,7 +56,7 @@ The runtime runs the function again after every sleep, wait, retry and eviction.
 
 ## Steps
 
-- [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_): run a callback, store its JSON result. `retries` sets `limit`, `delay` and `backoff` (`Constant`, `Linear` or `Exponential`); `timeout` applies to each attempt. Without them the runtime uses 5 retries, a 10 second delay, exponential backoff and a 10 minute timeout.
+- [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_): run a callback, store its JSON result. The callback gets a [`Workero.Workflow.Step.context`](./Workero-Workflow-Step.md#type-context) with the `attempt` number: 1 on the first try, 2 on the first retry. `retries` sets `limit`, `delay` and `backoff` (`Constant`, `Linear` or `Exponential`); `timeout` applies to each attempt. Without them the runtime uses 5 retries, a 10 second delay, exponential backoff and a 10 minute timeout.
 - [`Workero.Workflow.Step.sleep`](./Workero-Workflow-Step.md#val-sleep) and [`Workero.Workflow.Step.sleep_until`](./Workero-Workflow-Step.md#val-sleep_until): wait for a [`Workero.Workflow.Duration.t`](./Workero-Workflow-Duration.md#type-t) or until a time in milliseconds since the epoch, like [`Workero.Date.now`](./Workero-Date.md#val-now).
 - [`Workero.Workflow.Step.wait_for_event`](./Workero-Workflow-Step.md#val-wait_for_event): wait for an event of a given type, sent with [`Workero.Workflow.Instance.send_event`](./Workero-Workflow-Instance.md#val-send_event), and return its payload. It fails with [`Workero.Js_error`](./Workero.md#exception-Js_error) after the timeout (24 hours by default). Catch the error to go on.
 A callback that raises fails the attempt, and the runtime retries it. Raise [`Workero.Workflow.Non_retryable`](./Workero-Workflow.md#exception-Non_retryable) to fail without retries; the runtime sees a `NonRetryableError`. After the last attempt, [`Workero.Workflow.Step.do_`](./Workero-Workflow-Step.md#val-do_) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) in the function; catch it to keep the instance running.

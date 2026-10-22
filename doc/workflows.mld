@@ -18,7 +18,7 @@ module Step = Workflow.Step
 let () =
   Workflow.register "Greet" (fun env event step ->
       let name =
-        Step.do_ step "read name" (fun () ->
+        Step.do_ step "read name" (fun _ ->
             match event.Workflow.payload with
             | `Assoc [ ("name", `String n) ] -> `String n
             | _ -> `String "world")
@@ -30,8 +30,9 @@ let () =
             (Step.retries ~limit:3 ~delay:(Workflow.Duration.seconds 5)
                ~backoff:Step.Exponential ())
           ~timeout:(Workflow.Duration.minutes 1)
-          (fun () ->
+          (fun { Step.attempt } ->
             let res = fetch "https://example.com/greeting" in
+            Console.log (Printf.sprintf "greeting, attempt %d" attempt);
             `String (Response.body_text res))
       in
       `Assoc [ ("name", name); ("greeting", greeting) ])
@@ -70,7 +71,9 @@ already finished and does not call its callback. So:
 
 {1 Steps}
 
-- {!Workero.Workflow.Step.do_}: run a callback, store its JSON result. [retries]
+- {!Workero.Workflow.Step.do_}: run a callback, store its JSON result. The
+  callback gets a {!Workero.Workflow.Step.context} with the [attempt] number: 1
+  on the first try, 2 on the first retry. [retries]
   sets [limit], [delay] and [backoff] ([Constant], [Linear] or [Exponential]);
   [timeout] applies to each attempt. Without them the runtime uses 5 retries, a
   10 second delay, exponential backoff and a 10 minute timeout.

@@ -101,12 +101,16 @@ module Step = struct
         field "timeout" Duration.to_js timeout;
       ]
 
+  type context = { attempt : int }
+
   let do_ ?retries ?timeout t name f =
     check_name ~who:"Workero.Workflow.Step.do_" name;
     let callback =
-      Async.promising (fun (_ctx : js) : js ->
+      Async.promising (fun (ctx : js) : js ->
           Async.run (fun () ->
-              mapping_non_retryable (fun () -> Json_js.to_js (f ()))))
+              mapping_non_retryable (fun () ->
+                  let attempt = Decode.(field "attempt" int) ctx in
+                  Json_js.to_js (f { attempt }))))
     in
     let args =
       match config ?retries ?timeout () with

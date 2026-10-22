@@ -32,7 +32,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - [Workflows](./workflows.md): workerd has no Workflows engine, so the tests run the class and the binding against a small JavaScript engine. It calls the OCaml class over RPC as Cloudflare's engine does, and it implements steps, retries, `sleep`, `wait_for_event` and replay. The tests do not prove persistence, eviction, real retry timing, the Cloudflare limits or a deployment. Run a Workflow with `wrangler dev` or on Cloudflare before you rely on it.
 - Step results, event payloads, params and outputs are JSON values; integers above 1073741823 do not parse (see [Workflows](./workflows.md)).
-- Not wrapped: `retention`, `createBatch` with `count`, `deleteBatch`, `Instance.delete`, `subscribe`, `terminate` and `restart` options, rollback handlers, the step context (`attempt`), a function as `delay`, the cron `schedule` and the `workflowName` of the event. `wait_for_event` returns the payload, not the event.
+- Not wrapped: `retention`, `createBatch` with `count`, `deleteBatch`, `Instance.delete`, `subscribe`, `terminate` and `restart` options, rollback handlers, the rest of the step context (`step`, `config`), a function as `delay`, the cron `schedule` and the `workflowName` of the event. `wait_for_event` returns the payload, not the event.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.
 
 ## Entrypoint limits
