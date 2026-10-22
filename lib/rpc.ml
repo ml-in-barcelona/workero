@@ -19,6 +19,21 @@ type t =
   | `Stub of Fetcher.t
   | `Function of t list -> t ]
 
+type value =
+  [ `Undefined
+  | `Null
+  | `Bool of bool
+  | `Int of int
+  | `Float of float
+  | `String of string
+  | `List of value list
+  | `Assoc of (string * value) list
+  | `Bytes of string
+  | `Date of float
+  | `Bigint of string
+  | `Map of (value * value) list
+  | `Set of value list ]
+
 let rec of_json : Jsonkit.t -> t = function
   | (`Null | `Bool _ | `Int _ | `Float _ | `String _) as v -> v
   | `List l -> `List (List.map of_json l)
@@ -43,6 +58,23 @@ let rec to_json : t -> Jsonkit.t = function
         | _ -> assert false
       in
       invalid_arg ("Workero.Rpc.to_json: " ^ name ^ " has no JSON form")
+
+let rec to_value : t -> value = function
+  | ( `Undefined | `Null | `Bool _ | `Int _ | `Float _ | `String _ | `Bytes _
+    | `Date _ | `Bigint _ ) as v ->
+      v
+  | `List l -> `List (List.map to_value l)
+  | `Assoc l -> `Assoc (List.map (fun (k, v) -> (k, to_value v)) l)
+  | `Map l -> `Map (List.map (fun (k, v) -> (to_value k, to_value v)) l)
+  | `Set l -> `Set (List.map to_value l)
+  | (`Stream _ | `Stub _ | `Function _) as v ->
+      let name =
+        match v with
+        | `Stream _ -> "`Stream"
+        | `Stub _ -> "`Stub"
+        | `Function _ -> "`Function"
+      in
+      invalid_arg ("Workero.Rpc.to_value: " ^ name ^ " is not a plain value")
 
 let unsupported what =
   invalid_arg ("Workero.Rpc.of_js: unsupported JavaScript value: " ^ what)

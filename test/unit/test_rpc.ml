@@ -104,6 +104,60 @@ let test_json () =
       `List [ `Date 0. ];
     ]
 
+let values : Rpc.value list =
+  [
+    `Undefined;
+    `Null;
+    `Bool true;
+    `Int 3;
+    `Float 0.5;
+    `String "s";
+    `List [ `Date 1.; `Bytes "\000" ];
+    `Assoc [ ("k", `Bigint "-9") ];
+    `Bytes "ab";
+    `Date 2.;
+    `Bigint "12345678901234567890";
+    `Map [ (`Set [ `Int 1 ], `List [ `Undefined ]) ];
+    `Set [ `Map [ (`Int 1, `Date 0.) ] ];
+  ]
+
+let test_value_coercion () =
+  let nested : Rpc.value =
+    `Assoc
+      [
+        ("a", `List [ `Undefined; `Date 5.; `Bytes "\000\255" ]);
+        ("b", `Map [ (`String "k", `Set [ `Bigint "1"; `Int 2 ]) ]);
+      ]
+  in
+  let t : Rpc.t = (nested : Rpc.value :> Rpc.t) in
+  Alcotest.(check bool) "survives JavaScript" true (Rpc.of_js (Rpc.to_js t) = t)
+
+let test_to_value () =
+  List.iter
+    (fun v ->
+      Alcotest.(check bool)
+        "round trip" true
+        (Rpc.to_value (v : Rpc.value :> Rpc.t) = v);
+      Alcotest.(check bool)
+        "through JavaScript" true
+        (Rpc.to_value (Rpc.of_js (Rpc.to_js (v : Rpc.value :> Rpc.t))) = v))
+    values
+
+let test_to_value_unsupported () =
+  let stub = Workero.Fetcher.of_js (js_eval "({})") in
+  let _, stream = Workero.Stream.pipe () in
+  List.iter
+    (fun (name, v) -> invalid name (fun () -> Rpc.to_value v))
+    [
+      ("stream", `Stream stream);
+      ("stub", `Stub stub);
+      ("function", `Function (fun _ -> `Null));
+      ("nested list", `List [ `Int 1; `Function (fun _ -> `Null) ]);
+      ("nested assoc", `Assoc [ ("k", `Stub stub) ]);
+      ("nested map key", `Map [ (`Stream stream, `Null) ]);
+      ("nested map value", `Map [ (`Null, `Set [ `Stub stub ]) ]);
+    ]
+
 let () =
   Alcotest.run "workero.rpc"
     [
@@ -115,5 +169,9 @@ let () =
           Alcotest.test_case "numbers and byte views" `Quick test_numbers;
           Alcotest.test_case "unsupported values raise" `Quick test_unsupported;
           Alcotest.test_case "JSON conversion" `Quick test_json;
+          Alcotest.test_case "value coerces to t" `Quick test_value_coercion;
+          Alcotest.test_case "to_value round-trips" `Quick test_to_value;
+          Alcotest.test_case "to_value rejects non-values" `Quick
+            test_to_value_unsupported;
         ] );
     ]

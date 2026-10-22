@@ -50,6 +50,25 @@ type t = [
  ]
 ```
 ```ocaml
+type value = [ 
+  | `Undefined
+  | `Null
+  | `Bool of bool
+  | `Int of int
+  | `Float of float
+  | `String of string
+  | `List of value list
+  | `Assoc of (string * value) list
+  | `Bytes of string
+  | `Date of float
+  | `Bigint of string
+  | `Map of (value * value) list
+  | `Set of value list
+ ]
+```
+The values that `structuredClone` copies: the constructors of [`t`](./#type-t) without ``Stream`, ``Stub` and ``Function`. Workflows persist payloads and step results as these values. A `value` converts to a [`t`](./#type-t) with `(v :> t)`, and [`to_value`](./#val-to_value) converts back.
+
+```ocaml
 val of_json : Jsonkit.t -> t
 ```
 The same value. The constructors of `Jsonkit.t` are also constructors of [`t`](./#type-t), so a handler can often build a [`t`](./#type-t) without calling this.
@@ -58,6 +77,11 @@ The same value. The constructors of `Jsonkit.t` are also constructors of [`t`](.
 val to_json : t -> Jsonkit.t
 ```
 Raises `Invalid_argument` when the value holds ``Undefined`, ``Bytes`, ``Date`, ``Bigint`, ``Map`, ``Set`, ``Stream`, ``Stub` or ``Function`.
+
+```ocaml
+val to_value : t -> value
+```
+The same value, as a [`value`](./#type-value). Raises `Invalid_argument` when the value holds ``Stream`, ``Stub` or ``Function`, at any depth.
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t

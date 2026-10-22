@@ -205,6 +205,10 @@ other JSON constructors are the same. {!Workero.Rpc.of_json} and
 {!Workero.Rpc.to_json} convert a [Jsonkit.t]. A call that used to give [`Null]
 for a JavaScript [undefined] now gives [`Undefined].
 
+{!Workero.Rpc.value} is the subset without [`Stream], [`Stub] and [`Function]: the
+values that [structuredClone] copies. [(v :> Workero.Rpc.t)] converts a value, and
+{!Workero.Rpc.to_value} converts back.
+
 An [Error], a typed array other than [Uint8Array], a class instance and a
 [Symbol] have no {!Workero.Rpc.t} form. Reading one raises [Invalid_argument].
 
