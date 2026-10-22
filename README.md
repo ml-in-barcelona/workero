@@ -147,6 +147,21 @@ Alarms use `Storage.set_alarm` and the `~alarm` handler. `Storage.sql` and
 `Storage.transaction_sync` give SQL and transactions. `State.accept_websocket`
 and the `~websocket_message` handler serve hibernatable WebSockets.
 
+Expose RPC methods to other Workers with `Entrypoint.register`, bind the class
+with `entrypoint = "Math"` in a `[[services]]` entry, and call it from OCaml with
+`Entrypoint.call (Fetcher.of_env env "MATH") "add" [ `Int 2; `Int 3 ]`:
+
+```ocaml
+let () =
+  Workero.Entrypoint.register "Math" ~rpc:[ "add" ] (fun _env _ctx ->
+      Workero.Entrypoint.make
+        ~rpc:(fun name args ->
+          match (name, args) with
+          | "add", [ `Int a; `Int b ] -> `Int (a + b)
+          | _ -> invalid_arg name)
+        ())
+```
+
 ## Build and package a worker
 
 Build an executable with `(modes wasm)` from the dune project:
@@ -163,7 +178,7 @@ workero package _build/default/src/main.bc.wasm.js
 ```
 
 Both commands accept `--out <dir>` to choose another output directory. They run
-the program once in `workerd` to find its Durable Object classes, so `workerd`
+the program once in `workerd` to find its Durable Object and entrypoint classes, so `workerd`
 must be installed (`npm install workerd`, or Wrangler). See the
 [documentation](https://ml-in-barcelona.github.io/workero/workero/),
 [getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html),

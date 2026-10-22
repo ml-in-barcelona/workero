@@ -148,17 +148,24 @@ let missing_primitives loader =
   in
   scan 0 []
 
-type kind = Durable_object
+type kind = Durable_object | Entrypoint
 type class_export = { name : string; kind : kind; methods : string list }
 
-let kind_tag = function Durable_object -> "durable_object"
-let kind_of_tag = function "durable_object" -> Some Durable_object | _ -> None
+let kind_tag = function
+  | Durable_object -> "durable_object"
+  | Entrypoint -> "entrypoint"
+
+let kind_of_tag = function
+  | "durable_object" -> Some Durable_object
+  | "entrypoint" -> Some Entrypoint
+  | _ -> None
 
 let kind_glue = function
   | Durable_object ->
       ("durable-object.js", Embedded.durable_object, "WorkeroDurableObject")
+  | Entrypoint -> ("entrypoint.js", Embedded.entrypoint, "WorkeroEntrypoint")
 
-let glue_files = [ "durable-object.js" ]
+let glue_files = [ "durable-object.js"; "entrypoint.js" ]
 
 let class_exports classes =
   let glue_of c = kind_glue c.kind in
@@ -277,7 +284,8 @@ let probe_end = "workero-classes-end"
 
 let probe_script ~name wasm =
   loader_prelude ~name wasm
-  ^ "const kinds = { durable_objects: \"durable_object\" };\n\
+  ^ "const kinds = { durable_objects: \"durable_object\", entrypoints: \
+     \"entrypoint\" };\n\
      export default {\n\
     \  async test() {\n\
     \    for (const [key, kind] of Object.entries(kinds))\n\
@@ -468,9 +476,17 @@ let package ~allow_missing ~built ~name out =
   let count = List.length wasm in
   Printf.printf "workero: wrote %s (%d wasm file%s)\n" out count
     (if count = 1 then "" else "s");
-  if classes <> [] then
+  let names kind =
+    List.filter_map
+      (fun c -> if c.kind = kind then Some c.name else None)
+      classes
+  in
+  if names Durable_object <> [] then
     Printf.printf "workero: Durable Object classes: %s\n"
-      (String.concat ", " (List.map (fun c -> c.name) classes))
+      (String.concat ", " (names Durable_object));
+  if names Entrypoint <> [] then
+    Printf.printf "workero: entrypoint classes: %s\n"
+      (String.concat ", " (names Entrypoint))
 
 let loader_suffix = ".bc.wasm.js"
 let is_loader arg = String.ends_with ~suffix:loader_suffix arg

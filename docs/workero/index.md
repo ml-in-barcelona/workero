@@ -25,6 +25,7 @@ The pages follow the order of a Worker project.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.
 - [Bindings](./bindings.md): [KV](./kv.md), [Cache](./cache.md), [R2](./r2.md) and [D1](./d1.md), [Fetcher](./fetcher.md), [Queue](./queue.md), [Rate limiting](./rate_limiter.md), [Workers AI](./ai.md) and [Analytics Engine](./analytics_engine.md).
 - [Durable Objects](./durable_objects.md): classes, stubs, storage and alarms.
+- [Entrypoints](./entrypoints.md): `WorkerEntrypoint` classes and RPC methods.
 - [Logging](./logging.md): output and `Workero.Console`.
 - [JavaScript globals](./globals.md): timers, `Date`, `crypto`.
 - [Testing and limits](./testing.md).

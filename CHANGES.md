@@ -3,7 +3,7 @@
 ## Unreleased
 
 - RPC methods on Durable Object stubs: `Durable_object.register ~rpc:["incr"]` declares method names, `make ~rpc` answers calls with JSON arguments and results, and `Durable_object.call stub name args` calls a method from OCaml. JavaScript calls `stub.incr()`. `workero build` adds the declared methods to the exported class; the class manifest now carries a kind and method names for each class.
-
+- `Workero.Entrypoint`: `WorkerEntrypoint` classes with RPC methods. `register ?rpc` binds a class and its method names, `make ?fetch ?rpc` builds the handlers (JSON arguments and results, the `rpc` handler gets the method name like `Durable_object.make`), and `call` calls an RPC method of a service binding from OCaml. `workero build` exports every registered entrypoint from `index.js` and writes `entrypoint.js`. The probe in `workerd` reports the entrypoints with their methods, and the build fails when an entrypoint and a Durable Object class share a name.
 - `Workero.Queue`: Cloudflare Queues. Producer: `of_env`, `send`, `send_batch`, `message` with a `Json | Text | Bytes` body and `?delay_seconds`. Consumer: `Message` (`id`, `timestamp`, `attempts`, `body_json`, `body_text`, `body_bytes`, `body_js`, `ack`, `retry`) and `Batch` (`queue`, `messages`, `ack_all`, `retry_all`). Under `open Workero`, `Queue` hides `Stdlib.Queue`.
 - `Workero.queue` registers the queue consumer. `workero build` exports `queue` only when the program registers it.
 - `Workero.Rate_limiter` (`limit`), `Workero.Ai` (`run`, `run_bytes`) and `Workero.Analytics_engine` (`write`).

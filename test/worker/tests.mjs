@@ -12,11 +12,12 @@ import ai from "./cases/ai.mjs";
 import analytics from "./cases/analytics.mjs";
 import durableObject from "./cases/do.mjs";
 import durableObjectRpc from "./cases/do_rpc.mjs";
+import entrypoint from "./cases/entrypoint.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher, router, rateLimiter, ai, analytics, durableObject, durableObjectRpc]) await suite(env, failures);
+    for (const suite of [http, stream, form, ws, context, globals, envSuite, fetcher, router, rateLimiter, ai, analytics, durableObject, durableObjectRpc, entrypoint]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };
