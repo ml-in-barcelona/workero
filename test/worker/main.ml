@@ -10,6 +10,7 @@ let handlers =
     Routes_router.handle;
     Routes_queue.handle;
     Routes_rate_limiter.handle;
+    Routes_hyperdrive.handle;
     Routes_ai.handle;
     Routes_analytics.handle;
     Routes_do.handle;

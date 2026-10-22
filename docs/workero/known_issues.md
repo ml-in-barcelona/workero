@@ -21,6 +21,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - [Queues](./queue.md): a consumer cannot see the content type. [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json) on a `Text` body gives a JSON string, and the other readers raise `Invalid_argument` on a body of another type. A `v8` body is readable only through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js), and a producer cannot send one.
 - Queues: `send` and `send_batch` take only `delay_seconds`. The runtime checks the size limits. Dead letter queues and `max_retries` are set in `wrangler.toml`, not in code.
 - [Rate limiter](./rate_limiter.md): the key is the only argument. The limit and period come from `wrangler.toml`. The count is per location and approximate.
+- [Hyperdrive](./hyperdrive.md): connection details only. There is no `connect` and no query driver, so workero cannot read from the database yet. The host and password are valid only inside the running Worker. In `workerd` the host is a fake name with no database behind it.
 - [Workers AI](./ai.md): no streaming answers and no gateway options. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` on a stream.
 - [Analytics Engine](./analytics_engine.md): `write` returns no result, and the runtime checks the limit of 20 blobs and 20 doubles. There is no query API.
 
@@ -49,9 +50,9 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - The `tail` and `email` handlers.
 - Workflows.
 - Durable Objects without SQLite storage, and `State.container`.
-- Vectorize, Hyperdrive and the Send Email binding.
+- Vectorize and the Send Email binding.
 - `HTMLRewriter`.
-- Outbound TCP sockets (`connect`).
+- Outbound TCP sockets (`connect`). [`Workero.Hyperdrive`](./Workero-Hyperdrive.md) gives connection details, but no OCaml database driver can use them yet.
 - `AbortController` and request cancellation.
 - `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has `random_uuid` and `random_bytes` only.
 - Containers.

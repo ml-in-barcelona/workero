@@ -18,6 +18,7 @@
   test_scheduled
   test_bindings
   test_secret_store
+  test_hyperdrive
   test_fetcher
   test_queue
   test_rate_limiter

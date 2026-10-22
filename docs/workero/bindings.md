@@ -13,6 +13,7 @@ A binding connects your Worker to a Cloudflare resource, such as a key-value nam
 - [Fetcher](./fetcher.md): [`Workero.Fetcher`](./Workero-Fetcher.md), service bindings and static assets.
 - [Queue](./queue.md): [`Workero.Queue`](./Workero-Queue.md), producers and consumers of Cloudflare Queues.
 - [Rate limiting](./rate_limiter.md): [`Workero.Rate_limiter`](./Workero-Rate_limiter.md).
+- [Hyperdrive](./hyperdrive.md): [`Workero.Hyperdrive`](./Workero-Hyperdrive.md), connection details for a database (no query driver yet).
 - [Workers AI](./ai.md): [`Workero.Ai`](./Workero-Ai.md).
 - [Analytics Engine](./analytics_engine.md): [`Workero.Analytics_engine`](./Workero-Analytics_engine.md).
 - [Secrets Store](./env.md): [`Workero.Secret_store`](./Workero-Secret_store.md), secrets that Workers share.
