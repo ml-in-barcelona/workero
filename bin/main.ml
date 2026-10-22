@@ -273,8 +273,9 @@ let find_workerd () =
       | None ->
           fail
             "workerd not found. workero build runs the program in workerd to \
-             find its Durable Object classes. Install it (npm install workerd, \
-             or wrangler), add it to PATH or set WORKERD")
+             find its Durable Object, entrypoint and Workflow classes. Install \
+             it (npm install workerd, or wrangler), add it to PATH or set \
+             WORKERD")
 
 let probe_marker = "workero-class:"
 let probe_end = "workero-classes-end"
