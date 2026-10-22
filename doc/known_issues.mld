@@ -11,9 +11,10 @@ not supported yet.
 - {!Workero.URL} uses the WHATWG [URL], but {!Workero.URL.path} is decoded and
   only [http] and [https] URLs parse. See
   {{!page-url}URLs}.
-- A response cannot have a status below 200 or above 599. The runtime rejects
-  them, so {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to
-  read codes; use {!Workero.Websocket} for 101.
+- A response cannot have a status below 200 or above 599. Workero raises
+  [Invalid_argument] for such a status, also for [`Status 101]. So
+  {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to read
+  codes; use {!Workero.Websocket} for 101.
 
 {1 Limits of streams, forms and WebSockets}
 
@@ -33,15 +34,15 @@ not supported yet.
   [Invalid_argument] for incompatible values. A [v8] body can be
   read only through {!Workero.Queue.Message.body_js}; workero producers cannot
   send [v8]. [send] and [send_batch] expose [delay_seconds], but no other send
-  options. The runtime checks message size. Configure dead letter queues and
+  options. Cloudflare checks message size; workero does not. Configure dead letter queues and
   [max_retries] in [wrangler.toml].
 - {{!page-rate_limiter}Rate limiter}: the key is the only call argument. Set
   the limit and period in [wrangler.toml]. Counts are per location and
   approximate.
 - {{!page-ai}Workers AI}: streaming answers and gateway options are not
   supported. {!Workero.Ai.run} raises [Invalid_argument] for a stream.
-- {{!page-analytics_engine}Analytics Engine}: [write] returns no result. The
-  runtime checks the limits of 20 blobs and 20 doubles. There is no query API.
+- {{!page-analytics_engine}Analytics Engine}: [write] returns no result.
+  Cloudflare checks the limits of 20 blobs and 20 doubles; workero does not. There is no query API.
 
 {1 Durable Object limits}
 
@@ -49,10 +50,10 @@ not supported yet.
   [new_classes] can build, but its key-value and SQL calls fail at runtime.
   See {{!page-durable_objects}Durable Objects}.
 - A stub supports [fetch] only. There are no RPC methods on a stub.
-- Stored values are JSON. A [Date] that other code stores reads back as its ISO string and a [Map] as [{}]. A [BigInt] or a cyclic value raises [Invalid_argument].
+- Stored values are JSON. A [Date] that other code stores reads back as its ISO string and a [Map] as [{}]. A [BigInt] or a cyclic value raises [Invalid_argument]. {!Workero.Durable_object.Storage.put} raises [Invalid_argument] for a NaN or infinite float.
 - The function given to [register] cannot call {!Workero.Promise.await}. Load stored values in [~init]. Keep per-object state in closures.
 - {!Workero.Durable_object.register} must run when the module starts. A [register] call that a condition skips is not exported.
-- [workero build] needs [workerd]. The main module must be [index.js].
+- [workero build] needs [workerd]. Set [main] in [wrangler.toml] to the [index.js] that [workero build] writes.
 - A [block_concurrency_while] function that raises resets the object.
 - SQL: [Int] values are exact only within ±[2^53]; a larger integer can
   read back as a [Float]. A whole-number [REAL] such as [2.0] reads back as

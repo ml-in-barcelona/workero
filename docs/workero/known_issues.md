@@ -8,7 +8,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - Await only in the supported handler contexts. A function that JavaScript calls, such as a `setTimeout` callback, cannot await. See [Async and background work](./async.md) for those contexts.
 - [`Workero.URL`](./Workero-URL.md) uses the WHATWG `URL`, but [`Workero.URL.path`](./Workero-URL.md#val-path) is decoded and only `http` and `https` URLs parse. See [URLs](./url.md).
-- A response cannot have a status below 200 or above 599\. The runtime rejects them, so [`Workero.Status`](./Workero-Status.md) has ``Continue` and ``Switching_Protocols` only to read codes; use [`Workero.Websocket`](./Workero-Websocket.md) for 101\.
+- A response cannot have a status below 200 or above 599\. Workero raises `Invalid_argument` for such a status, also for ``Status 101`. So [`Workero.Status`](./Workero-Status.md) has ``Continue` and ``Switching_Protocols` only to read codes; use [`Workero.Websocket`](./Workero-Websocket.md) for 101\.
 
 ## Limits of streams, forms and WebSockets
 
@@ -18,19 +18,19 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Binding limits
 
-- [Queues](./queue.md): consumers do not receive the content type. [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json) on a `Text` body gives a JSON string. The other readers require compatible JavaScript value types and raise `Invalid_argument` for incompatible values. A `v8` body can be read only through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js); workero producers cannot send `v8`. `send` and `send_batch` expose `delay_seconds`, but no other send options. The runtime checks message size. Configure dead letter queues and `max_retries` in `wrangler.toml`.
+- [Queues](./queue.md): consumers do not receive the content type. [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json) on a `Text` body gives a JSON string. The other readers require compatible JavaScript value types and raise `Invalid_argument` for incompatible values. A `v8` body can be read only through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js); workero producers cannot send `v8`. `send` and `send_batch` expose `delay_seconds`, but no other send options. Cloudflare checks message size; workero does not. Configure dead letter queues and `max_retries` in `wrangler.toml`.
 - [Rate limiter](./rate_limiter.md): the key is the only call argument. Set the limit and period in `wrangler.toml`. Counts are per location and approximate.
 - [Workers AI](./ai.md): streaming answers and gateway options are not supported. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` for a stream.
-- [Analytics Engine](./analytics_engine.md): `write` returns no result. The runtime checks the limits of 20 blobs and 20 doubles. There is no query API.
+- [Analytics Engine](./analytics_engine.md): `write` returns no result. Cloudflare checks the limits of 20 blobs and 20 doubles; workero does not. There is no query API.
 
 ## Durable Object limits
 
 - The storage API requires a SQLite-backed class. A class listed in `new_classes` can build, but its key-value and SQL calls fail at runtime. See [Durable Objects](./durable_objects.md).
 - A stub supports `fetch` only. There are no RPC methods on a stub.
-- Stored values are JSON. A `Date` that other code stores reads back as its ISO string and a `Map` as `{}`. A `BigInt` or a cyclic value raises `Invalid_argument`.
+- Stored values are JSON. A `Date` that other code stores reads back as its ISO string and a `Map` as `{}`. A `BigInt` or a cyclic value raises `Invalid_argument`. [`Workero.Durable_object.Storage.put`](./Workero-Durable_object-Storage.md#val-put) raises `Invalid_argument` for a NaN or infinite float.
 - The function given to `register` cannot call [`Workero.Promise.await`](./Workero-Promise.md#val-await). Load stored values in `~init`. Keep per-object state in closures.
 - [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register) must run when the module starts. A `register` call that a condition skips is not exported.
-- `workero build` needs `workerd`. The main module must be `index.js`.
+- `workero build` needs `workerd`. Set `main` in `wrangler.toml` to the `index.js` that `workero build` writes.
 - A `block_concurrency_while` function that raises resets the object.
 - SQL: `Int` values are exact only within ±`2^53`; a larger integer can read back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. There is no asynchronous transaction. `Sql.run` returns only the number of rows written. [`Workero.Durable_object.Storage.transaction_sync`](./Workero-Durable_object-Storage.md#val-transaction_sync) rejects [`Workero.Promise.await`](./Workero-Promise.md#val-await) with `Invalid_argument` and rolls back.
 - [WebSockets](./websockets.md): a socket accepted with [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate. Do not also call [`Workero.Durable_object.State.accept_websocket`](./Workero-Durable_object-State.md#val-accept_websocket) on that socket. A class without `websocket_message` can accept hibernatable sockets, but does not handle their messages.
