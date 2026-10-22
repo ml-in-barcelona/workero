@@ -291,6 +291,64 @@ let sqlite state _env =
             | exception Js_error _ -> "Js_error"
           in
           ok (Printf.sprintf "%s count=%d" outcome (count ()))
+      | "tx-async-commit" ->
+          let v =
+            D.Storage.transaction storage (fun _ ->
+                ignore (insert 14L);
+                Promise.await (Promise.resolve ());
+                D.Storage.put storage "ka" (`Int 1);
+                43)
+          in
+          ok (Printf.sprintf "%d count=%d ka=%s" v (count ()) (stored "ka"))
+      | "tx-async-rollback" ->
+          let outcome =
+            match
+              D.Storage.transaction storage (fun _ ->
+                  ignore (insert 15L);
+                  D.Storage.put storage "kb" (`Int 1);
+                  Promise.await (Promise.resolve ());
+                  failwith "boom")
+            with
+            | _ -> "no raise"
+            | exception Failure m -> "Failure " ^ m
+          in
+          ok
+            (Printf.sprintf "%s count=%d kb=%s" outcome (count ()) (stored "kb"))
+      | "tx-async-explicit" ->
+          let v =
+            D.Storage.transaction storage (fun txn ->
+                ignore (insert 16L);
+                D.Storage.put storage "kc" (`Int 1);
+                Promise.await (Promise.resolve ());
+                D.Storage.rollback txn;
+                D.Storage.put storage "kd" (`Int 1);
+                9)
+          in
+          ok
+            (Printf.sprintf "%d count=%d kc=%s kd=%s" v (count ()) (stored "kc")
+               (stored "kd"))
+      | "tx-async-nested" ->
+          D.Storage.transaction storage (fun _ ->
+              D.Storage.put storage "ke" (`Int 1);
+              try
+                D.Storage.transaction storage (fun _ ->
+                    D.Storage.put storage "kf" (`Int 1);
+                    Promise.await (Promise.resolve ());
+                    failwith "inner")
+              with Failure _ -> ());
+          ok (Printf.sprintf "ke=%s kf=%s" (stored "ke") (stored "kf"))
+      | "tx-async-sql-error" ->
+          let outcome =
+            match
+              D.Storage.transaction storage (fun _ ->
+                  ignore (insert 17L);
+                  Promise.await (Promise.resolve ());
+                  ignore (D.Sql.query sql "SELEKT"))
+            with
+            | () -> "no raise"
+            | exception Js_error _ -> "Js_error"
+          in
+          ok (Printf.sprintf "%s count=%d" outcome (count ()))
       | other -> Response.text ~status:`Not_Found other)
     ()
 

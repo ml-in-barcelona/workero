@@ -173,8 +173,17 @@ let () = Workero.serve handler
 ```
 For this separate Worker, use the `main`, `build`, and `compatibility_date` settings above. Bind `VISITS` to `Visits` and declare `Visits` in `new_sqlite_classes` (or `exports.Visits` with `storage = "sqlite"`). With fresh local storage, two requests to the Worker return `1` and `2`. [`Workero.Durable_object.Sql.query`](./Workero-Durable_object-Sql.md#val-query) returns named rows as [`Workero.Sql_value.row`](./Workero-Sql_value.md#type-row); `Sql.run` returns the number of rows written, and parameters bind to `?` in order. Both calls are synchronous. An SQL error raises [`Workero.Js_error`](./Workero.md#exception-Js_error). `Sql.database_size` reports bytes used.
 
-`Storage.transaction_sync` commits writes to SQL and storage keys together. If its callback raises, the runtime rolls back both and re-raises the error. The callback cannot await: [`Workero.Promise.await`](./Workero-Promise.md#val-await) raises `Invalid_argument` there and rolls back. JavaScript's asynchronous storage transaction has no OCaml equivalent here. SQL numbers cross the JavaScript number boundary: `REAL` `2.0` can read as `Sql_value.Int 2L`, and integers outside ±`2^53` cannot round-trip exactly. See [`Workero.Sql_value`](./Workero-Sql_value.md).
+`Storage.transaction_sync` commits writes to SQL and storage keys together. If its callback raises, the runtime rolls back both and re-raises the error. The callback cannot await: [`Workero.Promise.await`](./Workero-Promise.md#val-await) raises `Invalid_argument` there and rolls back. SQL numbers cross the JavaScript number boundary: `REAL` `2.0` can read as `Sql_value.Int 2L`, and integers outside ±`2^53` cannot round-trip exactly. See [`Workero.Sql_value`](./Workero-Sql_value.md).
 
+`Storage.transaction` does the same for a callback that awaits. The callback receives the transaction; writes through `storage` and its SQL handle belong to it. `Storage.rollback txn` undoes the writes so far, and the callback goes on running: later writes commit, so raise to stop. A nested `transaction` that raises rolls back alone.
+
+```ocaml
+let two_steps storage =
+  Workero.Durable_object.Storage.transaction storage (fun _txn ->
+      Workero.Durable_object.Storage.put storage "step" (`Int 1);
+      Workero.Promise.await (Workero.Timer.sleep 10);
+      Workero.Durable_object.Storage.put storage "step" (`Int 2))
+```
 
 ## Handle hibernatable WebSockets
 

@@ -106,6 +106,20 @@ module Storage = struct
          [| Js.Unsafe.inject (Js.wrap_callback work) |]);
     Option.get !result
 
+  type transaction = js
+
+  let transaction t f =
+    let result = ref None in
+    let work =
+      Async.promising (fun (txn : js) : js ->
+          Async.run (fun () ->
+              result := Some (f txn);
+              undefined))
+    in
+    Binding.call ~decode:Decode.unit t "transaction" [| work |];
+    Option.get !result
+
+  let rollback txn = ignore (Binding.invoke txn "rollback" [||])
   let delete_all t = Binding.call ~decode:Decode.unit t "deleteAll" [||]
   let sync t = Binding.call ~decode:Decode.unit t "sync" [||]
   let get_alarm t = Binding.call_opt ~decode:Decode.float t "getAlarm" [||]

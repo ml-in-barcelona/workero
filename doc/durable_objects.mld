@@ -248,10 +248,23 @@ raises {!Workero.Js_error}. [Sql.database_size] reports bytes used.
 [Storage.transaction_sync] commits writes to SQL and storage keys together.
 If its callback raises, the runtime rolls back both and re-raises the error.
 The callback cannot await: {!Workero.Promise.await} raises [Invalid_argument]
-there and rolls back. JavaScript's asynchronous storage transaction has no
-OCaml equivalent here. SQL numbers cross the JavaScript number boundary:
+there and rolls back. SQL numbers cross the JavaScript number boundary:
 [REAL] [2.0] can read as [Sql_value.Int 2L], and integers outside ±[2^53]
 cannot round-trip exactly. See {!Workero.Sql_value}.
+
+[Storage.transaction] does the same for a callback that awaits. The callback
+receives the transaction; writes through [storage] and its SQL handle belong
+to it. [Storage.rollback txn] undoes the writes so far, and the callback goes
+on running: later writes commit, so raise to stop. A nested [transaction]
+that raises rolls back alone.
+
+{@ocaml[
+let two_steps storage =
+  Workero.Durable_object.Storage.transaction storage (fun _txn ->
+      Workero.Durable_object.Storage.put storage "step" (`Int 1);
+      Workero.Promise.await (Workero.Timer.sleep 10);
+      Workero.Durable_object.Storage.put storage "step" (`Int 2))
+]}
 
 {1 Handle hibernatable WebSockets}
 

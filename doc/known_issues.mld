@@ -96,9 +96,9 @@ not supported yet.
 - A [block_concurrency_while] function that raises resets the object.
 - SQL: [Int] values are exact only within ±[2^53]; a larger integer can
   read back as a [Float]. A whole-number [REAL] such as [2.0] reads back as
-  [Int]. There is no asynchronous transaction. [Sql.run] returns only the
-  number of rows written. {!Workero.Durable_object.Storage.transaction_sync}
-  rejects {!Workero.Promise.await} with [Invalid_argument] and rolls back.
+  [Int]. [Sql.run] returns only the number of rows written. {!Workero.Durable_object.Storage.transaction_sync}
+  rejects {!Workero.Promise.await} with [Invalid_argument] and rolls back; use
+  {!Workero.Durable_object.Storage.transaction} to await.
 - {{!page-websockets}WebSockets}: a socket accepted with
   {!Workero.Websocket.accept} does not hibernate. Do not also call
   {!Workero.Durable_object.State.accept_websocket} on that socket. A class

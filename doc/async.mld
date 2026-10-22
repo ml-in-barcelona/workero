@@ -169,8 +169,9 @@ that can await. Functions called from these fibers can await too. The function
 passed to {!Workero.Durable_object.register} to create an object cannot await;
 use [~init] for asynchronous initialization. The function passed to
 {!Workero.Durable_object.Storage.transaction_sync} cannot await either: it
-raises [Invalid_argument], and the transaction rolls back. Waiting elsewhere
-fails:
+raises [Invalid_argument], and the transaction rolls back. Use
+{!Workero.Durable_object.Storage.transaction} to await in a transaction.
+Waiting elsewhere fails:
 
 - In a {!Workero.Timer.set_timeout} callback, the callback runs outside the
   handler fiber.
