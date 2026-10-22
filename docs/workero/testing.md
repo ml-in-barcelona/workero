@@ -12,7 +12,7 @@ The workero repository tests its own worker with `workerd test`. You can do the 
 4. Run `workerd test config.capnp`.
 `test/worker/run.sh` in the repository generates the config and runs the tests. `test/worker/main.ml` is the worker, and `test/worker/tests.mjs` has the cases. Set `globalOutbound` to a small worker to answer [`Workero.fetch`](./Workero.md#val-fetch) calls without the network.
 
-`workerd` must be on `PATH`. `npm install workerd` or `wrangler` provides it.
+`workerd` must be on `PATH`. `opam install workerd`, `npm install workerd` or `wrangler` provides it.
 
 An exception that escapes a handler fails the call on a service binding. A real HTTP request gets status 500 instead.
 

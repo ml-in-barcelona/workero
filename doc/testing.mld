@@ -20,7 +20,8 @@ same with yours. It runs the real wasm in the real runtime, so [Promise.await],
 Set [globalOutbound] to a small worker to answer {!Workero.fetch} calls
 without the network.
 
-[workerd] must be on [PATH]. [npm install workerd] or [wrangler] provides it.
+[workerd] must be on [PATH]. [opam install workerd], [npm install workerd] or
+[wrangler] provides it.
 
 An exception that escapes a handler fails the call on a service binding. A
 real HTTP request gets status 500 instead.

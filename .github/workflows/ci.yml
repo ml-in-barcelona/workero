@@ -5,7 +5,8 @@ on:
     branches:
       - main
     tags:
-      - '*'
+      - '[0-9]*'
+      - 'v[0-9]*'
   pull_request:
 
 permissions:
@@ -50,6 +51,15 @@ jobs:
 
       - name: Check formatting
         run: opam exec -- dune build @fmt
+
+      - name: Lint workerd and wrangler
+        run: opam lint workerd/workerd.opam workerd/platform/*.opam wrangler/wrangler.opam
+
+      - name: Check the release scripts
+        working-directory: scripts
+        run: |
+          npm ci
+          npm run check
 
       - name: Build example worker
         run: opam exec -- dune exec workero -- build examples/basic/main.bc.wasm.js

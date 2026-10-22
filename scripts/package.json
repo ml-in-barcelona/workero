@@ -1,0 +1,12 @@
+{
+  "name": "workero-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "22.15.17",
+    "typescript": "5.9.3"
+  }
+}

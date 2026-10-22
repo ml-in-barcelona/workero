@@ -1,0 +1,19 @@
+opam-version: "2.0"
+version: "1.20261019.1"
+synopsis: "The workerd runtime for Cloudflare Workers"
+description:
+  "Installs the prebuilt workerd binary from Cloudflare for your platform: Linux or macOS, x86_64 or arm64. Linux needs glibc 2.35 or later."
+license: "Apache-2.0"
+homepage: "https://github.com/cloudflare/workerd"
+maintainer: ["David Sancho <dsnxmoreno@gmail.com>"]
+authors: ["Cloudflare, Inc."]
+bug-reports: "https://github.com/ml-in-barcelona/workero/issues"
+dev-repo: "git+https://github.com/ml-in-barcelona/workero.git"
+x-maintenance-intent: ["(latest)"]
+available: [ os = "linux" | os = "macos" ]
+depends: [
+  "workerd-linux-64" {= version & os = "linux" & arch = "x86_64"}
+  "workerd-linux-arm64" {= version & os = "linux" & arch = "arm64"}
+  "workerd-darwin-64" {= version & os = "macos" & arch = "x86_64"}
+  "workerd-darwin-arm64" {= version & os = "macos" & arch = "arm64"}
+]

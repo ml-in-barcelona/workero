@@ -1,0 +1,99 @@
+name: Release workerd and wrangler
+
+on:
+  push:
+    tags:
+      - 'workerd-[0-9]*'
+      - 'wrangler-[0-9]*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Read the tag
+        run: |
+          echo "PACKAGE=${GITHUB_REF_NAME%%-*}" >> "$GITHUB_ENV"
+          echo "VERSION=${GITHUB_REF_NAME#*-}" >> "$GITHUB_ENV"
+
+      - name: Check the version and the changelog
+        run: |
+          grep -qx "version: \"$VERSION\"" "$PACKAGE/$PACKAGE.opam"
+          grep -qx "## $VERSION" "$PACKAGE/CHANGES.md"
+          awk -v v="## $VERSION" '$0 == v { found = 1; next } /^## / { found = 0 } found' \
+            "$PACKAGE/CHANGES.md" > "$RUNNER_TEMP/notes.md"
+
+      - name: Build the wrangler bundle
+        if: env.PACKAGE == 'wrangler'
+        run: |
+          node scripts/wrangler-bundle.ts "$VERSION" "$RUNNER_TEMP/dist"
+          echo "ARCHIVE=$RUNNER_TEMP/dist/wrangler-$VERSION.tgz" >> "$GITHUB_ENV"
+
+      - name: Create the GitHub release
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ -n "${ARCHIVE:-}" ]; then
+              gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+                --pattern "$(basename "$ARCHIVE")" --output "$ARCHIVE" --clobber
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" ${ARCHIVE:-} \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$PACKAGE $VERSION" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              --verify-tag
+          fi
+
+      - name: Prepare the opam-repository files
+        run: |
+          mkdir -p "$RUNNER_TEMP/packages"
+          if [ "$PACKAGE" = wrangler ]; then
+            url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/wrangler-$VERSION.tgz"
+            sum=$(sha512sum "$ARCHIVE" | cut -d' ' -f1)
+            mkdir -p "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION"
+            scripts/opam-repo-file.sh wrangler/wrangler.opam "$url" "$sum" \
+              > "$RUNNER_TEMP/packages/wrangler/wrangler.$VERSION/opam"
+          else
+            for f in workerd/workerd.opam workerd/platform/*.opam; do
+              name=$(basename "$f" .opam)
+              mkdir -p "$RUNNER_TEMP/packages/$name/$name.$VERSION"
+              scripts/opam-repo-file.sh "$f" > "$RUNNER_TEMP/packages/$name/$name.$VERSION/opam"
+            done
+          fi
+
+      - name: Open the opam-repository pull request
+        run: |
+          user=$(gh api user --jq .login)
+          branch="release-$PACKAGE-$VERSION"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global url."https://x-access-token:$GH_TOKEN@github.com/".insteadOf "https://github.com/"
+          git clone --depth 1 "https://github.com/$user/opam-repository.git" "$RUNNER_TEMP/opam-repository"
+          cd "$RUNNER_TEMP/opam-repository"
+          git remote add upstream https://github.com/ocaml/opam-repository.git
+          git fetch --depth 1 upstream master
+          git checkout -b "$branch" upstream/master
+          cp -R "$RUNNER_TEMP/packages/." packages/
+          git add packages
+          git commit -m "[new release] $PACKAGE ($VERSION)"
+          git push --force origin "$branch"
+          gh pr view "$user:$branch" --repo ocaml/opam-repository >/dev/null 2>&1 ||
+          gh pr create --repo ocaml/opam-repository \
+            --head "$user:$branch" --base master \
+            --title "[new release] $PACKAGE ($VERSION)" \
+            --body-file "$RUNNER_TEMP/notes.md"

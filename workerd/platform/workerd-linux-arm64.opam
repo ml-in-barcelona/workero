@@ -1,0 +1,20 @@
+opam-version: "2.0"
+version: "1.20261019.1"
+synopsis: "The workerd binary for Linux arm64"
+description:
+  "The prebuilt workerd binary from Cloudflare for Linux arm64. Install the workerd package instead; it selects this one."
+license: "Apache-2.0"
+homepage: "https://github.com/cloudflare/workerd"
+maintainer: ["David Sancho <dsnxmoreno@gmail.com>"]
+authors: ["Cloudflare, Inc."]
+bug-reports: "https://github.com/ml-in-barcelona/workero/issues"
+dev-repo: "git+https://github.com/ml-in-barcelona/workero.git"
+x-maintenance-intent: ["(latest)"]
+available: os = "linux" & arch = "arm64"
+install: [
+  ["install" "-m" "755" "bin/workerd" "%{bin}%/workerd"]
+]
+url {
+  src: "https://registry.npmjs.org/@cloudflare/workerd-linux-arm64/-/workerd-linux-arm64-1.20261019.1.tgz"
+  checksum: "sha512=ef93d5b493b07e349c439dec6cbb505c8ec3f323f5736d6df961143da61baa4cdacf866a7d1e7001dfb3b96b3c1b943b90e8f649022f11f6394a7f18f9456b9c"
+}
