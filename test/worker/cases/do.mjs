@@ -21,6 +21,13 @@ const cases = [
   { name: "Storage.get reads what the handler wrote", request: counter("same", "stored?key=count"), status: 200, body: "200|2" },
   { name: "Storage.get of an absent key", request: counter("same", "stored?key=nope"), status: 200, body: "200|none" },
   { name: "State.id gives the id of the object, with its name", request: counter("named", "id"), status: 200, check: (b) => (/^200\|named\|[0-9a-f]{64}$/.test(b) ? undefined : `unexpected ${b}`) },
+  { name: "State.container is None when the class has no container", request: counter("nocontainer", "container"), status: 200, body: "200|none" },
+  {
+    name: "Container calls the container API with the options, the signal and the port (stub)",
+    request: ["http://test/do-container-stub"],
+    status: 200,
+    body: 'start:{"entrypoint":["sh","-c","x"],"env":{"A":"1"},"enableInternet":true};start:{};monitor;signal:15;destroy:bye;destroy:-|Error: exit 3|port 8080 http://container/x',
+  },
   { name: "a class named like a reserved word is exported and works", request: to("CLASS", "r", "incr"), status: 200, body: "200|1" },
   { name: "Storage.get reads a Date written by JavaScript as its ISO string", request: counter("raw", "raw-put?kind=date"), status: 200, body: "200|put" },
   { name: "Storage.get of the Date", request: counter("raw", "stored?key=raw"), status: 200, body: '200|"1970-01-01T00:00:00.000Z"' },

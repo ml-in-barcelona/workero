@@ -35,6 +35,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - A `block_concurrency_while` function that raises resets the object.
 - SQL: `Int` values are exact only between \-2^53 and 2^53; a larger integer reads back as a `Float`. A whole-number `REAL` such as `2.0` reads back as `Int`. There is no asynchronous transaction. `Sql.run` gives the number of rows written only.
 - [WebSockets](./websockets.md): a socket from [`Workero.Websocket.accept`](./Workero-Websocket.md#val-accept) does not hibernate. Do not mix it with `accept_websocket`. A class without `websocket_message` accepts hibernatable sockets and drops their messages.
+- [Containers](./durable_objects.md): [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) supports HTTP `fetch` only; raw TCP `connect`, `setInactivityTimeout` and outbound interception are not wrapped. The tests run `State.container` against `None` in `workerd` and against a JavaScript stub; a separate test, `test/worker-containers`, starts real containers in CI and prints `SKIP containers` where Docker or its images are missing. `workerd` runs containers only with Docker and an egress interceptor image.
 - `workerd` cannot test hibernation (eviction and re-creation), jurisdictions, or the tag and 2048-byte attachment limits.
 
 ## Not supported yet
@@ -42,13 +43,12 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 - The `tail` and `email` handlers.
 - Workflows.
 - RPC: `WorkerEntrypoint` and RPC methods on Durable Object stubs.
-- Durable Objects without SQLite storage, and `State.container`.
+- Durable Objects without SQLite storage.
 - Vectorize, Hyperdrive and the Send Email binding.
 - `HTMLRewriter`.
 - Outbound TCP sockets (`connect`).
 - `AbortController` and request cancellation.
 - `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has `random_uuid` and `random_bytes` only.
-- Containers.
 
 ## Differences from native OCaml
 

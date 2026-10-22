@@ -223,6 +223,53 @@ handler still accepts [set_alarm], and the alarm then fails and retries.
 - {!Workero.Durable_object.Storage.sync} waits until earlier writes are
   durable, and {!Workero.Durable_object.Storage.delete_all} removes every key.
 
+{1 Containers}
+
+A class can have a container, on Cloudflare Containers. Declare it in
+[wrangler.toml] with [[[containers]]] and the class name of the object.
+{!Workero.Durable_object.State.container} gives it, or [None] when the class has
+none. {!Workero.Durable_object.Container.start} boots the container and returns
+at once. {!Workero.Durable_object.Container.get_tcp_port} gives a
+{!Workero.Fetcher.t} for a port of the container, so [Fetcher.fetch] sends an
+HTTP request to the program in it:
+
+{@ocaml[
+let () =
+  Durable_object.register "Sandbox" (fun state _env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          if not (Durable_object.Container.running container) then
+            Durable_object.Container.start ~enable_internet:false container;
+          let port = Durable_object.Container.get_tcp_port container 8080 in
+          Fetcher.fetch port "http://container/")
+        ())
+]}
+
+The program in the container needs time to listen on its port. Until then
+[Fetcher.fetch] raises {!Workero.Js_error}: retry. {!Workero.Durable_object.Container.monitor}
+waits until the container exits, {!Workero.Durable_object.Container.signal}
+sends a Unix signal, and {!Workero.Durable_object.Container.destroy} stops it.
+
+To run a container in [workerd], give the namespace a [container] with an image,
+and give the config a [containerEngine] that uses the local Docker daemon:
+
+{@capnp[
+durableObjectNamespaces = [
+  (className = "Sandbox", uniqueKey = "sandbox", enableSql = true,
+   container = (imageName = "alpine:3.22")),
+],
+...
+containerEngine = (localDocker = (
+  socketPath = "unix:/var/run/docker.sock",
+  containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
+]}
+
+Run [workerd] with [--experimental]. Docker and both images must exist on the
+machine. [test/worker-containers/run.sh] shows a full setup. Without [containerEgressInterceptorImage] [workerd] fails the first
+request with "containerEgressInterceptorImage must be configured for
+containers".
+
 {1 Test locally}
 
 [wrangler dev] runs Durable Objects. In a [workerd] config for [workerd test],

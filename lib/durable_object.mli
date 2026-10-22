@@ -127,6 +127,56 @@ module Storage : sig
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 end
 
+module Container : sig
+  (** The container attached to an object, on Cloudflare Containers. Declare it
+      in [wrangler.toml] with [[[containers]]] and the class name of the object.
+      The container starts only when {!start} runs. The functions raise
+      {!Js_error} when the runtime throws or rejects, for example when no image
+      is configured or the container is not running.
+
+      [workerd] runs a container only with Docker: see
+      {{!page-durable_objects}Durable Objects}. *)
+
+  type t
+
+  val running : t -> bool
+  (** [true] once {!start} ran and until the container exits or is destroyed. It
+      does not mean that the program in the container accepts connections. *)
+
+  val start :
+    ?entrypoint:string list ->
+    ?env:(string * string) list ->
+    ?enable_internet:bool ->
+    t ->
+    unit
+  (** Boots the container and returns at once, before it is ready to accept
+      connections. [entrypoint] replaces the command of the image, [env] adds
+      environment variables, and [enable_internet] allows outbound traffic.
+      Raises {!Js_error} when the container already runs. *)
+
+  val monitor : t -> unit
+  (** Waits until the container exits. Raises {!Js_error} when it exits with an
+      error, or when {!destroy} gave a [message]. Suspends. *)
+
+  val destroy : ?message:string -> t -> unit
+  (** Stops the container, and fails {!monitor} with [message] when given.
+      Suspends. *)
+
+  val signal : t -> int -> unit
+  (** [signal container signo] sends the Unix signal number [signo], for example
+      [15] for [SIGTERM], to the main process. *)
+
+  val get_tcp_port : t -> int -> Fetcher.t
+  (** A {!Fetcher.t} for a TCP port of the container: {!Fetcher.fetch} sends an
+      HTTP request to the program that listens on that port. The host of the URL
+      is ignored, so any host works, such as ["http://container/path"]. The
+      program may need time to start: retry on {!Js_error}. Raw TCP connections
+      are not supported. *)
+
+  val of_js : Js_of_ocaml.Js.Unsafe.any -> t
+  val to_js : t -> Js_of_ocaml.Js.Unsafe.any
+end
+
 module State : sig
   type t
   (** The [ctx] of an object. *)
@@ -136,6 +186,9 @@ module State : sig
 
   val wait_until : t -> (unit -> unit) -> unit
   (** Like {!Context.wait_until}. *)
+
+  val container : t -> Container.t option
+  (** The container of the object, or [None] when the class has none. *)
 
   val block_concurrency_while : t -> (unit -> 'a) -> 'a
   (** [block_concurrency_while state f] runs [f] in its own fiber and lets no

@@ -145,6 +145,39 @@ Durable_object.register "Reminder" (fun state _env ->
 - [`Workero.Durable_object.State.block_concurrency_while`](./Workero-Durable_object-State.md#val-block_concurrency_while) runs a function while no other event reaches the object. If the function raises, the runtime resets the object and fails the running requests; the next request creates the object again.
 - [`Workero.Durable_object.Storage.sync`](./Workero-Durable_object-Storage.md#val-sync) waits until earlier writes are durable, and [`Workero.Durable_object.Storage.delete_all`](./Workero-Durable_object-Storage.md#val-delete_all) removes every key.
 
+## Containers
+
+A class can have a container, on Cloudflare Containers. Declare it in `wrangler.toml` with `[[containers]]` and the class name of the object. [`Workero.Durable_object.State.container`](./Workero-Durable_object-State.md#val-container) gives it, or `None` when the class has none. [`Workero.Durable_object.Container.start`](./Workero-Durable_object-Container.md#val-start) boots the container and returns at once. [`Workero.Durable_object.Container.get_tcp_port`](./Workero-Durable_object-Container.md#val-get_tcp_port) gives a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t) for a port of the container, so `Fetcher.fetch` sends an HTTP request to the program in it:
+
+```ocaml
+let () =
+  Durable_object.register "Sandbox" (fun state _env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          if not (Durable_object.Container.running container) then
+            Durable_object.Container.start ~enable_internet:false container;
+          let port = Durable_object.Container.get_tcp_port container 8080 in
+          Fetcher.fetch port "http://container/")
+        ())
+```
+The program in the container needs time to listen on its port. Until then `Fetcher.fetch` raises [`Workero.Js_error`](./Workero.md#exception-Js_error): retry. [`Workero.Durable_object.Container.monitor`](./Workero-Durable_object-Container.md#val-monitor) waits until the container exits, [`Workero.Durable_object.Container.signal`](./Workero-Durable_object-Container.md#val-signal) sends a Unix signal, and [`Workero.Durable_object.Container.destroy`](./Workero-Durable_object-Container.md#val-destroy) stops it.
+
+To run a container in `workerd`, give the namespace a `container` with an image, and give the config a `containerEngine` that uses the local Docker daemon:
+
+```capnp
+durableObjectNamespaces = [
+  (className = "Sandbox", uniqueKey = "sandbox", enableSql = true,
+   container = (imageName = "alpine:3.22")),
+],
+...
+containerEngine = (localDocker = (
+  socketPath = "unix:/var/run/docker.sock",
+  containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
+```
+Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. Without `containerEgressInterceptorImage` `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers".
+
+
 ## Test locally
 
 `wrangler dev` runs Durable Objects. In a `workerd` config for `workerd test`, declare the classes on the Worker service, bind the namespace, and give the service *on-disk* storage. SQLite storage needs it; `inMemory` storage does not support it:
