@@ -15,11 +15,12 @@ The entry point is the module [`Workero`](./Workero.md).
 The pages follow the order of a Worker project.
 
 - [Getting started](./getting_started.md): prerequisites, create a project, develop locally, deploy.
-- [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, `Workero.queue`, and the arguments of a handler.
+- [Handlers](./handlers.md): `Workero.serve`, `Workero.scheduled`, `Workero.queue`, `Workero.email`, and the arguments of a handler.
 - [Requests and responses](./requests.md): requests, responses, URLs, JSON and `Workero.fetch`.
 - [Router](./router.md): path parameters, catch-all paths and `405` answers.
 - [Streams](./streams.md): read a body in chunks, send a body in steps.
 - [Forms](./forms.md): forms and file uploads.
+- [Email](./email.md): receive, forward, reply to and reject email.
 - [WebSockets](./websockets.md): accept a connection and read its messages.
 - [Variables and secrets](./env.md): `Env.var`, `Env.secret`, `Env.json` and Secrets Store.
 - [Waiting for JavaScript](./async.md): direct style, `Promise.await` and background work.

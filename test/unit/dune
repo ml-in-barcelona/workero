@@ -17,6 +17,7 @@
   test_fetch
   test_env
   test_scheduled
+  test_email
   test_bindings
   test_secret_store
   test_hyperdrive

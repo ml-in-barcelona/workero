@@ -22,6 +22,7 @@
   fetcher
   socket
   queue
+  email
   rate_limiter
   hyperdrive
   ai

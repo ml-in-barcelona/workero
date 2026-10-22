@@ -22,6 +22,7 @@ module Env = Env
 module Context = Context
 module Router = Router
 module Scheduled = Scheduled
+module Email = Email
 module JSON = Json
 module KV = Kv
 module Cache = Cache
@@ -67,6 +68,15 @@ val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
     {!fetch} and the body readers. It can be combined with {!serve} and
     {!scheduled}. An exception raised by the handler rejects the event Promise,
     so the runtime retries the messages that the handler did not ack. *)
+
+val email : (Email.t -> Env.t -> Context.t -> unit) -> unit
+(** [email handler] registers the Email Routing handler, like
+    [email(message, env, ctx)] in a JavaScript Worker. It runs in a fiber and
+    may call {!Promise.await}, {!fetch} and the body readers. It can be combined
+    with {!serve}, {!scheduled} and {!queue}. The handler must call
+    {!Email.forward}, {!Email.reply} or {!Email.set_reject}, or the runtime
+    drops the message. An exception raised by the handler rejects the event
+    Promise, so the runtime treats the delivery as failed. *)
 
 val fetch :
   ?method_:Method.t ->

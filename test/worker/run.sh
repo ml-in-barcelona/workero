@@ -81,6 +81,22 @@ cp test/worker/cases/*.mjs "$out/cases/"
     echo "      modules = [(name = \"$svc.mjs\", esModule = embed \"$svc.mjs\")],"
     echo '    )),'
   done
+  echo '    (name = "email-harness", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = ['
+  echo '        (name = "email-harness.mjs", esModule = embed "email-harness.mjs"),'
+  echo '        (name = "cloudflare:email", esModule = embed "cloudflare-email.mjs"),'
+  (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", esModule = embed \"$f\"),"
+    done
+  (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", wasm = embed \"$f\"),"
+    done
+  echo '      ],'
+  echo '      globalOutbound = "upstream",'
+  echo '    )),'
   echo '    (name = "d1", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "d1.mjs", esModule = embed "d1.mjs")],'
@@ -105,6 +121,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "CALC", service = (name = "worker", entrypoint = "Calc")),'
   echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
   echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
+  echo '        (name = "EMAIL", service = "email-harness"),'
   echo '      ],'
   echo '    )),'
   echo '    (name = "test-queue", worker = ('

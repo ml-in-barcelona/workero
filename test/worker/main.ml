@@ -26,3 +26,4 @@ let handler req env ctx =
 
 let () = Workero.serve handler
 let () = Workero.queue Routes_queue.consume
+let () = Workero.email Routes_email.receive

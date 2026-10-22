@@ -68,6 +68,11 @@ module Scheduled : sig ... end
 The `controller` argument of a Worker `scheduled` handler.
 
 ```ocaml
+module Email : sig ... end
+```
+Email Routing. The handler that [`Workero.email`](./#val-email) registers receives a [`t`](./Workero-Email.md#type-t): a message that Cloudflare Email Routing delivered to the Worker. The handler can read the message, forward it, reply to it or reject it.
+
+```ocaml
 module JSON : sig ... end
 ```
 JSON requests and responses for workero (`Workero.JSON`).
@@ -196,6 +201,11 @@ val scheduled : (Scheduled.t -> Env.t -> Context.t -> unit) -> unit
 val queue : (Queue.Batch.t -> Env.t -> Context.t -> unit) -> unit
 ```
 `queue handler` registers the queue consumer, like `queue(batch, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve) and [`scheduled`](./#val-scheduled). An exception raised by the handler rejects the event Promise, so the runtime retries the messages that the handler did not ack.
+
+```ocaml
+val email : (Email.t -> Env.t -> Context.t -> unit) -> unit
+```
+`email handler` registers the Email Routing handler, like `email(message, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve), [`scheduled`](./#val-scheduled) and [`queue`](./#val-queue). The handler must call [`Email.forward`](./Workero-Email.md#val-forward), [`Email.reply`](./Workero-Email.md#val-reply) or [`Email.set_reject`](./Workero-Email.md#val-set_reject), or the runtime drops the message. An exception raised by the handler rejects the event Promise, so the runtime treats the delivery as failed.
 
 ```ocaml
 val fetch : 

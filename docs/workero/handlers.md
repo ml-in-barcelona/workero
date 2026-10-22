@@ -1,7 +1,7 @@
 
 # Handlers
 
-A worker answers events. workero has one handler for each kind of event: [`Workero.serve`](./Workero.md#val-serve) for HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) for cron triggers and [`Workero.queue`](./Workero.md#val-queue) for queue messages. Register a handler once, at the top level of your program.
+A worker answers events. workero has one handler for each kind of event: [`Workero.serve`](./Workero.md#val-serve) for HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) for cron triggers and [`Workero.queue`](./Workero.md#val-queue) for queue messages and [`Workero.email`](./Workero.md#val-email) for email. Register a handler once, at the top level of your program.
 
 
 ## HTTP requests
@@ -75,7 +75,17 @@ let () =
           Workero.Queue.Message.ack message)
         (Workero.Queue.Batch.messages batch))
 ```
-A worker can register any combination of [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled) and [`Workero.queue`](./Workero.md#val-queue).
+
+## Email
+
+[`Workero.email`](./Workero.md#val-email) registers the Email Routing handler. It gets a [`Workero.Email.t`](./Workero-Email.md#type-t), the `env` and the `ctx`, and returns `unit`. The handler forwards, replies to or rejects the message. See [Email](./email.md).
+
+```ocaml
+let () =
+  Workero.email (fun message _env _ctx ->
+      Workero.Email.forward message "me@example.org")
+```
+A worker can register any combination of [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue) and [`Workero.email`](./Workero.md#val-email).
 
 
 ## What index.js exports
@@ -83,7 +93,7 @@ A worker can register any combination of [`Workero.serve`](./Workero.md#val-serv
 `workero build` writes an `index.js` with a default export that has one function for each registered handler:
 
 ```js
-export default { fetch, scheduled, queue };
+export default { fetch, scheduled, queue, email };
 ```
 Only the handlers that your program registered are present, so Wrangler sees the right events. If the program registers none at start-up, `index.js` throws `workero: the OCaml program registered no handler`. Register handlers at the top level, not inside another function that runs later.
 
@@ -93,5 +103,6 @@ Only the handlers that your program registered are present, so Wrangler sees the
 - An exception that escapes the [`Workero.serve`](./Workero.md#val-serve) handler rejects the response Promise, and the runtime answers with status 500\.
 - An exception that escapes the [`Workero.scheduled`](./Workero.md#val-scheduled) handler rejects the event Promise, and Cloudflare records the run as failed.
 - An exception that escapes the [`Workero.queue`](./Workero.md#val-queue) handler rejects the event Promise. Cloudflare delivers again the messages that the handler did not ack.
+- An exception that escapes the [`Workero.email`](./Workero.md#val-email) handler rejects the event Promise, and Cloudflare treats the delivery as failed.
 - A later request or event is not affected.
 Catch the exceptions that you can answer, and let the others escape. For example, [`Workero.JSON.decode`](./Workero-JSON.md#val-decode) turns a bad body into a 400 instead of a 500\.
