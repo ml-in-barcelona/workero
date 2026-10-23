@@ -64,7 +64,8 @@ reported to the producer: log inside the handler.
 - {!type:Workero.Trace.outcome} is [Ok], [Exception], [Canceled] (often a client
   that disconnected) or another {!type:Workero.Trace.outcome}.
 - {!type:Workero.Trace.event} is [Fetch] with its {!Workero.Trace.Request.t} and
-  response status, [Scheduled], [Queue], or [Other] with the raw value for any
+  response status, [Scheduled], [Queue], [Alarm], [Email], [Rpc], [Tail],
+  [Hibernatable_websocket], [Custom], or [Other] with the raw value for any
   other event.
 - {!Workero.Trace.logs} lists each console call with its level and
   its arguments as [Jsonkit.t] values. The runtime serializes the arguments
@@ -80,9 +81,37 @@ The URL and headers of a request are redacted by default.
 accessor, such as [scriptVersion], is read from {!Workero.Trace.to_js} with
 {!Workero.Decode}.
 
+{1 Stream events}
+
+A streaming tail Worker gets each event of an invocation as it happens, not
+after it ends. Register {!Workero.tail_stream}. The runtime calls it once per
+invocation with the onset, and the function that it returns gets the later
+events, up to the outcome.
+
+The producer lists the Worker in [streamingTails] in a [workerd] config.
+
+{@ocaml[
+let () =
+  Workero.tail_stream (fun onset _env _ctx ->
+      (match Workero.Trace.Stream.kind onset with
+      | Onset { info = Fetch { url; _ }; _ } -> Workero.Console.log url
+      | _ -> ());
+      fun event ->
+        match Workero.Trace.Stream.kind event with
+        | Exception { name; message; _ } ->
+            Workero.Console.error (name ^ ": " ^ message)
+        | _ -> ())
+]}
+
+{!Workero.Trace.Stream.kind} is {!type:Workero.Trace.Stream.kind}: [Onset],
+[Log], [Exception], [Return], [Outcome], [Span_open], [Span_close],
+[Diagnostic_channel], [Attributes] or [Other]. Events of one invocation share
+{!Workero.Trace.Stream.invocation_id} and arrive with a growing
+{!Workero.Trace.Stream.sequence}.
+
 {1 Limits}
 
-Streaming tails are not supported: Workero has no [tailStream] handler. See
-{{!page-known_issues}Troubleshooting and support}. In local [workerd],
-{!Workero.Trace.wall_time} and {!Workero.Trace.cpu_time} are [0.] and
-{!Workero.Trace.script_name} is [None].
+In local [workerd], {!Workero.Trace.wall_time} and {!Workero.Trace.cpu_time}
+are [0.] and {!Workero.Trace.script_name} is [None]. The tests cannot produce
+an email or a custom event, so {!Workero.Trace.Email} and
+{!Workero.Trace.Custom} have no test.

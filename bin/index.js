@@ -2,7 +2,7 @@ import { connect } from "cloudflare:sockets";
 (globalThis.__workero ??= {}).connect = connect;
 const registered = globalThis.__workero ?? {};
 const handlers = {};
-for (const name of ["fetch", "scheduled", "queue", "email", "tail"]) {
+for (const name of ["fetch", "scheduled", "queue", "email", "tail", "tailStream"]) {
   if (typeof registered[name] === "function")
     handlers[name] = (...args) => registered[name](...args);
 }
@@ -14,7 +14,7 @@ if (
   0
 )
   throw new Error(
-    "workero: the OCaml program registered no handler; call Workero.serve, Workero.scheduled, Workero.queue, Workero.email or Workero.tail at module initialisation",
+    "workero: the OCaml program registered no handler; call Workero.serve, Workero.scheduled, Workero.queue, Workero.email, Workero.tail or Workero.tail_stream at module initialisation",
   );
 registered.emailMessage = async (from, to, raw) => {
   const { EmailMessage } = await import("cloudflare:email");
