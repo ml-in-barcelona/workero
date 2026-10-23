@@ -14,6 +14,12 @@ const cases = [
     body: "raised abort=true AbortError: because fast=true",
   },
   {
+    name: "abort: aborted_now ~reason:`Timeout gives a TimeoutError with that message",
+    request: ["http://test/abort/fetch-timeout-reason"],
+    status: 200,
+    body: "raised abort=true TimeoutError: too slow fast=true",
+  },
+  {
     name: "abort: Abort_signal.timeout makes fetch raise a TimeoutError",
     request: ["http://test/abort/fetch-timeout"],
     status: 200,

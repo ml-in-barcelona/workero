@@ -39,8 +39,8 @@ not supported yet.
 - [?signal] exists only on {!Workero.fetch}, {!Workero.Fetcher.fetch} and
   {!Workero.Fetcher.fetch_request}. Sockets, WebSockets, KV, R2, D1 and Cache
   take no signal.
-- An abort reason is a message: {!Workero.Abort_controller.abort} always gives
-  an [AbortError], never another JavaScript value.
+- An abort reason is a message: {!Workero.Abort_controller.abort} gives an
+  [AbortError] or a [TimeoutError], never another JavaScript value.
 - {!Workero.Abort_signal.to_promise} and {!Workero.Abort_signal.on_abort} add a
   listener that stays until the signal aborts. There is no way to remove it, so
   each call on a signal that never aborts keeps one listener for the life of

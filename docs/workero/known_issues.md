@@ -20,7 +20,7 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 - An abort cancels the I/O, not the fiber. OCaml code that computes, or awaits something other than a cancelable request, keeps running until it tests [`Workero.Abort_signal.aborted`](./Workero-Abort_signal.md#val-aborted) or races [`Workero.Abort_signal.to_promise`](./Workero-Abort_signal.md#val-to_promise). [`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) cannot be canceled.
 - `?signal` exists only on [`Workero.fetch`](./Workero.md#val-fetch), [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) and [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request). Sockets, WebSockets, KV, R2, D1 and Cache take no signal.
-- An abort reason is a message: [`Workero.Abort_controller.abort`](./Workero-Abort_controller.md#val-abort) always gives an `AbortError`, never another JavaScript value.
+- An abort reason is a message: [`Workero.Abort_controller.abort`](./Workero-Abort_controller.md#val-abort) gives an `AbortError` or a `TimeoutError`, never another JavaScript value.
 - [`Workero.Abort_signal.to_promise`](./Workero-Abort_signal.md#val-to_promise) and [`Workero.Abort_signal.on_abort`](./Workero-Abort_signal.md#val-on_abort) add a listener that stays until the signal aborts. There is no way to remove it, so each call on a signal that never aborts keeps one listener for the life of the signal.
 - [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request) with `?signal` replaces the signal that the request already has. It does not combine them; use [`Workero.Abort_signal.any`](./Workero-Abort_signal.md#val-any) for that.
 

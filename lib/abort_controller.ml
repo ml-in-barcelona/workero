@@ -9,4 +9,4 @@ let signal c = Abort_signal.of_js (Js.Unsafe.get c "signal")
 let abort ?reason c =
   match reason with
   | None -> ignore (meth c "abort" [||])
-  | Some msg -> ignore (meth c "abort" [| abort_reason msg |])
+  | Some r -> ignore (meth c "abort" [| abort_reason r |])

@@ -28,9 +28,13 @@ let fetch_controller () =
   timed (fun () ->
       status (fetch ~signal:(Abort_controller.signal c) (upstream ^ "/slow")))
 
+let fetch_timeout_reason () =
+  let s = Abort_signal.aborted_now ~reason:(`Timeout "too slow") () in
+  timed (fun () -> status (fetch ~signal:s (upstream ^ "/slow")))
+
 let fetch_reason () =
   let c = Abort_controller.create () in
-  Abort_controller.abort ~reason:"because" c;
+  Abort_controller.abort ~reason:(`Abort "because") c;
   timed (fun () ->
       status (fetch ~signal:(Abort_controller.signal c) (upstream ^ "/slow")))
 
@@ -139,7 +143,7 @@ let state () =
       "no raise"
     with Js_error _ -> "raised"
   in
-  Abort_controller.abort ~reason:"stop" c;
+  Abort_controller.abort ~reason:(`Abort "stop") c;
   let after = show () in
   let thrown =
     match Abort_signal.throw_if_aborted s with
@@ -214,6 +218,7 @@ let handle req env ctx =
   match URL.path (Request.url req) with
   | "/abort/fetch-controller" -> text (fetch_controller ())
   | "/abort/fetch-reason" -> text (fetch_reason ())
+  | "/abort/fetch-timeout-reason" -> text (fetch_timeout_reason ())
   | "/abort/fetch-timeout" -> text (fetch_timeout ())
   | "/abort/fetch-unaborted" -> text (fetch_unaborted ())
   | "/abort/fetch-any" -> text (fetch_any ())

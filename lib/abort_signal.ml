@@ -34,7 +34,7 @@ let any signals =
 let aborted_now ?reason () =
   match reason with
   | None -> static "abort" [||]
-  | Some msg -> static "abort" [| abort_reason msg |]
+  | Some r -> static "abort" [| abort_reason r |]
 
 let listen_with listener s f =
   ignore

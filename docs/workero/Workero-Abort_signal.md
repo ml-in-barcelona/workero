@@ -32,9 +32,12 @@ val any : t list -> t
 `AbortSignal.any`: aborts when the first of the signals aborts, with the reason of that signal.
 
 ```ocaml
-val aborted_now : ?reason:string -> unit -> t
+val aborted_now : 
+  ?reason:[ `Abort of string | `Timeout of string ] ->
+  unit ->
+  t
 ```
-`AbortSignal.abort()`: a signal that has already aborted. A `reason` becomes an `AbortError` with that message. Without it the reason is the default `AbortError`.
+`AbortSignal.abort()`: a signal that has already aborted. ``Abort msg` gives an `AbortError` and ``Timeout msg` a `TimeoutError` with that message. Without it the reason is the default `AbortError`.
 
 ```ocaml
 val on_abort : t -> (unit -> unit) -> unit
