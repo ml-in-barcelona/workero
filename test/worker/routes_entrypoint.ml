@@ -32,7 +32,43 @@ let rpc env ctx name args =
       | Some v -> v
       | None -> invalid_arg ("no method " ^ other))
 
+let log env text = Queue.send (Queue.of_env env "JOBS") (Queue.Text text)
+
+let events env ctx =
+  E.make
+    ~scheduled:(fun controller ->
+      match Scheduled.cron controller with
+      | "fail" -> failwith "scheduled failed"
+      | "await" ->
+          Promise.await (Timer.sleep 5);
+          log env "scheduled awaited"
+      | "wait_until" ->
+          Context.wait_until ctx (fun () -> log env "scheduled wait_until")
+      | cron ->
+          log env
+            (Printf.sprintf "scheduled cron=%s time=%.0f" cron
+               (Scheduled.scheduled_time controller)))
+    ~queue:(fun batch ->
+      let messages = Queue.Batch.messages batch in
+      match Queue.Batch.queue batch with
+      | "fail" -> failwith "queue failed"
+      | "ack" -> Queue.Batch.ack_all batch
+      | name ->
+          log env
+            (Printf.sprintf "queue %s %s" name
+               (String.concat "," (List.map Queue.Message.body_text messages))))
+    ~email:(fun message ->
+      match Email.to_ message with
+      | "fail@example.com" -> failwith "email failed"
+      | to_ ->
+          Email.set_reject message
+            (Printf.sprintf "email from=%s to=%s" (Email.from message) to_))
+    ()
+
 let () =
+  E.register "Events" events;
+  E.register "Partial" (fun env _ ->
+      E.make ~scheduled:(fun _ -> log env "partial scheduled") ());
   E.register "Calc"
     ~rpc:
       ([

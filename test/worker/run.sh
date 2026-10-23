@@ -114,6 +114,21 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      ],'
   echo '      globalOutbound = "upstream",'
   echo '    )),'
+  echo '    (name = "entrypoint-email-harness", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = ['
+  echo '        (name = "entrypoint-email-harness.mjs", esModule = embed "entrypoint-email-harness.mjs"),'
+  (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", esModule = embed \"$f\"),"
+    done
+  (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", wasm = embed \"$f\"),"
+    done
+  echo '      ],'
+  echo '      bindings = [(name = "JOBS", queue = "queue-sink")],'
+  echo '    )),'
   echo '    (name = "d1", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "d1.mjs", esModule = embed "d1.mjs")],'
@@ -139,6 +154,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
   echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
   echo '        (name = "EMAIL", service = "email-harness"),'
+  echo '        (name = "ENTRYPOINT_EMAIL", service = "entrypoint-email-harness"),'
   echo '        (name = "ENGINE", service = (name = "workflow-engine", entrypoint = "Engine")),'
   echo '      ],'
   echo '    )),'
@@ -148,9 +164,15 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      modules = ['
   echo '        (name = "tests_queue.mjs", esModule = embed "tests_queue.mjs"),'
   echo '        (name = "cases/queue.mjs", esModule = embed "cases/queue.mjs"),'
+  echo '        (name = "cases/entrypoint.mjs", esModule = embed "cases/entrypoint.mjs"),'
   echo '        (name = "cases/lib.mjs", esModule = embed "cases/lib.mjs"),'
   echo '      ],'
-  echo '      bindings = [(name = "WORKER", service = "worker"), (name = "SINK", service = "queue-sink")],'
+  echo '      bindings = ['
+  echo '        (name = "WORKER", service = "worker"),'
+  echo '        (name = "SINK", service = "queue-sink"),'
+  echo '        (name = "EVENTS", service = (name = "worker", entrypoint = "Events")),'
+  echo '        (name = "PARTIAL", service = (name = "worker", entrypoint = "Partial")),'
+  echo '      ],'
   echo '    )),'
   echo '  ],'
   echo '  extensions = ['

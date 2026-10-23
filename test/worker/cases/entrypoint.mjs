@@ -47,7 +47,80 @@ const equal = (actual, expected, problems) => {
     problems.push(`got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
 };
 
+const readLog = async (env) => (await env.SINK.fetch("http://sink/log")).json();
+const clearLog = async (env) => (await env.SINK.fetch("http://sink/log", { method: "DELETE" })).text();
+const bodies = async (env) => (await readLog(env)).map((entry) => entry.body);
+const message = (id, body) => ({ id, timestamp: new Date(1700000000000), body, attempts: 1 });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const events = async (env, failures) => {
+  await check("Entrypoint scheduled: the handler gets the cron and the time", failures, async (p) => {
+    await clearLog(env);
+    await env.EVENTS.scheduled({ cron: "*/5 * * * *", scheduledTime: 1700000000000 });
+    equal(await bodies(env), ["scheduled cron=*/5 * * * * time=1700000000000"], p);
+  });
+  await check("Entrypoint scheduled: the handler may await", failures, async (p) => {
+    await clearLog(env);
+    await env.EVENTS.scheduled({ cron: "await", scheduledTime: 1 });
+    equal(await bodies(env), ["scheduled awaited"], p);
+  });
+  await check("Entrypoint scheduled: the handler gets the ctx", failures, async (p) => {
+    await clearLog(env);
+    await env.EVENTS.scheduled({ cron: "wait_until", scheduledTime: 1 });
+    await sleep(50);
+    equal(await bodies(env), ["scheduled wait_until"], p);
+  });
+  await check("Entrypoint scheduled: a raising handler rejects the event", failures, async (p) => {
+    const result = await env.EVENTS.scheduled({ cron: "fail", scheduledTime: 1 });
+    equal(result.outcome, "exception", p);
+  });
+  await check("Entrypoint queue: the handler gets the queue name and the messages", failures, async (p) => {
+    await clearLog(env);
+    const result = await env.EVENTS.queue("orders", [message("m1", "a"), message("m2", "b")]);
+    equal(result.outcome, "ok", p);
+    equal(await bodies(env), ["queue orders a,b"], p);
+  });
+  await check("Entrypoint queue: Batch.ack_all acks the batch", failures, async (p) => {
+    const result = await env.EVENTS.queue("ack", [message("m1", "a")]);
+    equal([result.outcome, result.ackAll], ["ok", true], p);
+  });
+  await check("Entrypoint queue: a raising handler rejects the event", failures, async (p) => {
+    const result = await env.EVENTS.queue("fail", [message("m1", "a")]);
+    equal(result.outcome, "exception", p);
+  });
+  await check("Entrypoint: a class without a queue handler does not answer queue events", failures, async (p) => {
+    await clearLog(env);
+    const result = await env.PARTIAL.queue("x", [message("m1", "a")]);
+    equal(result.outcome, "exception", p);
+    equal(await bodies(env), [], p);
+  });
+  await check("Entrypoint: a class with only a scheduled handler answers scheduled events", failures, async (p) => {
+    await clearLog(env);
+    await env.PARTIAL.scheduled({ cron: "x", scheduledTime: 1 });
+    equal(await bodies(env), ["partial scheduled"], p);
+  });
+};
+
+const emailTo = async (env, to, entrypoint = "Events") =>
+  (
+    await env.ENTRYPOINT_EMAIL.fetch("http://harness/", {
+      method: "POST",
+      body: JSON.stringify({ from: "sender@example.org", to, entrypoint }),
+    })
+  ).json();
+
 export default async (env, failures) => {
+  await check("Entrypoint email: the handler gets the message", failures, async (p) =>
+    equal(await emailTo(env, "a@example.com"), { calls: [{ op: "setReject", reason: "email from=sender@example.org to=a@example.com" }], error: null }, p),
+  );
+  await check("Entrypoint email: a raising handler rejects the event", failures, async (p) => {
+    const result = await emailTo(env, "fail@example.com");
+    if (!String(result.error).includes("email failed")) p.push(`error ${JSON.stringify(result.error)}`);
+  });
+  await check("Entrypoint email: a class without an email handler has none", failures, async (p) =>
+    equal((await emailTo(env, "a@example.com", "Partial")).error, "Error: the entrypoint has no email handler", p),
+  );
   await runCases(env, ocamlCases, failures);
   await check("Entrypoint: JavaScript calls an OCaml method", failures, async (p) => equal(await env.CALC.add(2, 3), 5, p));
   await check("Entrypoint: JavaScript gets the env of the entrypoint", failures, async (p) => equal(await env.CALC.greet("Bo"), "from test config, Bo", p));
