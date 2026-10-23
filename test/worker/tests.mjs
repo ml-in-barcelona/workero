@@ -1,5 +1,6 @@
 import http from "./cases/http.mjs";
 import stream from "./cases/stream.mjs";
+import abort from "./cases/abort.mjs";
 import form from "./cases/form.mjs";
 import ws from "./cases/ws.mjs";
 import context from "./cases/context.mjs";
@@ -19,11 +20,12 @@ import rpcValues from "./cases/rpc_values.mjs";
 import socket from "./cases/socket.mjs";
 import email from "./cases/email.mjs";
 import workflow from "./cases/workflow.mjs";
+import html from "./cases/html.mjs";
 
 export default {
   async test(_controller, env) {
     const failures = [];
-    for (const suite of [http, stream, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, rpcValues, email, workflow]) await suite(env, failures);
+    for (const suite of [http, stream, abort, form, ws, context, globals, crypto, envSuite, fetcher, router, rateLimiter, hyperdrive, ai, analytics, socket, durableObject, durableObjectRpc, entrypoint, rpcValues, email, workflow, html]) await suite(env, failures);
     if (failures.length) throw new Error(failures.join("\n"));
   },
 };

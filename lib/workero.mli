@@ -39,7 +39,10 @@ module Console = Console
 module Secret_store = Secret_store
 module Hyperdrive = Hyperdrive
 module Fetcher = Fetcher
+module Abort_signal = Abort_signal
+module Abort_controller = Abort_controller
 module Queue = Queue
+module Trace = Trace
 module Socket = Socket
 module Rate_limiter = Rate_limiter
 module Ai = Ai
@@ -48,6 +51,7 @@ module Rpc = Rpc
 module Durable_object = Durable_object
 module Entrypoint = Entrypoint
 module Workflow = Workflow
+module Html_rewriter = Html_rewriter
 
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 (** [serve handler] registers the request handler, like
@@ -80,7 +84,18 @@ val email : (Email.t -> Env.t -> Context.t -> unit) -> unit
     drops the message. An exception raised by the handler rejects the event
     Promise, so the runtime treats the delivery as failed. *)
 
+val tail : (Trace.t list -> Env.t -> Context.t -> unit) -> unit
+(** [tail handler] registers the tail handler, like [tail(events, env, ctx)] in
+    a JavaScript Worker. It receives the trace items of the producer Workers
+    that list this Worker in [tail_consumers]. It runs in a fiber and may call
+    {!Promise.await}, {!fetch} and the body readers; {!Context.wait_until} runs
+    work after the handler returns. An exception raised by the handler rejects
+    the event Promise. The runtime ignores a tail failure for the producer, so
+    log inside the handler. Build a tail Worker as its own program, and do not
+    list a Worker as its own tail consumer. *)
+
 val fetch :
+  ?signal:Abort_signal.t ->
   ?method_:Method.t ->
   ?headers:(string * string) list ->
   ?body:string ->
@@ -91,6 +106,12 @@ val fetch :
     bytes and sets no [content-type]. Read the response body with
     {!Response.body_text} or {!Response.body_bytes}. Call it only from inside a
     handler or a {!Context.wait_until} function.
+
+    [signal] cancels the request and the reading of its body. When it aborts,
+    the call or the body reader raises {!Js_error} with an [AbortError] or
+    [TimeoutError]; see {!Abort_signal.is_abort}. A signal that has already
+    aborted fails the call without a request. For a timeout, pass
+    [~signal:(Abort_signal.timeout ms)].
 
     Raises [Invalid_argument] when [body] is given with [GET] or [HEAD].
     @raise Js_error when the request fails, for example on a network error. *)

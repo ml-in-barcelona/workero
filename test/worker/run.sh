@@ -21,6 +21,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '  services = ['
   echo '    (name = "worker", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
+  echo '      compatibilityFlags = ["enable_request_signal"],'
   echo '      modules = ['
   (echo index.js; cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | grep -vx index.js | sort) |
     while read -r f; do

@@ -18,13 +18,49 @@ not supported yet.
 
 {1 Limits of streams, forms and WebSockets}
 
-- Workero has no client-disconnect callback for a streamed response. A
-  {!Workero.Stream.Writer.write} can reject when the client disconnects.
+- A {!Workero.Stream.Writer.write} can reject when the client disconnects.
+  {!Workero.Request.signal} aborts earlier for a streamed response, but only
+  with the [enable_request_signal] compatibility flag. In [workerd] a handler
+  that only awaits a timer got no abort event, and workero has not checked
+  Cloudflare production, so do not rely on it to detect every disconnect. See
+  {{!page-abort}Abort and timeouts}.
 - {!Workero.Response.copy} and {!Workero.Response.of_stream} share the original
   body stream. It can be consumed only once. Call {!Workero.Response.clone}
   before reading if you need two copies.
 - {!Workero.Request.form_data} holds the whole upload in memory. See
   {{!page-forms}Forms}.
+
+{1 Limits of abort signals}
+
+- An abort cancels the I/O, not the fiber. OCaml code that computes, or awaits
+  something other than a cancelable request, keeps running until it tests
+  {!Workero.Abort_signal.aborted} or races {!Workero.Abort_signal.to_promise}.
+  {!Workero.Timer.sleep} cannot be canceled.
+- [?signal] exists only on {!Workero.fetch}, {!Workero.Fetcher.fetch} and
+  {!Workero.Fetcher.fetch_request}. Sockets, WebSockets, KV, R2, D1 and Cache
+  take no signal.
+- An abort reason is a message: {!Workero.Abort_controller.abort} always gives
+  an [AbortError], never another JavaScript value.
+- {!Workero.Abort_signal.to_promise} and {!Workero.Abort_signal.on_abort} add a
+  listener that stays until the signal aborts. There is no way to remove it, so
+  each call on a signal that never aborts keeps one listener for the life of
+  the signal.
+- {!Workero.Fetcher.fetch_request} with [?signal] replaces the signal that the
+  request already has. It does not combine them; use
+  {!Workero.Abort_signal.any} for that.
+
+{1 HTML rewriting limits}
+
+- {{!page-html_rewriter}HTML rewriting}: content is a string. A [Response] or
+  a stream as content is not wrapped.
+- There is no helper that joins the text chunks of a node. Join them until
+  {!Workero.Html_rewriter.Text_chunk.last_in_text_node}.
+- A handler runs as a fiber, which costs about 1.5 times a plain callback.
+  A page with tens of thousands of matches pays about 2 microseconds more for
+  each match.
+- OCaml exceptions from a handler reach the client only as a truncated body.
+- The tests run in [workerd]. They do not prove the order of two handlers that
+  wait, because Cloudflare does not document it.
 
 {1 Binding limits}
 
@@ -68,6 +104,12 @@ not supported yet.
   message into the memory of the program; use {!Workero.Email.raw} for a large
   message. The raw message can be read once. The runtime checks the rules for
   [forward] headers and for the [reply] message.
+- {{!page-tail}Tail Workers}: only the default export has a [tail] handler,
+  registered with {!Workero.tail}. Streaming tails ([tailStream]) are not
+  supported. {!type:Workero.Trace.event} has typed cases for fetch, scheduled and
+  queue events; any other event is [Other]. [workerd] reports [0.] for
+  {!Workero.Trace.wall_time} and {!Workero.Trace.cpu_time}. The tests do not
+  cover events other than fetch, scheduled and queue.
 
 {1 Workflow limits}
 
@@ -146,15 +188,11 @@ not supported yet.
 
 {1 Not supported yet}
 
-- The [tail] handler.
 - Durable Objects without SQLite storage.
 - Vectorize and the Send Email binding.
-- [HTMLRewriter].
-- [AbortController] and request cancellation.
-- Most of [crypto.subtle]. {!Workero.Crypto} has digests, HMAC, AES-GCM, PBKDF2
-  and HKDF with raw keys. It has no key generation, no [exportKey], no [jwk],
-  [pkcs8] or [spki] import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no
-  [wrapKey] and no [DigestStream]. Keys are never extractable.
+- Parts of [crypto.subtle]: [deriveKey], wrapping with AES-CBC or AES-CTR,
+  [timingSafeEqual], Ed448, RSA public exponents other than 65537, and the key
+  properties [algorithm] and [usages]. See {{!page-crypto}Web Crypto}.
 
 {1 Differences from native OCaml}
 

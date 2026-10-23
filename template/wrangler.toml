@@ -1,6 +1,7 @@
 name = "workero-demo-template"
 main = "_worker/index.js"
 compatibility_date = "2026-10-01"
+compatibility_flags = ["enable_request_signal"]
 
 [build]
 command = "workero build src/main.bc.wasm.js"

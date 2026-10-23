@@ -1,0 +1,91 @@
+
+# Web Crypto
+
+[`Workero.Crypto`](./Workero-Crypto.md) wraps `crypto.subtle`, the Web Crypto API of the Workers runtime. Data goes in and out as OCaml strings that hold raw bytes. The functions wait for the runtime, so call them inside a handler. For random bytes and UUIDs, see [Timers, time, and randomness](./globals.md).
+
+
+## Digests, HMAC and passwords
+
+[`Workero.Crypto.digest`](./Workero-Crypto.md#val-digest) hashes a string with SHA-1, SHA-256, SHA-384 or SHA-512, chosen by [`Workero.Crypto.hash`](./Workero-Crypto.md#type-hash). [`Workero.Crypto.Digest_stream`](./Workero-Crypto-Digest_stream.md) hashes a stream that you write chunk by chunk, without keeping the data. [`Workero.Crypto.pbkdf2`](./Workero-Crypto.md#val-pbkdf2) and [`Workero.Crypto.hkdf`](./Workero-Crypto.md#val-hkdf) derive bytes. Deployed Workers allow at most 100000 PBKDF2 iterations.
+
+```ocaml
+open Workero
+
+let sign_and_check secret body =
+  let key = Crypto.Key.import_hmac Crypto.Sha256 secret in
+  let signature = Crypto.hmac_sign key body in
+  Crypto.hmac_verify key ~signature body
+
+let handler _req _env _ctx =
+  Response.text (string_of_bool (sign_and_check "secret" "body"))
+
+let () = Workero.serve handler
+```
+`sign_and_check` gives `true` for any non-empty `secret`.
+
+
+## Keys
+
+A [`Workero.Crypto.Key.t`](./Workero-Crypto-Key.md#type-t) is a `CryptoKey`. Its type names the algorithm. For an asymmetric key it also names the half, [`Workero.Crypto.Key.public`](./Workero-Crypto-Key.md#type-public) or [`Workero.Crypto.Key.private_`](./Workero-Crypto-Key.md#type-private_). The compiler rejects an HMAC key where an RSA key goes, and a public key where a signing key goes.
+
+There are three ways to get a key:
+
+- [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate) makes a symmetric key, and [`Workero.Crypto.Key.generate_pair`](./Workero-Crypto-Key.md#val-generate_pair) makes a pair, from an algorithm such as `Hmac Sha256`, `Aes_gcm`, `Rsa_pss Sha256`, `Ecdsa P256` or `Ed25519`.
+- [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import) reads a key. The constructor of its first argument gives the format and the algorithm: `Secret_raw`, `Secret_jwk`, `Public_raw`, `Public_spki`, `Public_jwk`, `Private_pkcs8` or `Private_jwk`. The type of the result follows. `raw`, `spki` and `pkcs8` data are bytes (DER for the last two). `jwk` data is the JSON text of a JSON Web Key.
+- [`Workero.Crypto.Key.import_hmac`](./Workero-Crypto-Key.md#val-import_hmac) and [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm) are the short forms for raw keys.
+Keys are not extractable unless you pass `~extractable:true`. The public key of a generated pair is always extractable. [`Workero.Crypto.Key.export_raw`](./Workero-Crypto-Key.md#val-export_raw), [`Workero.Crypto.Key.export_jwk`](./Workero-Crypto-Key.md#val-export_jwk), [`Workero.Crypto.Key.export_spki`](./Workero-Crypto-Key.md#val-export_spki) and [`Workero.Crypto.Key.export_pkcs8`](./Workero-Crypto-Key.md#val-export_pkcs8) read a key back. They raise [`Workero.Js_error`](./Workero.md#exception-Js_error) for a key that is not extractable or a format that the algorithm does not have, such as `raw` for an RSA key. The usages of a key follow its algorithm: you do not choose them.
+
+This handler makes an Ed25519 pair, signs, and verifies with the exported public key:
+
+```ocaml
+open Workero
+
+let handler _req _env _ctx =
+  let pair = Crypto.Key.(generate_pair ~extractable:true Ed25519) in
+  let signature = Crypto.ed25519_sign pair.private_ "hello" in
+  let spki = Crypto.Key.export_spki pair.public in
+  let public = Crypto.Key.(import (Public_spki Ed25519) spki) in
+  Response.text (string_of_bool (Crypto.ed25519_verify public ~signature "hello"))
+
+let () = Workero.serve handler
+```
+
+## Signatures
+
+- [`Workero.Crypto.rsassa_pkcs1_sign`](./Workero-Crypto.md#val-rsassa_pkcs1_sign) and [`Workero.Crypto.rsassa_pkcs1_verify`](./Workero-Crypto.md#val-rsassa_pkcs1_verify): RSASSA-PKCS1-v1\_5. The hash belongs to the key.
+- [`Workero.Crypto.rsa_pss_sign`](./Workero-Crypto.md#val-rsa_pss_sign) and [`Workero.Crypto.rsa_pss_verify`](./Workero-Crypto.md#val-rsa_pss_verify): RSA-PSS with a salt length in bytes.
+- [`Workero.Crypto.ecdsa_sign`](./Workero-Crypto.md#val-ecdsa_sign) and [`Workero.Crypto.ecdsa_verify`](./Workero-Crypto.md#val-ecdsa_verify): ECDSA on P-256, P-384 or P-521, with the hash chosen at each call. A signature is `r` followed by `s`, not DER.
+- [`Workero.Crypto.ed25519_sign`](./Workero-Crypto.md#val-ed25519_sign) and [`Workero.Crypto.ed25519_verify`](./Workero-Crypto.md#val-ed25519_verify).
+A verify function gives `false` for a wrong or malformed signature.
+
+
+## Encryption
+
+- [`Workero.Crypto.aes_gcm_encrypt`](./Workero-Crypto.md#val-aes_gcm_encrypt) and [`Workero.Crypto.aes_gcm_decrypt`](./Workero-Crypto.md#val-aes_gcm_decrypt). The cipher text ends with the 16-byte tag. Decryption gives `None` when authentication fails. Never use one `iv` twice with one key.
+- [`Workero.Crypto.aes_cbc_encrypt`](./Workero-Crypto.md#val-aes_cbc_encrypt) and [`Workero.Crypto.aes_cbc_decrypt`](./Workero-Crypto.md#val-aes_cbc_decrypt), and [`Workero.Crypto.aes_ctr_encrypt`](./Workero-Crypto.md#val-aes_ctr_encrypt) and [`Workero.Crypto.aes_ctr_decrypt`](./Workero-Crypto.md#val-aes_ctr_decrypt). These modes do not authenticate the data. Prefer AES-GCM.
+- [`Workero.Crypto.rsa_oaep_encrypt`](./Workero-Crypto.md#val-rsa_oaep_encrypt) and [`Workero.Crypto.rsa_oaep_decrypt`](./Workero-Crypto.md#val-rsa_oaep_decrypt), with an optional label. The message must be short: a key of `n` bits and a hash of `h` bytes take `n / 8 - 2h - 2` bytes. Decryption gives `None` for a wrong key or label.
+
+## Key agreement
+
+[`Workero.Crypto.ecdh_derive_bits`](./Workero-Crypto.md#val-ecdh_derive_bits) and [`Workero.Crypto.x25519_derive_bits`](./Workero-Crypto.md#val-x25519_derive_bits) give the shared secret of your private key and the public key of the other party. Both parties get the same bytes. Pass the secret through [`Workero.Crypto.hkdf`](./Workero-Crypto.md#val-hkdf) before you use it as a key.
+
+```ocaml
+open Workero
+
+let shared_key () =
+  let a = Crypto.Key.(generate_pair (Ecdh Crypto.P256)) in
+  let b = Crypto.Key.(generate_pair (Ecdh Crypto.P256)) in
+  let secret = Crypto.ecdh_derive_bits a.private_ ~public:b.public ~length:32 in
+  Crypto.hkdf Crypto.Sha256 ~key:secret ~salt:"" ~info:"app" ~length:32
+```
+
+## Wrapping keys
+
+[`Workero.Crypto.wrap_key`](./Workero-Crypto.md#val-wrap_key) exports a key in a format and encrypts it with an AES-KW, AES-GCM or RSA-OAEP key. [`Workero.Crypto.unwrap_key`](./Workero-Crypto.md#val-unwrap_key) decrypts and imports it, with the same `import` values as [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import). Wrap with the public RSA-OAEP key and unwrap with the private one. A key from [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm) cannot wrap. Use [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate) or [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import).
+
+
+## Errors
+
+Bad arguments that the library can check raise `Invalid_argument`. A rejection from the runtime raises [`Workero.Js_error`](./Workero.md#exception-Js_error): a key in the wrong format, a non-extractable key that you export, or a failed unwrap. [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import) of an unfit key also raises it.
+
+Not wrapped yet: `deriveKey` (derive bytes, then import them), wrapping with AES-CBC or AES-CTR, `timingSafeEqual`, Ed448, and the key properties `algorithm` and `usages`. See [Known issues](./known_issues.md).

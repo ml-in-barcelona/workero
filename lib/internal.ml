@@ -43,3 +43,6 @@ let is_identifier name =
 
 let is_class_name name =
   is_identifier name && not (List.mem name [ "default"; "then"; "__proto__" ])
+
+let abort_reason msg =
+  Js.Unsafe.new_obj (global "DOMException") [| str msg; str "AbortError" |]

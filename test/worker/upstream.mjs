@@ -1,6 +1,28 @@
+let slowHits = 0;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default {
   async fetch(request) {
     const { pathname } = new URL(request.url);
+    if (pathname === "/slow") {
+      slowHits++;
+      await sleep(500);
+      return new Response("slow done");
+    }
+    if (pathname === "/slow-hits") return new Response(String(slowHits));
+    if (pathname === "/slow-body") {
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          async start(controller) {
+            controller.enqueue(encoder.encode("first;"));
+            await sleep(500);
+            controller.enqueue(encoder.encode("second"));
+            controller.close();
+          },
+        }),
+      );
+    }
     if (pathname === "/echo") {
       const { headers } = request;
       return new Response(

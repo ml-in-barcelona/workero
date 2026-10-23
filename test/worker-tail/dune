@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (modes wasm)
+ (preprocess
+  (pps jsonkit.ppx))
+ (libraries workero jsonkit))
