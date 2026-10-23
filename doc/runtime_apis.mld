@@ -10,6 +10,8 @@ through [env], see {{!page-bindings}Bindings}.
   {!Workero.serve}, {!Workero.scheduled}, and {!Workero.queue}.
 - {{!page-email}Email}: receive messages from Email Routing with
   {!Workero.email}, then forward, reply to or reject them.
+- {{!page-tail}Tail Workers}: receive the trace items of other Workers with
+  {!Workero.tail}.
 - {{!page-router}Router}: match methods and paths, read route parameters, and
   mount groups of routes.
 
@@ -18,10 +20,14 @@ through [env], see {{!page-bindings}Bindings}.
 - {{!page-requests}Requests and responses}: read headers and bodies, choose a
   status, and return a response.
 - {{!page-fetch}Fetch}: make outgoing HTTP requests.
+- {{!page-abort}Abort and timeouts}: cancel requests with a signal, set a
+  timeout, and see when a client cancels.
 - {{!page-url}URLs}: read encoded and decoded paths and query parameters.
 - {{!page-json}JSON}: parse and decode bodies, return JSON, and convert values
   for JavaScript APIs.
 - {{!page-streams}Streams}: read and write bodies in chunks or forward a body.
+- {{!page-html_rewriter}HTML rewriting}: edit an HTML response while it
+  streams with {!Workero.Html_rewriter}.
 - {{!page-forms}Forms and file uploads}: read multipart and URL-encoded forms.
 - {{!page-websockets}WebSockets}: accept connections and receive messages.
   For hibernating connections, see {{!page-durable_objects}Durable Objects}.
@@ -44,6 +50,8 @@ through [env], see {{!page-bindings}Bindings}.
 - {{!page-logging}Logging}: write console entries or use OCaml standard output.
 - {{!page-globals}Timers, time, and randomness}: delays, timestamps, random
   bytes, and UUIDs.
+- {{!page-crypto}Web Crypto}: digests, HMAC, AES, RSA, elliptic-curve keys,
+  key import, export and wrapping.
 
 {1 Reference}
 

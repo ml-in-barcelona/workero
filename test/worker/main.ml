@@ -1,6 +1,8 @@
 let handlers =
   [
     Routes_stream.handle;
+    Routes_abort.handle;
+    Routes_html.handle;
     Routes_form.handle;
     Routes_ws.handle;
     Routes_context.handle;

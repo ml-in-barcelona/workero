@@ -19,7 +19,7 @@ dev: ## Build in watch mode
 	$(DUNE) build -w
 
 .PHONY: test
-test: test-unit test-worker test-worker-init test-worker-exports test-worker-containers test-cli ## Run the unit, worker and CLI tests
+test: test-unit test-worker test-worker-init test-worker-exports test-worker-tail test-worker-containers test-cli ## Run the unit, worker and CLI tests
 
 .PHONY: test-unit
 test-unit: ## Run the alcotest unit tests (node)
@@ -36,6 +36,10 @@ test-worker-init: ## Build test/worker-init and check that an OCaml exception at
 .PHONY: test-worker-exports
 test-worker-exports: ## Build test/worker-exports and check which handlers each worker exports
 	DUNE="$(DUNE)" test/worker-exports/run.sh
+
+.PHONY: test-worker-tail
+test-worker-tail: ## Build test/worker-tail and run its tail handler in workerd behind a producer Worker
+	DUNE="$(DUNE)" test/worker-tail/run.sh
 
 .PHONY: test-worker-containers
 test-worker-containers: ## Run a real Docker container from a Durable Object; prints SKIP when Docker or the images are missing
@@ -65,4 +69,4 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 .PHONY: clean
 clean: ## Clean artifacts
 	$(DUNE) clean
-	rm -rf _worker _worker-test _worker-cli-test _worker-init-test _worker-exports-test _worker-containers-test
+	rm -rf _worker _worker-test _worker-cli-test _worker-init-test _worker-exports-test _worker-tail-test _worker-containers-test

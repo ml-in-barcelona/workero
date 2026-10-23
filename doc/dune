@@ -7,16 +7,19 @@
   handlers
   requests
   fetch
+  abort
   url
   json
   router
   streams
+  html_rewriter
   forms
   websockets
   async
   env
   logging
   globals
+  crypto
   testing
   limits
   bindings
@@ -28,6 +31,7 @@
   socket
   queue
   email
+  tail
   rate_limiter
   hyperdrive
   ai

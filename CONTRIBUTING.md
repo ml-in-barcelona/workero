@@ -2,7 +2,7 @@
 
 `make help` lists the targets. Run `make build` to build the library, CLI, and
 examples. Run `make fmt` to format the code, and `make test` to run the unit,
-worker, worker-init, worker-exports, and CLI tests.
+worker, worker-init, worker-exports, worker-tail, and CLI tests.
 
 ## Tests
 
@@ -36,6 +36,13 @@ worker, worker-init, worker-exports, and CLI tests.
   fail with the OCaml exception.
 - Worker export tests in `test/worker-exports/` run with
   `make test-worker-exports`. They check which handlers each worker exports.
+- Tail tests in `test/worker-tail/` run with `make test-worker-tail`. The OCaml
+  program in `main.ml` registers `Workero.tail` and posts a summary of each
+  trace item to a JavaScript sink. `producer.mjs` is a JavaScript Worker that
+  lists it in `tails` and answers fetch, scheduled and queue calls.
+  `tests.mjs` calls the producer, polls the sink and checks the summaries. It
+  reads each producer response body: the tail event arrives only after the
+  response ends.
 - CLI tests in `test/cli/` run with `make test-cli`. They check `workero build`
   and `workero package`, including arguments, output, class discovery,
   initialization timeouts, and errors. Fixtures

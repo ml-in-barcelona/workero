@@ -36,6 +36,7 @@ let body r : Stream.t option =
   if is_nullish v then None else Some (Stream.of_js v)
 
 let form_data r = Binding.call ~decode:Form_data.of_js r "formData" [||]
+let signal r = Abort_signal.of_js (Js.Unsafe.get r "signal")
 let clone r : t = Binding.invoke r "clone" [||]
 let of_js (v : js) : t = v
 let to_js (t : t) : js = t
