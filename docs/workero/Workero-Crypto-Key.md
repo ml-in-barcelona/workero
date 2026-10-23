@@ -95,12 +95,13 @@ Raises `Invalid_argument` for other `bits`.
 val generate_pair : 
   ?extractable:bool ->
   ?modulus_bits:int ->
+  ?public_exponent:int ->
   'a pair_algorithm ->
   'a pair
 ```
-`generate_pair algorithm` makes a random key pair. The public key is always extractable, as Web Crypto says. `modulus_bits` is for RSA only: 2048 by default, and the public exponent is 65537\. The usages follow the algorithm: `verify` on the public and `sign` on the private key of RSASSA-PKCS1-v1\_5, RSA-PSS, ECDSA and Ed25519; `encrypt` and `wrapKey`, and `decrypt` and `unwrapKey`, for RSA-OAEP; `deriveBits` on the private key of ECDH and X25519.
+`generate_pair algorithm` makes a random key pair. The public key is always extractable, as Web Crypto says. `modulus_bits` and `public_exponent` are for RSA only: 2048 and 65537 by default. `workerd` accepts 3 and 65537 as the exponent and rejects any other value, as a [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error). The usages follow the algorithm: `verify` on the public and `sign` on the private key of RSASSA-PKCS1-v1\_5, RSA-PSS, ECDSA and Ed25519; `encrypt` and `wrapKey`, and `decrypt` and `unwrapKey`, for RSA-OAEP; `deriveBits` and `deriveKey` on the private key of ECDH and X25519.
 
-Raises `Invalid_argument` when `modulus_bits` is under 512, or given for an algorithm that is not RSA.
+Raises `Invalid_argument` when `modulus_bits` is under 512, when `public_exponent` is not positive, or when either is given for an algorithm that is not RSA.
 
 
 ### Import and export
@@ -147,6 +148,16 @@ The export functions raise [`Promise.Js_error`](./Workero-Promise.md#exception-J
 ```ocaml
 val extractable : 'kind t -> bool
 ```
+```ocaml
+val algorithm : 'kind t -> string
+```
+The JSON text of the `algorithm` property of the key, for example `{"name":"AES-GCM","length":256}` or `{"name":"ECDSA","namedCurve":"P-256"}`. The hash of an HMAC or RSA key is an object, `{"name":"SHA-256"}`.
+
+```ocaml
+val usages : 'kind t -> string list
+```
+The `usages` property of the key, for example `["sign"; "verify"]`. The order is the one of the runtime.
+
 
 ### Raw keys without options
 

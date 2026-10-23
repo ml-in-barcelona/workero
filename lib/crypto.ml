@@ -95,7 +95,7 @@ module Key = struct
     | Private_pkcs8 : 'a pair_algorithm -> 'a private_ t import
     | Private_jwk : 'a pair_algorithm -> 'a private_ t import
 
-  let usages l =
+  let js_usages l =
     Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string l)))
 
   let secret_name : type k. k secret_algorithm -> string = function
@@ -148,14 +148,16 @@ module Key = struct
   let private_usages : type a. a pair_algorithm -> string list = function
     | Rsassa_pkcs1_v1_5 _ | Rsa_pss _ | Ecdsa _ | Ed25519 -> [ "sign" ]
     | Rsa_oaep _ -> [ "decrypt"; "unwrapKey" ]
-    | Ecdh _ | X25519 -> [ "deriveBits" ]
+    | Ecdh _ | X25519 -> [ "deriveBits"; "deriveKey" ]
 
   let wrap js = { js }
 
   let import_raw ~extractable ~algorithm ~usages:u raw =
     wrap
       (subtle_call ~decode:Decode.js "importKey"
-         [| js_str "raw"; bytes raw; algorithm; js_bool extractable; usages u |])
+         [|
+           js_str "raw"; bytes raw; algorithm; js_bool extractable; js_usages u;
+         |])
 
   let import_hmac hash raw =
     if raw = "" then invalid_arg "Workero.Crypto.Key.import_hmac: empty key";
@@ -203,7 +205,7 @@ module Key = struct
           key_data format data;
           algorithm;
           js_bool extractable;
-          usages u;
+          js_usages u;
         |]
     in
     match spec with
@@ -222,9 +224,7 @@ module Key = struct
         invalid_arg
           (Printf.sprintf "%s: %d bits, expected 128, 192 or 256" who n)
 
-  let generate (type k) ?(extractable = false) ?bits (a : k secret_algorithm) :
-      k t =
-    let who = "Workero.Crypto.Key.generate" in
+  let secret_target (type k) ~who ?bits (a : k secret_algorithm) =
     let length =
       match (a, bits) with
       | Hmac _, None -> []
@@ -234,39 +234,55 @@ module Key = struct
             (Printf.sprintf "%s: %d bits, expected a positive number" who n)
       | _ -> [ ("length", js_int (aes_bits who bits)) ]
     in
+    (obj (secret_params a @ length), js_usages (secret_usages a))
+
+  let generate (type k) ?(extractable = false) ?bits (a : k secret_algorithm) :
+      k t =
+    let algorithm, usages =
+      secret_target ~who:"Workero.Crypto.Key.generate" ?bits a
+    in
     wrap
       (subtle_call ~decode:Decode.js "generateKey"
-         [|
-           obj (secret_params a @ length);
-           js_bool extractable;
-           usages (secret_usages a);
-         |])
+         [| algorithm; js_bool extractable; usages |])
+
+  let exponent_bytes who n =
+    if n <= 0 then
+      invalid_arg
+        (Printf.sprintf "%s: %d public exponent, expected a positive number" who
+           n);
+    let rec go n acc =
+      if n = 0 then acc
+      else go (n lsr 8) (String.make 1 (Char.chr (n land 255)) ^ acc)
+    in
+    go n ""
 
   let generate_pair (type a) ?(extractable = false) ?modulus_bits
-      (algorithm : a pair_algorithm) : a pair =
+      ?public_exponent (algorithm : a pair_algorithm) : a pair =
     let who = "Workero.Crypto.Key.generate_pair" in
     let rsa =
       match (is_rsa algorithm, modulus_bits) with
       | true, bits ->
+          let exponent =
+            exponent_bytes who (Option.value public_exponent ~default:65537)
+          in
           let bits = Option.value bits ~default:2048 in
           if bits < 512 then
             invalid_arg
               (Printf.sprintf "%s: %d modulus bits, expected at least 512" who
                  bits);
-          [
-            ("modulusLength", js_int bits);
-            ("publicExponent", bytes "\x01\x00\x01");
-          ]
-      | false, None -> []
-      | false, Some _ ->
-          invalid_arg (who ^ ": modulus_bits is for RSA algorithms only")
+          [ ("modulusLength", js_int bits); ("publicExponent", bytes exponent) ]
+      | false, None when public_exponent = None -> []
+      | false, _ ->
+          invalid_arg
+            (who
+           ^ ": modulus_bits and public_exponent are for RSA algorithms only")
     in
     let pair =
       subtle_call ~decode:Decode.js "generateKey"
         [|
           obj (pair_params algorithm @ rsa);
           js_bool extractable;
-          usages (public_usages algorithm @ private_usages algorithm);
+          js_usages (public_usages algorithm @ private_usages algorithm);
         |]
     in
     {
@@ -286,6 +302,12 @@ module Key = struct
       (subtle_call ~decode:Decode.js "exportKey" [| js_str "jwk"; key.js |])
 
   let extractable key = Js.to_bool (Js.Unsafe.get key.js "extractable")
+  let algorithm key = json_stringify (Js.Unsafe.get key.js "algorithm")
+
+  let usages key =
+    Array.to_list
+      (Array.map Js.to_string
+         (Js.to_array (Js.Unsafe.coerce (Js.Unsafe.get key.js "usages"))))
 end
 
 let or_none f =
@@ -295,6 +317,12 @@ let or_none f =
     when Internal.get_string (Promise.error_to_js e) "name"
          = Some "OperationError" ->
       None
+
+let timing_safe_equal a b =
+  String.length a = String.length b
+  && Js.to_bool
+       (Js.Unsafe.coerce
+          (Binding.invoke (subtle ()) "timingSafeEqual" [| bytes a; bytes b |]))
 
 let hmac_sign key data =
   subtle_call ~decode:Decode.bytes "sign"
@@ -321,46 +349,68 @@ let aes_gcm_decrypt key ~iv ?aad data =
       subtle_call ~decode:Decode.bytes "decrypt"
         [| params; key.Key.js; bytes data |])
 
-let derive_bits ~who ~kdf ~length ~params password =
-  if length <= 0 then invalid_arg (who ^ ": length must be positive");
-  let key =
-    subtle_call ~decode:Decode.js "importKey"
-      [|
-        js_str "raw";
-        bytes password;
-        js_str kdf;
-        Js.Unsafe.inject Js._false;
-        Js.Unsafe.inject (Js.array [| Js.string "deriveBits" |]);
-      |]
-  in
-  subtle_call ~decode:Decode.bytes "deriveBits"
+let kdf_base ~kdf secret =
+  subtle_call ~decode:Decode.js "importKey"
     [|
-      obj (("name", js_str kdf) :: params);
-      key;
-      Js.Unsafe.inject (Js.float (float_of_int (length * 8)));
+      js_str "raw";
+      bytes secret;
+      js_str kdf;
+      Js.Unsafe.inject Js._false;
+      Key.js_usages [ "deriveBits"; "deriveKey" ];
     |]
 
+let derive_bits ~who ~kdf ~length ~params secret =
+  if length <= 0 then invalid_arg (who ^ ": length must be positive");
+  let key = kdf_base ~kdf secret in
+  subtle_call ~decode:Decode.bytes "deriveBits"
+    [| obj (("name", js_str kdf) :: params); key; js_int (length * 8) |]
+
+let derive_key (type k) ~who ~algorithm ~base ?(extractable = false) ?bits
+    (target : k Key.secret_algorithm) : k Key.t =
+  let key_algorithm, usages = Key.secret_target ~who ?bits target in
+  Key.wrap
+    (subtle_call ~decode:Decode.js "deriveKey"
+       [| algorithm; base; key_algorithm; js_bool extractable; usages |])
+
+let pbkdf2_params ~who hash ~salt ~iterations =
+  if iterations <= 0 then invalid_arg (who ^ ": iterations must be positive");
+  [
+    ("hash", js_str (hash_name hash));
+    ("salt", bytes salt);
+    ("iterations", js_int iterations);
+  ]
+
+let hkdf_params hash ~salt ~info =
+  [
+    ("hash", js_str (hash_name hash)); ("salt", bytes salt); ("info", bytes info);
+  ]
+
 let pbkdf2 hash ~password ~salt ~iterations ~length =
-  if iterations <= 0 then
-    invalid_arg "Workero.Crypto.pbkdf2: iterations must be positive";
-  derive_bits ~who:"Workero.Crypto.pbkdf2" ~kdf:"PBKDF2" ~length
-    ~params:
-      [
-        ("hash", js_str (hash_name hash));
-        ("salt", bytes salt);
-        ("iterations", Js.Unsafe.inject (Js.float (float_of_int iterations)));
-      ]
+  let who = "Workero.Crypto.pbkdf2" in
+  derive_bits ~who ~kdf:"PBKDF2" ~length
+    ~params:(pbkdf2_params ~who hash ~salt ~iterations)
     password
 
 let hkdf hash ~key ~salt ~info ~length =
   derive_bits ~who:"Workero.Crypto.hkdf" ~kdf:"HKDF" ~length
-    ~params:
-      [
-        ("hash", js_str (hash_name hash));
-        ("salt", bytes salt);
-        ("info", bytes info);
-      ]
+    ~params:(hkdf_params hash ~salt ~info)
     key
+
+let pbkdf2_key hash ~password ~salt ~iterations ?extractable ?bits target =
+  let who = "Workero.Crypto.pbkdf2_key" in
+  let params = pbkdf2_params ~who hash ~salt ~iterations in
+  ignore (Key.secret_target ~who ?bits target);
+  derive_key ~who
+    ~algorithm:(obj (("name", js_str "PBKDF2") :: params))
+    ~base:(kdf_base ~kdf:"PBKDF2" password)
+    ?extractable ?bits target
+
+let hkdf_key hash ~key ~salt ~info ?extractable ?bits target =
+  let who = "Workero.Crypto.hkdf_key" in
+  ignore (Key.secret_target ~who ?bits target);
+  derive_key ~who
+    ~algorithm:(obj (("name", js_str "HKDF") :: hkdf_params hash ~salt ~info))
+    ~base:(kdf_base ~kdf:"HKDF" key) ?extractable ?bits target
 
 let sign ~algorithm (key : _ Key.t) data =
   subtle_call ~decode:Decode.bytes "sign" [| algorithm; key.js; bytes data |]
@@ -433,6 +483,21 @@ let x25519_derive_bits key ~public ~length =
   agree ~who:"Workero.Crypto.x25519_derive_bits" ~name:"X25519" key ~public
     ~length
 
+let agree_key ~who ~name (private_ : _ Key.t) ~(public : _ Key.t) ?extractable
+    ?bits target =
+  ignore (Key.secret_target ~who ?bits target);
+  derive_key ~who
+    ~algorithm:(obj [ ("name", js_str name); ("public", public.js) ])
+    ~base:private_.js ?extractable ?bits target
+
+let ecdh_derive_key key ~public ?extractable ?bits target =
+  agree_key ~who:"Workero.Crypto.ecdh_derive_key" ~name:"ECDH" key ~public
+    ?extractable ?bits target
+
+let x25519_derive_key key ~public ?extractable ?bits target =
+  agree_key ~who:"Workero.Crypto.x25519_derive_key" ~name:"X25519" key ~public
+    ?extractable ?bits target
+
 let aes_cbc_params ~who ~iv =
   if String.length iv <> 16 then
     invalid_arg
@@ -489,6 +554,13 @@ type _ wrapper =
       aad : string option;
     }
       -> 'role wrapper
+  | Aes_cbc : { key : Key.aes_cbc Key.t; iv : string } -> 'role wrapper
+  | Aes_ctr : {
+      key : Key.aes_ctr Key.t;
+      counter : string;
+      counter_bits : int;
+    }
+      -> 'role wrapper
   | Rsa_oaep_wrap : {
       key : Key.rsa_oaep Key.public Key.t;
       label : string option;
@@ -505,6 +577,9 @@ let wrapper_args : type role.
  fun ~who -> function
   | Aes_kw key -> (js_str "AES-KW", key.js)
   | Aes_gcm { key; iv; aad } -> (gcm_params ~who ~iv aad, key.js)
+  | Aes_cbc { key; iv } -> (aes_cbc_params ~who ~iv, key.js)
+  | Aes_ctr { key; counter; counter_bits } ->
+      (aes_ctr_params ~who ~counter ~counter_bits, key.js)
   | Rsa_oaep_wrap { key; label } -> (oaep_params label, key.js)
   | Rsa_oaep_unwrap { key; label } -> (oaep_params label, key.js)
 
@@ -536,7 +611,7 @@ let unwrap_key (type r) ?(extractable = false) (wrapper : unwrapping wrapper)
         algorithm;
         key_algorithm;
         js_bool extractable;
-        Key.usages usages;
+        Key.js_usages usages;
       |]
   in
   match spec with
