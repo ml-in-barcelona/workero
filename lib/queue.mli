@@ -21,23 +21,37 @@ type body =
   | Text of string  (** Content type [text]. *)
   | Bytes of string  (** Content type [bytes]: raw bytes. *)
 
+type content_type = [ `Json | `Text | `Bytes | `V8 ]
+(** How the runtime serialises a message body. A body constructor implies one
+    ([Json] implies [`Json], and so on). [`V8] sends the body with the V8
+    structured clone format instead, which a consumer reads as the JavaScript
+    value: a [Json] object arrives as an object and a [Bytes] body as an
+    [ArrayBuffer]. Use it for values that JSON cannot hold, such as [Date] or
+    [Map]. Pull consumers read it less well, and the dashboard shows it
+    Base64-encoded. *)
+
 type message
 (** A message to send in a batch, made by {!val:message}. *)
 
-val message : ?delay_seconds:int -> body -> message
-(** [message body] is a message for {!send_batch}. [delay_seconds] delays its
-    delivery, from 0 to 86400.
+val message :
+  ?content_type:content_type -> ?delay_seconds:int -> body -> message
+(** [message body] is a message for {!send_batch}. [content_type] defaults to
+    the one that [body] implies. [delay_seconds] delays its delivery, from 0 to
+    86400.
 
-    Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400, or
-    when [body] is [Json] with a float that JSON cannot write ([nan] or an
-    infinity). *)
+    Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400, when
+    [content_type] is not [`V8] and differs from the one [body] implies, or when
+    [body] is [Json] with a float that JSON cannot write ([nan] or an infinity).
+*)
 
-val send : ?delay_seconds:int -> t -> body -> unit
+val send : ?content_type:content_type -> ?delay_seconds:int -> t -> body -> unit
 (** [send queue body] adds one message to the queue. It suspends until the queue
     accepts it. Call it inside an event handler or a {!Context.wait_until}
-    function. [delay_seconds] delays delivery, from 0 to 86400.
+    function. [content_type] defaults to the one that [body] implies.
+    [delay_seconds] delays delivery, from 0 to 86400.
 
-    Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400.
+    Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400, or
+    when [content_type] is not [`V8] and differs from the one [body] implies.
     @raise Js_error
       when the runtime rejects the message, for example when it is too large. *)
 
@@ -83,8 +97,8 @@ module Message : sig
       Raises [Invalid_argument] when the body is not binary data. *)
 
   val body_js : t -> Js_of_ocaml.Js.Unsafe.any
-  (** The body as the runtime delivered it. Use it for a message that another
-      producer sent with the [v8] content type. *)
+  (** The body as the runtime delivered it. Use it for a message sent with the
+      [v8] content type, for example with [~content_type:`V8] in {!val:send}. *)
 
   val ack : t -> unit
   (** Mark the message as delivered after processing succeeds. The runtime does

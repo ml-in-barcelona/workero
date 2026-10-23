@@ -25,7 +25,8 @@ const mockMessage = (spec, calls) => ({
       isEmailMessage: message instanceof EmailMessage,
       from: message.from,
       to: message.to,
-      raw: message.raw,
+      rawIsStream: typeof message.raw !== "string",
+      raw: typeof message.raw === "string" ? message.raw : await new Response(message.raw).text(),
     });
   },
 });

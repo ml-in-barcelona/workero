@@ -10,6 +10,14 @@ let json_body =
 
 let delay url = Option.map int_of_string (URL.query url "delay")
 
+let content_type url =
+  match URL.query url "ct" with
+  | Some "v8" -> Some `V8
+  | Some "json" -> Some `Json
+  | Some "text" -> Some `Text
+  | Some "bytes" -> Some `Bytes
+  | _ -> None
+
 let invalid f =
   match f () with
   | () -> "ok"
@@ -27,7 +35,7 @@ let handle req env _ctx =
         | Some "bytes" -> Queue.Bytes "\x00\xff\x80\n"
         | _ -> Queue.Text "h\xc3\xa9llo"
       in
-      Queue.send ?delay_seconds (jobs ()) body;
+      Queue.send ?content_type:(content_type url) ?delay_seconds (jobs ()) body;
       Some (Response.text "sent")
   | "/queue/send-batch" ->
       Queue.send_batch ?delay_seconds (jobs ())
@@ -35,6 +43,14 @@ let handle req env _ctx =
           Queue.message ~delay_seconds:9 (Queue.Json json_body);
           Queue.message (Queue.Text "plain");
           Queue.message (Queue.Bytes "\x00\xff");
+        ];
+      Some (Response.text "sent")
+  | "/queue/send-batch-v8" ->
+      Queue.send_batch (jobs ())
+        [
+          Queue.message ~content_type:`V8 (Queue.Json json_body);
+          Queue.message ~content_type:`V8 ~delay_seconds:3 (Queue.Text "plain");
+          Queue.message (Queue.Text "default");
         ];
       Some (Response.text "sent")
   | "/queue/send-batch-empty" ->
@@ -45,6 +61,17 @@ let handle req env _ctx =
       | () -> Some (Response.text "unreachable")
       | exception Js_error e ->
           Some (Response.text ~status:`Bad_Gateway (Promise.error_to_string e)))
+  | "/queue/bad-content-type" ->
+      Some
+        (Response.text
+           (String.concat "\n"
+              [
+                invalid (fun () ->
+                    Queue.send ~content_type:`Text (jobs ())
+                      (Queue.Json json_body));
+                invalid (fun () ->
+                    ignore (Queue.message ~content_type:`Bytes (Queue.Text "x")));
+              ]))
   | "/queue/bad-delay" ->
       let n = Option.value delay_seconds ~default:0 in
       let results =

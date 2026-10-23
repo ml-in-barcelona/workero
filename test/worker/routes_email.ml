@@ -8,7 +8,7 @@ let hex s =
 let opt = Option.value ~default:"none"
 let destination = "dest@example.com"
 
-let receive message _env _ctx =
+let receive message _env ctx =
   let report text = Email.set_reject message text in
   match Email.to_ message with
   | "accessors@example.com" ->
@@ -59,6 +59,15 @@ let receive message _env _ctx =
          In-Reply-To: <1@example.org>\r\n\
          \r\n\
          thanks \xc3\xa9\r\n"
+  | "reply-stream@example.com" ->
+      let writer, raw = Stream.pipe () in
+      Context.wait_until ctx (fun () ->
+          Stream.Writer.write writer
+            "From: support@example.com\r\nIn-Reply-To: <1@example.org>\r\n";
+          Stream.Writer.write writer "\r\nstreamed \xc3\xa9\r\n";
+          Stream.Writer.close writer);
+      Email.reply_stream message ~from:"support@example.com"
+        ~to_:(Email.from message) raw
   | "reject@example.com" -> Email.set_reject message "no thanks"
   | "raise@example.com" -> failwith "email failed"
   | "await@example.com" ->

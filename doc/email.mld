@@ -94,6 +94,11 @@ let () =
            ]))
 ]}
 
+{!Workero.Email.reply_stream} takes the same complete message as a
+{!Workero.Stream.t}, for example from {!Workero.Stream.pipe}. Write it from a
+{!Workero.Context.wait_until} function, because the runtime reads the stream
+while the call waits.
+
 [reply] creates the [EmailMessage] from the [cloudflare:email] module when it is
 called. [workerd] does not provide that module. See
 {{!page-known_issues}Support and known issues}.
