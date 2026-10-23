@@ -107,6 +107,23 @@ const cases = [
   },
 ];
 
+const classCase = async (env) => {
+  await env.SINK_CLASS.fetch("http://sink/", { method: "DELETE" });
+  await (await env.PRODUCER_CLASS.fetch("http://test/log?token=abc")).text();
+  let seen;
+  for (let i = 0; i < 100; i++) {
+    seen = await (await env.SINK_CLASS.fetch("http://sink/")).json();
+    if (seen.items.length >= 1 && seen.after.length >= 1) break;
+    await sleep(50);
+  }
+  const item = seen.items.find((i) => i.event.kind === "fetch" && new URL(i.event.url).pathname === "/log");
+  const problems = item
+    ? [...check("outcome", item.outcome, "ok"), ...check("status", item.event.status, 200), ...check("logs", item.logs.map((l) => l.message), [["hello", 1, { a: 2 }], ["careful"]]), ...check("after", seen.after, [1])]
+    : [`no item for /log in ${JSON.stringify(seen)}`];
+  console.log(`${problems.length ? "FAIL" : "ok"} - an entrypoint class receives the tail events of its producer`);
+  return problems.length ? [`class tail: ${problems.join("; ")}`] : [];
+};
+
 export default {
   async test(_controller, env) {
     await env.SINK.fetch("http://sink/", { method: "DELETE" });
@@ -122,7 +139,7 @@ export default {
       { id: "m2", timestamp: new Date(0), body: "b", attempts: 1 },
     ]);
     const seen = await waitFor(env, 5);
-    const failures = [];
+    const failures = await classCase(env);
     for (const c of cases) {
       const problems = c.run(seen);
       if (problems.length) failures.push(`${c.name}: ${problems.join("; ")}`);

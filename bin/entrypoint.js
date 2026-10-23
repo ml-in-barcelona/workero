@@ -10,7 +10,7 @@ export class WorkeroEntrypoint extends WorkerEntrypoint {
       );
     const handlers = factory(env, ctx);
     if (typeof handlers.fetch === "function") this.fetch = (...args) => handlers.fetch(...args);
-    for (const event of ["scheduled", "queue", "email"])
+    for (const event of ["scheduled", "queue", "tail"])
       if (typeof handlers[event] === "function") this[event] = (...args) => handlers[event](...args);
     this[Symbol.for("workero.rpc")] = (method, args) => {
       if (typeof handlers.rpc !== "function")

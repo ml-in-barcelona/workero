@@ -34,7 +34,30 @@ cp test/worker-tail/tests.mjs test/worker-tail/producer.mjs test/worker-tail/sin
   echo '      ],'
   echo '      bindings = [(name = "SINK", service = "sink")],'
   echo '    )),'
+  echo '    (name = "producer-class", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "producer.mjs", esModule = embed "producer.mjs")],'
+  echo '      tails = [(name = "class-tail", entrypoint = "Tail")],'
+  echo '    )),'
+  echo '    (name = "class-tail", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = ['
+  (echo index.js; cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | grep -vx index.js | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", esModule = embed \"$f\"),"
+    done
+  (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
+    while read -r f; do
+      echo "        (name = \"$f\", wasm = embed \"$f\"),"
+    done
+  echo '      ],'
+  echo '      bindings = [(name = "SINK", service = "sink-class")],'
+  echo '    )),'
   echo '    (name = "sink", worker = ('
+  echo '      compatibilityDate = "2026-10-01",'
+  echo '      modules = [(name = "sink.mjs", esModule = embed "sink.mjs")],'
+  echo '    )),'
+  echo '    (name = "sink-class", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "sink.mjs", esModule = embed "sink.mjs")],'
   echo '    )),'
@@ -42,7 +65,7 @@ cp test/worker-tail/tests.mjs test/worker-tail/producer.mjs test/worker-tail/sin
   echo '      compatibilityDate = "2026-10-01",'
   echo '      compatibilityFlags = ["service_binding_extra_handlers"],'
   echo '      modules = [(name = "tests.mjs", esModule = embed "tests.mjs")],'
-  echo '      bindings = [(name = "PRODUCER", service = "producer"), (name = "SINK", service = "sink")],'
+  echo '      bindings = [(name = "PRODUCER", service = "producer"), (name = "SINK", service = "sink"), (name = "PRODUCER_CLASS", service = "producer-class"), (name = "SINK_CLASS", service = "sink-class")],'
   echo '    )),'
   echo '  ],'
   echo ');'

@@ -115,21 +115,6 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '      ],'
   echo '      globalOutbound = "upstream",'
   echo '    )),'
-  echo '    (name = "entrypoint-email-harness", worker = ('
-  echo '      compatibilityDate = "2026-10-01",'
-  echo '      modules = ['
-  echo '        (name = "entrypoint-email-harness.mjs", esModule = embed "entrypoint-email-harness.mjs"),'
-  (cd "$out" && find . -type f -name '*.js' | sed 's|^\./||' | sort) |
-    while read -r f; do
-      echo "        (name = \"$f\", esModule = embed \"$f\"),"
-    done
-  (cd "$out" && find . -type f -name '*.wasm' | sed 's|^\./||' | sort) |
-    while read -r f; do
-      echo "        (name = \"$f\", wasm = embed \"$f\"),"
-    done
-  echo '      ],'
-  echo '      bindings = [(name = "JOBS", queue = "queue-sink")],'
-  echo '    )),'
   echo '    (name = "d1", worker = ('
   echo '      compatibilityDate = "2026-10-01",'
   echo '      modules = [(name = "d1.mjs", esModule = embed "d1.mjs")],'
@@ -155,7 +140,6 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "NORPC", service = (name = "worker", entrypoint = "NoRpc")),'
   echo '        (name = "CLASSEP", service = (name = "worker", entrypoint = "delete")),'
   echo '        (name = "EMAIL", service = "email-harness"),'
-  echo '        (name = "ENTRYPOINT_EMAIL", service = "entrypoint-email-harness"),'
   echo '        (name = "ENGINE", service = (name = "workflow-engine", entrypoint = "Engine")),'
   echo '      ],'
   echo '    )),'

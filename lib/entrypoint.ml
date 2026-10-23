@@ -35,11 +35,11 @@ type t = {
   rpc : (string -> Rpc.t list -> Rpc.t) option;
   scheduled : (Scheduled.t -> unit) option;
   queue : (Queue.Batch.t -> unit) option;
-  email : (Email.t -> unit) option;
+  tail : (Trace.t list -> unit) option;
 }
 
-let make ?fetch ?rpc ?scheduled ?queue ?email () =
-  { fetch; rpc; scheduled; queue; email }
+let make ?fetch ?rpc ?scheduled ?queue ?tail () =
+  { fetch; rpc; scheduled; queue; tail }
 
 let event_handler of_js handler =
  fun event : js ->
@@ -69,7 +69,11 @@ let handlers_js t =
            t.rpc);
       field "scheduled" (Option.map (event_handler Scheduled.of_js) t.scheduled);
       field "queue" (Option.map (event_handler Queue.Batch.of_js) t.queue);
-      field "email" (Option.map (event_handler Email.of_js) t.email);
+      field "tail"
+        (Option.map
+           (event_handler (fun events ->
+                List.map Trace.of_js (Decode.(list js) events)))
+           t.tail);
     ]
   in
   Js.Unsafe.obj (Array.of_list (List.filter_map Fun.id fields))

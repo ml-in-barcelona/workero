@@ -73,9 +73,9 @@ The callee may be an entrypoint written in OCaml or in JavaScript. [`Workero.Ent
 [`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) accepts a `~fetch` handler. It answers [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) on a binding of the class, like `env.MATH.fetch(request)` in JavaScript. Without it, such a request fails with an error.
 
 
-## The scheduled, queue and email handlers
+## The scheduled, queue and tail handlers
 
-[`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) also accepts `~scheduled`, `~queue` and `~email`. They are the `scheduled(controller)`, `queue(batch)` and `email(message)` methods of a JavaScript `WorkerEntrypoint` class. They take the same values as [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue) and [`Workero.email`](./Workero.md#val-email), without `env` and `ctx`: the function given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) has them.
+[`Workero.Entrypoint.make`](./Workero-Entrypoint.md#val-make) also accepts `~scheduled`, `~queue` and `~tail`. They are the `scheduled(controller)`, `queue(batch)` and `tail(events)` methods of a JavaScript `WorkerEntrypoint` class. They take the same values as [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue) and [`Workero.tail`](./Workero.md#val-tail), without `env` and `ctx`: the function given to [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) has them.
 
 ```ocaml
 open Workero
@@ -91,15 +91,14 @@ let () =
             (Queue.Batch.messages batch))
         ())
 ```
-Point a cron trigger, a queue consumer or an email route at the class. Each handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await). An exception that it raises rejects the event. A class answers only the events that have a handler; the runtime rejects the others.
+Point a cron trigger, a queue consumer or a tail consumer list at the class. Each handler runs in its own fiber and may call [`Workero.Promise.await`](./Workero-Promise.md#val-await). An exception that it raises rejects the event. A class answers only the events that have a handler; the runtime rejects the others.
 
-The `email` handler on a class is untested against the runtime. The tests call the class with a mock message. They do not show that Email Routing delivers a message to a class. The `scheduled` and `queue` handlers are tested through service bindings in `workerd`.
+A class has no `email` handler: the runtime delivers email only to the default export, so use [`Workero.email`](./Workero.md#val-email) for it. The `scheduled`, `queue` and `tail` handlers are tested through service bindings and tail consumers in `workerd`.
 
 
 ## Limits
 
 - A value with no [`Workero.Rpc.t`](./Workero-Rpc.md#type-t) form, such as an `Error`, raises `Invalid_argument`.
-- The `tail` handler of a class is not supported.
 - [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) raises `Invalid_argument` when the class name is also the name of a Durable Object class, a Workflow or another entrypoint. It raises the same exception for a duplicate method name or one that is not a JavaScript identifier.
 - These method names are reserved: `constructor`, `prototype`, `__proto__`, `then`, `env`, `ctx`, `fetch`, `scheduled`, `queue`, `email`, `tail`, `trace`, `tailStream`, `test`, `connect` and `dup`.
 - For RPC methods on Durable Object stubs, see [Durable Objects](./durable_objects.md).

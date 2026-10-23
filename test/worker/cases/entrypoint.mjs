@@ -102,25 +102,7 @@ export const events = async (env, failures) => {
   });
 };
 
-const emailTo = async (env, to, entrypoint = "Events") =>
-  (
-    await env.ENTRYPOINT_EMAIL.fetch("http://harness/", {
-      method: "POST",
-      body: JSON.stringify({ from: "sender@example.org", to, entrypoint }),
-    })
-  ).json();
-
 export default async (env, failures) => {
-  await check("Entrypoint email: the handler gets the message", failures, async (p) =>
-    equal(await emailTo(env, "a@example.com"), { calls: [{ op: "setReject", reason: "email from=sender@example.org to=a@example.com" }], error: null }, p),
-  );
-  await check("Entrypoint email: a raising handler rejects the event", failures, async (p) => {
-    const result = await emailTo(env, "fail@example.com");
-    if (!String(result.error).includes("email failed")) p.push(`error ${JSON.stringify(result.error)}`);
-  });
-  await check("Entrypoint email: a class without an email handler has none", failures, async (p) =>
-    equal((await emailTo(env, "a@example.com", "Partial")).error, "Error: the entrypoint has no email handler", p),
-  );
   await runCases(env, ocamlCases, failures);
   await check("Entrypoint: JavaScript calls an OCaml method", failures, async (p) => equal(await env.CALC.add(2, 3), 5, p));
   await check("Entrypoint: JavaScript gets the env of the entrypoint", failures, async (p) => equal(await env.CALC.greet("Bo"), "from test config, Bo", p));

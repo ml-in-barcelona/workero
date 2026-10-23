@@ -57,12 +57,6 @@ let events env ctx =
           log env
             (Printf.sprintf "queue %s %s" name
                (String.concat "," (List.map Queue.Message.body_text messages))))
-    ~email:(fun message ->
-      match Email.to_ message with
-      | "fail@example.com" -> failwith "email failed"
-      | to_ ->
-          Email.set_reject message
-            (Printf.sprintf "email from=%s to=%s" (Email.from message) to_))
     ()
 
 let () =

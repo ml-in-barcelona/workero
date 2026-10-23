@@ -95,9 +95,14 @@ let post sink kind body =
     (Fetcher.fetch ~method_:POST ~body:(Jsonkit.to_string body) sink
        ("http://sink/" ^ kind))
 
+let report traces env ctx =
+  let sink = Fetcher.of_env env "SINK" in
+  List.iter (fun trace -> post sink "item" (item trace)) traces;
+  Context.wait_until ctx (fun () ->
+      post sink "after" (`Int (List.length traces)))
+
+let () = Workero.tail report
+
 let () =
-  Workero.tail (fun traces env ctx ->
-      let sink = Fetcher.of_env env "SINK" in
-      List.iter (fun trace -> post sink "item" (item trace)) traces;
-      Context.wait_until ctx (fun () ->
-          post sink "after" (`Int (List.length traces))))
+  Entrypoint.register "Tail" (fun env ctx ->
+      Entrypoint.make ~tail:(fun traces -> report traces env ctx) ())

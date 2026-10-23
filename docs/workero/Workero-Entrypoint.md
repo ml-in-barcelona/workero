@@ -26,11 +26,11 @@ val make :
   ?rpc:(string -> Rpc.t list -> Rpc.t) ->
   ?scheduled:(Scheduled.t -> unit) ->
   ?queue:(Queue.Batch.t -> unit) ->
-  ?email:(Email.t -> unit) ->
+  ?tail:(Trace.t list -> unit) ->
   unit ->
   t
 ```
-`make ()` gives an entrypoint that answers no call. `fetch` answers requests sent to the binding with [`Fetcher.fetch`](./Workero-Fetcher.md#val-fetch). `rpc` answers the calls of the methods that [`register`](./#val-register) declared: `rpc name args` gets the method name and the arguments, and returns the result. It decides what an unknown name does; raise an exception to reject the call. `scheduled` answers the cron trigger of the class, like `scheduled(controller)` in a JavaScript `WorkerEntrypoint` class. `queue` consumes the batches of a queue whose consumer is the class, like `queue(batch)`. `email` answers Email Routing messages sent to the class, like `email(message)`; it must call [`Email.forward`](./Workero-Email.md#val-forward), [`Email.reply`](./Workero-Email.md#val-reply) or [`Email.set_reject`](./Workero-Email.md#val-set_reject), or the runtime drops the message. A class answers only the events that have a handler; the runtime rejects the others. Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). An exception raised by a handler rejects the call, so the caller gets an error.
+`make ()` gives an entrypoint that answers no call. `fetch` answers requests sent to the binding with [`Fetcher.fetch`](./Workero-Fetcher.md#val-fetch). `rpc` answers the calls of the methods that [`register`](./#val-register) declared: `rpc name args` gets the method name and the arguments, and returns the result. It decides what an unknown name does; raise an exception to reject the call. `scheduled` answers the cron trigger of the class, like `scheduled(controller)` in a JavaScript `WorkerEntrypoint` class. `queue` consumes the batches of a queue whose consumer is the class, like `queue(batch)`. `tail` receives the trace events of the Workers that list the class as a tail consumer, like `tail(events)`. A class answers only the events that have a handler; the runtime rejects the others. Every handler runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await). An exception raised by a handler rejects the call, so the caller gets an error.
 
 ```ocaml
 val register : ?rpc:string list -> string -> (Env.t -> Context.t -> t) -> unit
