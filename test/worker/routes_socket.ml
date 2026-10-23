@@ -111,6 +111,22 @@ let invalid () =
       error_text (fun () -> Socket.connect ~host ~port:65536 ());
     ]
 
+let info () =
+  let socket = Socket.connect ~host ~port:7 () in
+  let { Socket.remote_address; local_address } = Socket.info socket in
+  let show = function Some a -> "some:" ^ a | None -> "none" in
+  Socket.close socket;
+  Printf.sprintf "remote=%s local=%s" (show remote_address) (show local_address)
+
+let upgraded () =
+  let plain = connect () in
+  let starttls = connect ~secure_transport:Starttls () in
+  let before = Socket.upgraded starttls in
+  let secure = Socket.start_tls starttls in
+  Printf.sprintf "plain=%b before=%b original=%b secure=%b"
+    (Socket.upgraded plain) before (Socket.upgraded starttls)
+    (Socket.upgraded secure)
+
 let handle req _env _ctx =
   let url = Request.url req in
   let text s = Some (Response.text s) in
@@ -123,6 +139,8 @@ let handle req _env _ctx =
   | "/socket/close" -> text (close ())
   | "/socket/locked" -> text (locked ())
   | "/socket/release" -> text (release ())
+  | "/socket/info" -> text (info ())
+  | "/socket/upgraded" -> text (upgraded ())
   | "/socket/invalid" -> text (invalid ())
   | "/socket/tls-on" ->
       text

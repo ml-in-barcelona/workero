@@ -3,6 +3,7 @@ open Internal
 
 type t = js
 type secure_transport = Off | On | Starttls
+type info = { remote_address : string option; local_address : string option }
 
 let transport_name = function
   | Off -> "off"
@@ -43,6 +44,20 @@ let await_property socket name =
   Promise.await (Promise.of_js ~decode:Decode.unit (Js.Unsafe.get socket name))
 
 let opened s = await_property s "opened"
+
+let info s =
+  Promise.await
+    (Promise.of_js
+       ~decode:(fun v ->
+         {
+           remote_address =
+             Decode.field "remoteAddress" (Decode.option Decode.string) v;
+           local_address =
+             Decode.field "localAddress" (Decode.option Decode.string) v;
+         })
+       (Js.Unsafe.get s "opened"))
+
+let upgraded s = Decode.bool (Js.Unsafe.get s "upgraded")
 let closed s = await_property s "closed"
 let reader s = Stream.reader (Stream.of_js (Js.Unsafe.get s "readable"))
 

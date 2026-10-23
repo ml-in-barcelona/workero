@@ -33,6 +33,7 @@ let () = Workero.serve handler
 - [`Workero.Socket.reader`](./Workero-Socket.md#val-reader) and [`Workero.Socket.writer`](./Workero-Socket.md#val-writer) give the [`Workero.Stream`](./Workero-Stream.md) readers and writers. Each locks its stream, so call each one once for each socket, or unlock the stream with [`Workero.Stream.Reader.release`](./Workero-Stream-Reader.md#val-release) or [`Workero.Stream.Writer.release`](./Workero-Stream-Writer.md#val-release). [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) waits when the server is slow to read (back-pressure).
 - [`Workero.Stream.Reader.read`](./Workero-Stream-Reader.md#val-read) gives `None` when the server ends its side. [`Workero.Stream.Writer.close`](./Workero-Stream-Writer.md#val-close) ends yours.
 - [`Workero.Socket.close`](./Workero-Socket.md#val-close) closes both sides. [`Workero.Socket.closed`](./Workero-Socket.md#val-closed) waits for the socket to close.
+- [`Workero.Socket.info`](./Workero-Socket.md#type-info) waits like [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) and gives the remote and local address, when the runtime reports them.
 
 ## TLS
 
@@ -60,6 +61,8 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
+[`Workero.Socket.upgraded`](./Workero-Socket.md#val-upgraded) is `true` on the old socket after the upgrade.
+
 `start_tls` returns a new socket. The old socket stops working. The runtime fails the upgrade while a reader or writer still locks a stream, so release both first.
 
 
@@ -71,6 +74,11 @@ By default, when the server ends its side, the runtime also closes your write si
 ## Test
 
 `workerd` can run a `connect` handler in a Worker that is the `globalOutbound` of the Worker under test. That Worker then plays the TCP server. The tests of workero do this: see `test/worker/upstream.mjs`. With this setup, TLS cannot be tested: `~secure_transport:On` fails with an error that mentions TLS, and `start_tls` fails with "startTls() is not supported on this connection". To test TLS, connect to a real network service.
+
+
+## Incoming connections
+
+A Worker has no `connect` handler. Cloudflare does not deliver incoming TCP connections to a Worker, and the `ExportedHandler` type has no `connect`. Only `workerd` calls a `connect` handler, for a Worker that is the `globalOutbound` of another Worker. Workero does not export it.
 
 
 ## Limits

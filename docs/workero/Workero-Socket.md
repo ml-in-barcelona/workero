@@ -17,6 +17,14 @@ type secure_transport =
   | Starttls (* Plain TCP that start_tls upgrades to TLS. *)
 ```
 ```ocaml
+type info = {
+  remote_address : string option; (* The address of the server, if known. *)
+  local_address : string option; (* The local address, if known. *)
+}
+```
+Address information of an open connection. The runtime may leave a field out.
+
+```ocaml
 val connect : 
   ?secure_transport:secure_transport ->
   ?allow_half_open:bool ->
@@ -36,6 +44,16 @@ raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime refuses th
 val opened : t -> unit
 ```
 Waits until the connection is up. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the connection fails.
+
+```ocaml
+val info : t -> info
+```
+Like [`opened`](./#val-opened), and gives the [`info`](./#val-info) of the connection. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the connection fails.
+
+```ocaml
+val upgraded : t -> bool
+```
+`true` once [`start_tls`](./#val-start_tls) has upgraded the socket to TLS.
 
 ```ocaml
 val closed : t -> unit
