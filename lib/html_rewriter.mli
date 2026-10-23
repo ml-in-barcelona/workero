@@ -26,6 +26,18 @@ type content =
   | Text of string
       (** The runtime escapes the string: [<b>] becomes [&lt;b&gt;]. *)
   | Html of string  (** The string is inserted as markup. *)
+  | Text_stream of Stream.t
+      (** The runtime reads the stream and escapes it, like {!Text}. The stream
+          is used up. *)
+  | Html_stream of Stream.t
+      (** The runtime reads the stream and inserts it as markup, like {!Html}.
+          The stream is used up. *)
+  | Text_response of Response.t
+      (** The runtime reads the body of the response and escapes it. The status
+          and headers are ignored. The response is used up. *)
+  | Html_response of Response.t
+      (** The runtime reads the body of the response and inserts it as markup.
+          The status and headers are ignored. The response is used up. *)
 
 (** The closing tag of an element. *)
 module End_tag : sig
