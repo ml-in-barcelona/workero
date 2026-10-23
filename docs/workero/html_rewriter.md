@@ -34,6 +34,13 @@ let () = Workero.serve handler
 
 Functions that insert content take [`Workero.Html_rewriter.content`](./Workero-Html_rewriter.md#type-content). `Text s` is escaped: `<b>` becomes `&lt;b&gt;`. `Html s` is inserted as markup, so never build it from input that you do not trust.
 
+`Text_stream`, `Html_stream`, `Text_response`, and `Html_response` take a [`Workero.Stream.t`](./Workero-Stream.md#type-t) or a [`Workero.Response.t`](./Workero-Response.md#type-t) in place of a string. The runtime reads it as the page streams, so a large inserted body does not go through OCaml. The `Text_` forms escape and the `Html_` forms insert markup, like `Text` and `Html`. A response gives only its body: status and headers are ignored. The stream or response is used up.
+
+```ocaml
+let banner el =
+  let res = Workero.fetch "https://example.com/banner.html" in
+  Workero.Html_rewriter.(Element.prepend el (Html_response res))
+```
 
 ## Handlers that wait
 

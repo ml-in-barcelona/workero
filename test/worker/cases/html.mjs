@@ -27,6 +27,13 @@ const cases = [
   ].join("\n")),
   get("Text content is escaped and Html content is markup", "content",
     "<p>&lt;b&gt;hi&lt;/b&gt;</p>\n<p><b>hi</b></p>"),
+  get("a Stream or a Response is content, escaped or as markup", "stream-content", [
+    "<p>&lt;b&gt;hi&lt;/b&gt;</p>",
+    "<p><b>hi</b></p>",
+    "<p><i>a</i></p>",
+    "<p>&lt;b&gt;hi&lt;/b&gt;</p>",
+    "<p><b>hi</b></p>",
+  ].join("\n")),
   get("on_document sees the doctype and comments and appends at the end", "document",
     "doctype=html/none/none;comment=c;\n<!DOCTYPE html><!--changed--><p>x</p><footer>end</footer>"),
   get("comment and text handlers run inside a matching element", "comments-text",
