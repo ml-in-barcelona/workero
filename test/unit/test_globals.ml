@@ -73,7 +73,19 @@ let test_subtle_arguments () =
         ~iterations:1 ~length:0);
   raises_invalid "hkdf length" (fun () ->
       Workero.Crypto.hkdf Workero.Crypto.Sha256 ~key:"k" ~salt:"" ~info:""
-        ~length:(-1))
+        ~length:(-1));
+  raises_invalid "pbkdf2_key iterations" (fun () ->
+      Workero.Crypto.pbkdf2_key Workero.Crypto.Sha256 ~password:"p" ~salt:"s"
+        ~iterations:0 Workero.Crypto.Key.Aes_gcm);
+  raises_invalid "hkdf_key bits" (fun () ->
+      Workero.Crypto.hkdf_key Workero.Crypto.Sha256 ~key:"k" ~salt:"" ~info:""
+        ~bits:100 Workero.Crypto.Key.Aes_gcm);
+  raises_invalid "public exponent" (fun () ->
+      Workero.Crypto.Key.generate_pair ~public_exponent:0
+        (Workero.Crypto.Key.Rsa_pss Workero.Crypto.Sha256));
+  raises_invalid "public exponent without RSA" (fun () ->
+      Workero.Crypto.Key.generate_pair ~public_exponent:3
+        Workero.Crypto.Key.Ed25519)
 
 let test_console () =
   ignore

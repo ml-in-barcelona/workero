@@ -18,10 +18,11 @@ val random_bytes : int -> string
     [crypto.subtle]: digests, HMAC, AES (GCM, CBC, CTR, KW), RSA
     (RSASSA-PKCS1-v1_5, RSA-PSS, RSA-OAEP), ECDSA, ECDH, Ed25519, X25519, PBKDF2
     and HKDF. It has key generation, import and export in the formats [raw],
-    [jwk], [spki] and [pkcs8], and [wrapKey] and [unwrapKey]. Data goes in and
-    out as OCaml strings that hold raw bytes. The functions below suspend the
-    request while the runtime works, like {!Promise.await}, so call them only
-    inside a handler.
+    [jwk], [spki] and [pkcs8], [wrapKey] and [unwrapKey], [deriveKey], and the
+    Cloudflare extension [timingSafeEqual]. Data goes in and out as OCaml
+    strings that hold raw bytes. The functions below suspend the request while
+    the runtime works, like {!Promise.await}, so call them only inside a
+    handler.
 
     The type of a key names its algorithm, and for an asymmetric key its half:
     {!Key.type-public} or {!Key.type-private_}. The compiler rejects an HMAC key
@@ -112,17 +113,24 @@ module Key : sig
       Raises [Invalid_argument] for other [bits]. *)
 
   val generate_pair :
-    ?extractable:bool -> ?modulus_bits:int -> 'a pair_algorithm -> 'a pair
+    ?extractable:bool ->
+    ?modulus_bits:int ->
+    ?public_exponent:int ->
+    'a pair_algorithm ->
+    'a pair
   (** [generate_pair algorithm] makes a random key pair. The public key is
-      always extractable, as Web Crypto says. [modulus_bits] is for RSA only:
-      2048 by default, and the public exponent is 65537. The usages follow the
-      algorithm: [verify] on the public and [sign] on the private key of
-      RSASSA-PKCS1-v1_5, RSA-PSS, ECDSA and Ed25519; [encrypt] and [wrapKey],
-      and [decrypt] and [unwrapKey], for RSA-OAEP; [deriveBits] on the private
-      key of ECDH and X25519.
+      always extractable, as Web Crypto says. [modulus_bits] and
+      [public_exponent] are for RSA only: 2048 and 65537 by default. [workerd]
+      accepts 3 and 65537 as the exponent and rejects any other value, as a
+      {!Promise.Js_error}. The usages follow the algorithm: [verify] on the
+      public and [sign] on the private key of RSASSA-PKCS1-v1_5, RSA-PSS, ECDSA
+      and Ed25519; [encrypt] and [wrapKey], and [decrypt] and [unwrapKey], for
+      RSA-OAEP; [deriveBits] and [deriveKey] on the private key of ECDH and
+      X25519.
 
-      Raises [Invalid_argument] when [modulus_bits] is under 512, or given for
-      an algorithm that is not RSA. *)
+      Raises [Invalid_argument] when [modulus_bits] is under 512, when
+      [public_exponent] is not positive, or when either is given for an
+      algorithm that is not RSA. *)
 
   (** {2 Import and export} *)
 
@@ -167,6 +175,16 @@ module Key : sig
 
   val extractable : 'kind t -> bool
 
+  val algorithm : 'kind t -> string
+  (** The JSON text of the [algorithm] property of the key, for example
+      [{"name":"AES-GCM","length":256}] or
+      [{"name":"ECDSA","namedCurve":"P-256"}]. The hash of an HMAC or RSA key is
+      an object, [{"name":"SHA-256"}]. *)
+
+  val usages : 'kind t -> string list
+  (** The [usages] property of the key, for example [["sign"; "verify"]]. The
+      order is the one of the runtime. *)
+
   (** {2 Raw keys without options} *)
 
   val import_hmac : hash -> string -> hmac t
@@ -181,6 +199,13 @@ module Key : sig
 
       Raises [Invalid_argument] unless [raw] has 16, 24 or 32 bytes. *)
 end
+
+val timing_safe_equal : string -> string -> bool
+(** [timing_safe_equal a b] is [crypto.subtle.timingSafeEqual], a Cloudflare
+    extension: [true] when [a] and [b] hold the same bytes. The comparison does
+    not stop at the first difference, so its time does not tell an attacker
+    where the strings differ. Strings of different lengths give [false] at once:
+    the length is not secret. Use it to compare MACs, tokens and passwords. *)
 
 val hmac_sign : Key.hmac Key.t -> string -> string
 (** [hmac_sign key data] is the HMAC of [data]. Its length is the digest length
@@ -227,6 +252,39 @@ val hkdf :
 
     Raises [Invalid_argument] when [length] is not positive. A [length] over 255
     times the digest length is a {!Promise.Js_error}. *)
+
+val pbkdf2_key :
+  hash ->
+  password:string ->
+  salt:string ->
+  iterations:int ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+(** [pbkdf2_key hash ~password ~salt ~iterations algorithm] is
+    [crypto.subtle.deriveKey] with PBKDF2: it derives a key for [algorithm]
+    without giving the bytes to OCaml. The key has the same bytes as the first
+    bytes of {!pbkdf2}. [extractable] is [false] by default. [bits] is as in
+    {!Key.val-generate}: 128, 192 or 256 for AES and 256 by default, and the key
+    length for HMAC. The usages follow the algorithm, as in {!Key.val-generate}.
+    The limit of 100000 iterations on deployed Workers applies.
+
+    Raises [Invalid_argument] when [iterations] is not positive or [bits] is not
+    valid for [algorithm]. *)
+
+val hkdf_key :
+  hash ->
+  key:string ->
+  salt:string ->
+  info:string ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+(** Like {!pbkdf2_key} for HKDF (RFC 5869). [key] is the input key material.
+
+    Raises [Invalid_argument] when [bits] is not valid for the algorithm. *)
 
 (** {1 Signatures} *)
 
@@ -339,6 +397,30 @@ val x25519_derive_bits :
   string
 (** Like {!ecdh_derive_bits} for X25519. The secret has 32 bytes. *)
 
+val ecdh_derive_key :
+  Key.ecdh Key.private_ Key.t ->
+  public:Key.ecdh Key.public Key.t ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+(** [ecdh_derive_key key ~public algorithm] is [crypto.subtle.deriveKey] with
+    ECDH: a key for [algorithm] made from the shared secret of [key] and
+    [public]. Both parties get the same key. [extractable] and [bits] are as in
+    {!pbkdf2_key}. The private key needs the [deriveKey] usage, which keys from
+    {!Key.val-generate_pair} and {!Key.val-import} have.
+
+    Raises [Invalid_argument] when [bits] is not valid for [algorithm]. *)
+
+val x25519_derive_key :
+  Key.x25519 Key.private_ Key.t ->
+  public:Key.x25519 Key.public Key.t ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+(** Like {!ecdh_derive_key} for X25519. *)
+
 (** {1 Wrapping keys} *)
 
 type format =
@@ -358,6 +440,13 @@ type _ wrapper =
       aad : string option;
     }
       -> 'role wrapper
+  | Aes_cbc : { key : Key.aes_cbc Key.t; iv : string } -> 'role wrapper
+  | Aes_ctr : {
+      key : Key.aes_ctr Key.t;
+      counter : string;
+      counter_bits : int;
+    }
+      -> 'role wrapper
   | Rsa_oaep_wrap : {
       key : Key.rsa_oaep Key.public Key.t;
       label : string option;
@@ -370,17 +459,21 @@ type _ wrapper =
       -> unwrapping wrapper
       (** A key that wraps other keys, with the algorithm parameters. The index
           tells the direction: RSA-OAEP wraps with the public key and unwraps
-          with the private key. A key from {!Key.import_aes_gcm} cannot wrap;
-          use {!Key.val-generate} or {!Key.val-import}. *)
+          with the private key. [Aes_cbc] and [Aes_ctr] take the parameters of
+          {!aes_cbc_encrypt} and {!aes_ctr_encrypt}; they do not authenticate
+          the wrapped key, so prefer [Aes_kw] or [Aes_gcm]. A key from
+          {!Key.import_aes_gcm} cannot wrap; use {!Key.val-generate} or
+          {!Key.val-import}. *)
 
 val wrap_key : wrapping wrapper -> format:format -> 'kind Key.t -> string
 (** [wrap_key wrapper ~format key] is [crypto.subtle.wrapKey]: the key [key],
     exported in [format] and encrypted. [key] must be extractable. The wrapping
     key needs the [wrapKey] usage.
 
-    Raises [Invalid_argument] when [Aes_gcm] has an empty [iv]. Other failures,
-    such as a non-extractable [key] or an unfit [format], raise
-    {!Promise.Js_error}. *)
+    Raises [Invalid_argument] when [Aes_gcm] has an empty [iv], when [Aes_cbc]
+    has an [iv] that is not 16 bytes, or when [Aes_ctr] has a bad [counter] or
+    [counter_bits]. Other failures, such as a non-extractable [key] or an unfit
+    [format], raise {!Promise.Js_error}. *)
 
 val unwrap_key :
   ?extractable:bool -> unwrapping wrapper -> 'k Key.import -> string -> 'k
@@ -388,7 +481,7 @@ val unwrap_key :
     [wrapped] and imports the result as [what] says. A wrong key or changed data
     raises {!Promise.Js_error}.
 
-    Raises [Invalid_argument] when [Aes_gcm] has an empty [iv]. *)
+    Raises [Invalid_argument] for the same wrapper arguments as {!wrap_key}. *)
 
 (** {1 Streaming digests} *)
 
