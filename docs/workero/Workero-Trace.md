@@ -50,6 +50,15 @@ module Request : sig ... end
 The request of a fetch invocation.
 
 ```ocaml
+type websocket_event = 
+  | Ws_message
+  | Ws_close of {
+    code : int;
+    was_clean : bool;
+  }
+  | Ws_error (* The event that woke a Durable Object with a hibernated WebSocket. *)
+```
+```ocaml
 type event = 
   | Fetch of {
     request : Request.t;
@@ -63,7 +72,23 @@ type event =
     queue : string;
     batch_size : int;
   }
-  | Other of Js_of_ocaml.Js.Unsafe.any (* Any other event, such as an alarm or an email, as the runtime gives it. *)
+  | Alarm of {
+    scheduled_time : float;
+  } (* A Durable Object alarm. scheduled_time is milliseconds since the Unix epoch. *)
+  | Email of {
+    mail_from : string;
+    rcpt_to : string;
+    raw_size : int;
+  }
+  | Rpc of {
+    method_ : string;
+  } (* A call of a method of an entrypoint or Durable Object through RPC. *)
+  | Tail of {
+    consumed : string option list;
+  } (* The invocation of a tail Worker. consumed holds the script name of each producer in the batch. *)
+  | Hibernatable_websocket of websocket_event
+  | Custom (* A custom event, which carries no information. *)
+  | Other of Js_of_ocaml.Js.Unsafe.any (* Any other event, as the runtime gives it. *)
 ```
 ```ocaml
 type t
@@ -114,3 +139,8 @@ val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any
 ```
 Fields that have no accessor, such as `scriptVersion`, are read from here with [`Decode`](./Workero-Decode.md).
+
+```ocaml
+module Stream : sig ... end
+```
+The events of a streaming tail Worker, see [`Workero.tail_stream`](./Workero.md#val-tail_stream).

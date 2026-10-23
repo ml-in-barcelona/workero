@@ -245,6 +245,13 @@ val tail : (Trace.t list -> Env.t -> Context.t -> unit) -> unit
 `tail handler` registers the tail handler, like `tail(events, env, ctx)` in a JavaScript Worker. It receives the trace items of the producer Workers that list this Worker in `tail_consumers`. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers; [`Context.wait_until`](./Workero-Context.md#val-wait_until) runs work after the handler returns. An exception raised by the handler rejects the event Promise. The runtime ignores a tail failure for the producer, so log inside the handler. Build a tail Worker as its own program, and do not list a Worker as its own tail consumer.
 
 ```ocaml
+val tail_stream : 
+  (Trace.Stream.t -> Env.t -> Context.t -> Trace.Stream.t -> unit) ->
+  unit
+```
+`tail_stream handler` registers the streaming tail handler, like `tailStream(onset, env, ctx)` in a JavaScript Worker. The runtime calls `handler` once for each invocation of a producer Worker that lists this Worker in `streaming_tails`, with the onset event. `handler` returns the function that receives each later event of the same invocation, as it happens, up to the outcome. Both run in a fiber, like [`tail`](./#val-tail). Build a tail Worker as its own program.
+
+```ocaml
 val fetch : 
   ?signal:Abort_signal.t ->
   ?method_:Method.t ->

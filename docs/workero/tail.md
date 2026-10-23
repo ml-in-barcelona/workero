@@ -49,13 +49,34 @@ The runtime calls the handler after the producer invocation ends, and for the su
 ## Read a trace item
 
 - [`Workero.Trace.outcome`](./Workero-Trace.md#type-outcome) is `Ok`, `Exception`, `Canceled` (often a client that disconnected) or another [`Workero.Trace.outcome`](./Workero-Trace.md#type-outcome).
-- [`Workero.Trace.event`](./Workero-Trace.md#type-event) is `Fetch` with its [`Workero.Trace.Request.t`](./Workero-Trace-Request.md#type-t) and response status, `Scheduled`, `Queue`, or `Other` with the raw value for any other event.
+- [`Workero.Trace.event`](./Workero-Trace.md#type-event) is `Fetch` with its [`Workero.Trace.Request.t`](./Workero-Trace-Request.md#type-t) and response status, `Scheduled`, `Queue`, `Alarm`, `Email`, `Rpc`, `Tail`, `Hibernatable_websocket`, `Custom`, or `Other` with the raw value for any other event.
 - [`Workero.Trace.logs`](./Workero-Trace.md#val-logs) lists each console call with its level and its arguments as `Jsonkit.t` values. The runtime serializes the arguments before it gives them to the tail Worker, so `undefined` reads as ``Null`, a `BigInt` as a string and a function as its source text.
 - [`Workero.Trace.exceptions`](./Workero-Trace.md#val-exceptions) lists the uncaught exceptions.
 - [`Workero.Trace.script_name`](./Workero-Trace.md#val-script_name), [`Workero.Trace.event_timestamp`](./Workero-Trace.md#val-event_timestamp), [`Workero.Trace.truncated`](./Workero-Trace.md#val-truncated), [`Workero.Trace.wall_time`](./Workero-Trace.md#val-wall_time) and [`Workero.Trace.cpu_time`](./Workero-Trace.md#val-cpu_time) give the rest.
 The URL and headers of a request are redacted by default. [`Workero.Trace.Request.unredacted`](./Workero-Trace-Request.md#val-unredacted) gives the raw values. A field that has no accessor, such as `scriptVersion`, is read from [`Workero.Trace.to_js`](./Workero-Trace.md#val-to_js) with [`Workero.Decode`](./Workero-Decode.md).
 
 
+## Stream events
+
+A streaming tail Worker gets each event of an invocation as it happens, not after it ends. Register [`Workero.tail_stream`](./Workero.md#val-tail_stream). The runtime calls it once per invocation with the onset, and the function that it returns gets the later events, up to the outcome.
+
+The producer lists the Worker in `streamingTails` in a `workerd` config.
+
+```ocaml
+let () =
+  Workero.tail_stream (fun onset _env _ctx ->
+      (match Workero.Trace.Stream.kind onset with
+      | Onset { info = Fetch { url; _ }; _ } -> Workero.Console.log url
+      | _ -> ());
+      fun event ->
+        match Workero.Trace.Stream.kind event with
+        | Exception { name; message; _ } ->
+            Workero.Console.error (name ^ ": " ^ message)
+        | _ -> ())
+```
+[`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#type-kind) is [`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#type-kind): `Onset`, `Log`, `Exception`, `Return`, `Outcome`, `Span_open`, `Span_close`, `Diagnostic_channel`, `Attributes` or `Other`. Events of one invocation share [`Workero.Trace.Stream.invocation_id`](./Workero-Trace-Stream.md#val-invocation_id) and arrive with a growing [`Workero.Trace.Stream.sequence`](./Workero-Trace-Stream.md#val-sequence).
+
+
 ## Limits
 
-Streaming tails are not supported: Workero has no `tailStream` handler. See [Troubleshooting and support](./known_issues.md). In local `workerd`, [`Workero.Trace.wall_time`](./Workero-Trace.md#val-wall_time) and [`Workero.Trace.cpu_time`](./Workero-Trace.md#val-cpu_time) are `0.` and [`Workero.Trace.script_name`](./Workero-Trace.md#val-script_name) is `None`.
+In local `workerd`, [`Workero.Trace.wall_time`](./Workero-Trace.md#val-wall_time) and [`Workero.Trace.cpu_time`](./Workero-Trace.md#val-cpu_time) are `0.` and [`Workero.Trace.script_name`](./Workero-Trace.md#val-script_name) is `None`. The tests cannot produce an email or a custom event, so [`Workero.Trace.event.Email`](./Workero-Trace.md#type-event.Email) and [`Workero.Trace.event.Custom`](./Workero-Trace.md#type-event.Custom) have no test.

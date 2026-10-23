@@ -94,6 +94,16 @@ val tail : (Trace.t list -> Env.t -> Context.t -> unit) -> unit
     log inside the handler. Build a tail Worker as its own program, and do not
     list a Worker as its own tail consumer. *)
 
+val tail_stream :
+  (Trace.Stream.t -> Env.t -> Context.t -> Trace.Stream.t -> unit) -> unit
+(** [tail_stream handler] registers the streaming tail handler, like
+    [tailStream(onset, env, ctx)] in a JavaScript Worker. The runtime calls
+    [handler] once for each invocation of a producer Worker that lists this
+    Worker in [streaming_tails], with the onset event. [handler] returns the
+    function that receives each later event of the same invocation, as it
+    happens, up to the outcome. Both run in a fiber, like {!tail}. Build a tail
+    Worker as its own program. *)
+
 val fetch :
   ?signal:Abort_signal.t ->
   ?method_:Method.t ->

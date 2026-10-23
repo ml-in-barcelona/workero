@@ -85,6 +85,20 @@ let tail handler =
                 (Env.of_js env) (Context.of_js ctx);
               Js.Unsafe.inject Js.undefined)))
 
+let tail_stream handler =
+  register "tailStream" (fun onset env ctx : js ->
+      Async.run (fun () ->
+          flushing (fun () ->
+              let on_event =
+                handler (Trace.Stream.of_js onset) (Env.of_js env)
+                  (Context.of_js ctx)
+              in
+              Async.promising (fun event : js ->
+                  Async.run (fun () ->
+                      flushing (fun () ->
+                          on_event (Trace.Stream.of_js event);
+                          Js.Unsafe.inject Js.undefined))))))
+
 let email handler =
   register "email" (fun message env ctx : js ->
       Async.run (fun () ->

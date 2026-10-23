@@ -1,14 +1,14 @@
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const readSink = async (env) => (await env.SINK.fetch("http://sink/")).json();
 
-const waitFor = async (env, count) => {
+const waitUntil = async (env, ready) => {
   let seen;
   for (let i = 0; i < 100; i++) {
-    seen = await readSink(env);
-    if (seen.items.length >= count && seen.after.length >= count) return seen;
+    seen = { ...(await readSink(env)), meta: await (await env.SINK_2.fetch("http://sink/")).json() };
+    if (ready(seen)) return seen;
     await sleep(50);
   }
-  throw new Error(`expected ${count} trace items, the sink has ${JSON.stringify(seen)}`);
+  throw new Error(`trace items did not arrive, the sinks have ${JSON.stringify(seen)}`);
 };
 
 const fetchItem = (items, pathname) => items.find((i) => i.event.kind === "fetch" && new URL(i.event.url).pathname === pathname);
@@ -101,9 +101,81 @@ const cases = [
   {
     name: "the handler awaits a fetch and wait_until runs after it",
     run: ({ items, after }) => [
-      ...check("items", items.length, 5),
-      ...check("after", after, [1, 1, 1, 1, 1]),
+      ...check("after has one entry per item", after.length, items.length),
+      ...check("every call got whole batches of one", after.filter((n) => n !== 1), []),
     ],
+  },
+  {
+    name: "an RPC call gives an Rpc event",
+    run: ({ items }) => {
+      const item = byKind(items, "rpc");
+      return item ? check("method", item.event.method, "ping") : ["no rpc item"];
+    },
+  },
+  {
+    name: "a Durable Object alarm gives an Alarm event",
+    run: ({ items }) => {
+      const item = byKind(items, "alarm");
+      return item ? check("scheduled_time_set", item.event.scheduled_time_set, true) : ["no alarm item"];
+    },
+  },
+  {
+    name: "hibernated WebSocket events give Hibernatable_websocket events",
+    run: ({ items }) =>
+      check(
+        "events",
+        items.filter((i) => i.event.kind === "hibernatable_websocket").map((i) => i.event.event).sort(),
+        ["close:1000:true", "message"],
+      ),
+  },
+  {
+    name: "the invocation of a tail Worker gives a Tail event",
+    run: ({ meta }) => {
+      const consumed = meta.items.filter((i) => i.event.kind === "tail").map((i) => JSON.stringify(i.event.consumed));
+      return consumed.includes("[null]") ? [] : [`no tail item that consumed the producer, got ${consumed}`];
+    },
+  },
+  {
+    name: "a streaming tail gets the onset, the logs, the return and the outcome in order",
+    run: ({ stream }) => {
+      const events = invocation(stream, "/log");
+      if (!events) return ["no stream onset for /log"];
+      const onset = events[0].event;
+      return [
+        ...check("sequences", events.map((e) => e.sequence), events.map((_, i) => i)),
+        ...check("onset", [onset.kind, onset.info.kind, onset.info.method, onset.execution_model, onset.span_id_set], ["onset", "fetch", "GET", "stateless", true]),
+        ...check("trace id", events.every((e) => e.trace_id_set && e.timestamp_set), true),
+        ...check(
+          "kinds",
+          events.slice(1).map((e) => e.event.kind),
+          ["log", "log", "return", "outcome"],
+        ),
+        ...check("log", events.slice(1, 3).map((e) => [e.event.level, e.event.message]), [["log", ["hello", 1, { a: 2 }]], ["warn", ["careful"]]]),
+        ...check("return", events[3].event.status, 200),
+        ...check("outcome", events[4].event.outcome, "ok"),
+      ];
+    },
+  },
+  {
+    name: "a streaming tail gets the exception of a handler that raises",
+    run: ({ stream }) => {
+      const events = invocation(stream, "/throw");
+      if (!events) return ["no stream onset for /throw"];
+      const exception = events.find((e) => e.event.kind === "exception");
+      return [
+        ...check("exception", exception && [exception.event.name, exception.event.message, exception.event.has_stack], ["Error", "boom", true]),
+        ...check("outcome", events.at(-1).event.outcome, "exception"),
+      ];
+    },
+  },
+  {
+    name: "a streaming tail gets the info of a scheduled, a queue and an RPC invocation",
+    run: ({ stream }) =>
+      check(
+        "infos",
+        ["scheduled", "queue", "jsrpc", "alarm"].map((kind) => stream.some((e) => e.event.kind === "onset" && e.event.info.kind === kind)),
+        [true, true, true, true],
+      ),
   },
 ];
 
@@ -124,9 +196,15 @@ const classCase = async (env) => {
   return problems.length ? [`class tail: ${problems.join("; ")}`] : [];
 };
 
+const invocation = (stream, pathname) => {
+  const onset = stream.find((e) => e.event.kind === "onset" && e.event.info.url && new URL(e.event.info.url).pathname === pathname);
+  return onset && stream.filter((e) => e.invocation_id === onset.invocation_id).sort((a, b) => a.sequence - b.sequence);
+};
+
 export default {
   async test(_controller, env) {
     await env.SINK.fetch("http://sink/", { method: "DELETE" });
+    await env.SINK_2.fetch("http://sink/", { method: "DELETE" });
     await (await env.PRODUCER.fetch("http://test/log?token=abc", { headers: { authorization: "Bearer x" } })).text();
     await (await env.PRODUCER.fetch("http://test/odd")).text();
     await env.PRODUCER.fetch("http://test/throw").then(
@@ -138,13 +216,33 @@ export default {
       { id: "m1", timestamp: new Date(0), body: "a", attempts: 1 },
       { id: "m2", timestamp: new Date(0), body: "b", attempts: 1 },
     ]);
-    const seen = await waitFor(env, 5);
+    await env.RPC.ping();
+    await (await env.PRODUCER.fetch("http://test/alarm")).text();
+    const upgrade = await env.PRODUCER.fetch("http://test/ws", { headers: { Upgrade: "websocket" } });
+    const ws = upgrade.webSocket;
+    ws.accept();
+    const echoed = new Promise((resolve) => ws.addEventListener("message", resolve));
+    ws.send("hi");
+    await echoed;
+    ws.close(1000);
+    const kinds = ["fetch", "scheduled", "queue", "rpc", "alarm", "hibernatable_websocket"];
+    const seen = await waitUntil(
+      env,
+      (s) =>
+        kinds.every((k) => s.items.some((i) => i.event.kind === k)) &&
+        s.items.filter((i) => i.event.kind === "hibernatable_websocket").length >= 2 &&
+        s.after.length >= s.items.length &&
+        s.meta.items.some((i) => i.event.kind === "tail") &&
+        s.stream.some((e) => e.event.kind === "outcome"),
+    );
+    await sleep(300);
+    const final = await waitUntil(env, () => true);
     const failures = await classCase(env);
     for (const c of cases) {
-      const problems = c.run(seen);
+      const problems = c.run(final);
       if (problems.length) failures.push(`${c.name}: ${problems.join("; ")}`);
       console.log(`${problems.length ? "FAIL" : "ok"} - ${c.name}`);
     }
-    if (failures.length) throw new Error(failures.join("\n"));
+    if (failures.length) throw new Error(failures.join("\n") + "\n" + JSON.stringify(final));
   },
 };
