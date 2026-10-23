@@ -63,5 +63,11 @@ val reply : t -> from:string -> to_:string -> string -> unit
       when the runtime rejects the reply, or when the runtime has no
       [cloudflare:email] module (workerd). *)
 
+val reply_stream : t -> from:string -> to_:string -> Stream.t -> unit
+(** Like {!reply}, with the raw message as a stream, for a message that is large
+    or built in pieces. The stream must hold the same complete message, with the
+    same headers. The runtime reads the stream, so do not read it yourself.
+    Suspends. *)
+
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any

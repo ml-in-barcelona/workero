@@ -43,7 +43,7 @@ Raises `Invalid_argument` when the body is not binary data.
 ```ocaml
 val body_js : t -> Js_of_ocaml.Js.Unsafe.any
 ```
-The body as the runtime delivered it. Use it for a message that another producer sent with the `v8` content type.
+The body as the runtime delivered it. Use it for a message sent with the `v8` content type, for example with `~content_type:`V8` in [`send`](./Workero-Queue.md#val-send).
 
 ```ocaml
 val ack : t -> unit

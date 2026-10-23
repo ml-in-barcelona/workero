@@ -24,23 +24,42 @@ type body =
 The body of a message. Each constructor sets the content type, so a body and its content type cannot disagree.
 
 ```ocaml
+type content_type = [ 
+  | `Json
+  | `Text
+  | `Bytes
+  | `V8
+ ]
+```
+How the runtime serialises a message body. A body constructor implies one (`Json` implies ``Json`, and so on). ``V8` sends the body with the V8 structured clone format instead, which a consumer reads as the JavaScript value: a `Json` object arrives as an object and a `Bytes` body as an `ArrayBuffer`. Use it for values that JSON cannot hold, such as `Date` or `Map`. Pull consumers read it less well, and the dashboard shows it Base64-encoded.
+
+```ocaml
 type message
 ```
 A message to send in a batch, made by [`message`](./#val-message).
 
 ```ocaml
-val message : ?delay_seconds:int -> body -> message
+val message : 
+  ?content_type:content_type ->
+  ?delay_seconds:int ->
+  body ->
+  message
 ```
-`message body` is a message for [`send_batch`](./#val-send_batch). `delay_seconds` delays its delivery, from 0 to 86400\.
+`message body` is a message for [`send_batch`](./#val-send_batch). `content_type` defaults to the one that `body` implies. `delay_seconds` delays its delivery, from 0 to 86400\.
 
-Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, or when `body` is `Json` with a float that JSON cannot write (`nan` or an infinity).
+Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, when `content_type` is not ``V8` and differs from the one `body` implies, or when `body` is `Json` with a float that JSON cannot write (`nan` or an infinity).
 
 ```ocaml
-val send : ?delay_seconds:int -> t -> body -> unit
+val send : 
+  ?content_type:content_type ->
+  ?delay_seconds:int ->
+  t ->
+  body ->
+  unit
 ```
-`send queue body` adds one message to the queue. It suspends until the queue accepts it. Call it inside an event handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function. `delay_seconds` delays delivery, from 0 to 86400\.
+`send queue body` adds one message to the queue. It suspends until the queue accepts it. Call it inside an event handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function. `content_type` defaults to the one that `body` implies. `delay_seconds` delays delivery, from 0 to 86400\.
 
-Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400\.
+Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, or when `content_type` is not ``V8` and differs from the one `body` implies.
 
 raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects the message, for example when it is too large.
 ```ocaml

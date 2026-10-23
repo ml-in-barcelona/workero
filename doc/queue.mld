@@ -79,12 +79,17 @@ only to messages without their own delay. Other values raise [Invalid_argument].
 Queue rejections raise {!Workero.Js_error}. See the
 {{:https://developers.cloudflare.com/queues/platform/limits/}Queues limits}.
 
+Pass [~content_type:`V8] to {!Workero.Queue.send} or
+{!Workero.Queue.val-message} to send the body in the [v8] structured clone
+format instead. The consumer then reads the JavaScript value with
+{!Workero.Queue.Message.body_js}. Any other [content_type] must match the body,
+or the call raises [Invalid_argument].
+
 Use {!Workero.Queue.Message.body_json}, {!Workero.Queue.Message.body_text} or
 {!Workero.Queue.Message.body_bytes} to read the delivered body. The consumer
 does not receive a content-type field. A [Text] body also reads as a JSON
 string, and a reader that cannot decode the body raises [Invalid_argument].
-For a [v8] message sent by another producer, use
-{!Workero.Queue.Message.body_js}. This library does not expose every JavaScript
+For a [v8] message, use {!Workero.Queue.Message.body_js}. This library does not expose every JavaScript
 Queues API feature. The {!Workero.Queue} reference lists the supported calls.
 
 {1 Acknowledge or retry a delivery}

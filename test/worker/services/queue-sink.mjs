@@ -6,7 +6,7 @@ const accepted = { metadata: { metrics: { backlogCount: 0, backlogBytes: 0, olde
 const entry = (format, bytes, delay) => ({
   format,
   delay,
-  body: format === "bytes" ? hex(bytes) : new TextDecoder().decode(bytes),
+  body: format === "text" || format === "json" ? new TextDecoder().decode(bytes) : hex(bytes),
 });
 
 export default {

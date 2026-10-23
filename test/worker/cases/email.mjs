@@ -88,7 +88,25 @@ const cases = [
           isEmailMessage: true,
           from: "support@example.com",
           to: "sender@example.org",
+          rawIsStream: false,
           raw: "From: support@example.com\r\nTo: a@example.org\r\nIn-Reply-To: <1@example.org>\r\n\r\nthanks é\r\n",
+        },
+      ],
+      error: null,
+    },
+  },
+  {
+    name: "Email.reply_stream builds an EmailMessage with a stream as the raw message",
+    spec: message("reply-stream@example.com"),
+    expected: {
+      calls: [
+        {
+          op: "reply",
+          isEmailMessage: true,
+          from: "support@example.com",
+          to: "sender@example.org",
+          rawIsStream: true,
+          raw: "From: support@example.com\r\nIn-Reply-To: <1@example.org>\r\n\r\nstreamed é\r\n",
         },
       ],
       error: null,
