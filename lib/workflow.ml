@@ -47,18 +47,37 @@ module Duration = struct
   let to_js (t : t) = number t
 end
 
-type event = { payload : Rpc.value; timestamp : float; instance_id : string }
+type schedule = { cron : string; scheduled_time : float }
+
+type event = {
+  payload : Rpc.value;
+  timestamp : float;
+  instance_id : string;
+  workflow_name : string;
+  schedule : schedule option;
+}
 
 let time_of_js v =
   if typeof v = "number" then Js.float_of_number (Js.Unsafe.coerce v)
   else Js.float_of_number (Js.Unsafe.coerce (meth v "getTime" [||]))
+
+let schedule_of_js v =
+  {
+    cron = Decode.(field "cron" string) v;
+    scheduled_time = Decode.(field "scheduledTime" float) v;
+  }
 
 let event_of_js v =
   {
     payload = value_of_js (Js.Unsafe.get v "payload");
     timestamp = time_of_js (Js.Unsafe.get v "timestamp");
     instance_id = Decode.(field "instanceId" string) v;
+    workflow_name = Decode.(field "workflowName" string) v;
+    schedule = Decode.(field "schedule" (option schedule_of_js)) v;
   }
+
+let error_of_js e =
+  (Decode.(field "name" string) e, Decode.(field "message" string) e)
 
 let rpc_call ~decode stub name args =
   let args = Js.Unsafe.inject (Js.array (Array.of_list args)) in
@@ -70,17 +89,77 @@ let rpc_call ~decode stub name args =
 module Step = struct
   type t = js
   type backoff = Constant | Linear | Exponential
-  type retries = { limit : int; delay : Duration.t; backoff : backoff option }
+  type config = { retries_limit : int option; backoff : backoff option }
+
+  type context = {
+    attempt : int;
+    step_name : string;
+    step_count : int;
+    config : config;
+  }
+
+  type delay_context = { delay_ctx : context; delay_error : string * string }
+  type delay = Fixed of Duration.t | Dynamic of (delay_context -> Duration.t)
+  type retries = { limit : int; delay : delay; backoff : backoff option }
+
+  let check_limit ~who limit =
+    if limit < 0 || limit > 10_000 then
+      invalid_arg (who ^ ": limit must be in 0..10000")
 
   let retries ?backoff ~limit ~delay () =
-    if limit < 0 || limit > 10_000 then
-      invalid_arg "Workero.Workflow.Step.retries: limit must be in 0..10000";
-    { limit; delay; backoff }
+    check_limit ~who:"Workero.Workflow.Step.retries" limit;
+    { limit; delay = Fixed delay; backoff }
+
+  let retries_with ?backoff ~limit delay =
+    check_limit ~who:"Workero.Workflow.Step.retries_with" limit;
+    { limit; delay = Dynamic delay; backoff }
 
   let backoff_name = function
     | Constant -> "constant"
     | Linear -> "linear"
     | Exponential -> "exponential"
+
+  let backoff_of_name = function
+    | "constant" -> Some Constant
+    | "linear" -> Some Linear
+    | "exponential" -> Some Exponential
+    | _ -> None
+
+  let present v = not (is_nullish v || typeof v = "undefined")
+
+  let config_of_js v =
+    let retries = if present v then Js.Unsafe.get v "retries" else v in
+    if present retries then
+      {
+        retries_limit = Decode.(field "limit" (option int)) retries;
+        backoff =
+          Option.bind
+            Decode.(field "backoff" (option string) retries)
+            backoff_of_name;
+      }
+    else { retries_limit = None; backoff = None }
+
+  let context_of_js v =
+    let step = Js.Unsafe.get v "step" in
+    {
+      attempt = Decode.(field "attempt" int) v;
+      step_name = Decode.(field "name" string) step;
+      step_count = Decode.(field "count" int) step;
+      config = config_of_js (Js.Unsafe.get v "config");
+    }
+
+  let delay_to_js = function
+    | Fixed d -> Duration.to_js d
+    | Dynamic f ->
+        Js.Unsafe.inject
+          (Async.promising (fun (arg : js) : js ->
+               Async.run (fun () ->
+                   Duration.to_js
+                     (f
+                        {
+                          delay_ctx = context_of_js (Js.Unsafe.get arg "ctx");
+                          delay_error = error_of_js (Js.Unsafe.get arg "error");
+                        }))))
 
   let check_name ~who name =
     check_length ~who ~what:"the step name" ~max:256 name
@@ -92,7 +171,7 @@ module Step = struct
         (List.filter_map Fun.id
            [
              Some ("limit", number r.limit);
-             Some ("delay", Duration.to_js r.delay);
+             Some ("delay", delay_to_js r.delay);
              field "backoff" (fun b -> str (backoff_name b)) r.backoff;
            ])
     in
@@ -102,23 +181,60 @@ module Step = struct
         field "timeout" Duration.to_js timeout;
       ]
 
-  type context = { attempt : int }
+  type rollback_context = {
+    rollback_ctx : context;
+    rollback_error : string * string;
+    rollback_output : Rpc.value;
+  }
 
-  let do_ ?retries ?timeout t name f =
+  type rollback = {
+    handler : rollback_context -> unit;
+    rollback_retries : retries option;
+    rollback_timeout : Duration.t option;
+  }
+
+  let rollback ?retries ?timeout handler =
+    { handler; rollback_retries = retries; rollback_timeout = timeout }
+
+  let rollback_to_js r =
+    let handler =
+      Async.promising (fun (arg : js) : js ->
+          Async.run (fun () ->
+              mapping_non_retryable (fun () ->
+                  r.handler
+                    {
+                      rollback_ctx = context_of_js (Js.Unsafe.get arg "ctx");
+                      rollback_error = error_of_js (Js.Unsafe.get arg "error");
+                      rollback_output = value_of_js (Js.Unsafe.get arg "output");
+                    };
+                  Js.Unsafe.inject Js.undefined)))
+    in
+    Binding.options
+      (("rollback", Js.Unsafe.inject handler)
+      ::
+      (match
+         config ?retries:r.rollback_retries ?timeout:r.rollback_timeout ()
+       with
+      | [] -> []
+      | fields -> [ ("rollbackConfig", Binding.options fields) ]))
+
+  let do_ ?retries ?timeout ?rollback t name f =
     check_name ~who:"Workero.Workflow.Step.do_" name;
     let callback =
       Async.promising (fun (ctx : js) : js ->
           Async.run (fun () ->
               mapping_non_retryable (fun () ->
-                  let attempt = Decode.(field "attempt" int) ctx in
-                  value_to_js (f { attempt }))))
+                  value_to_js (f (context_of_js ctx)))))
     in
+    let config = config ?retries ?timeout () in
     let args =
-      match config ?retries ?timeout () with
-      | [] -> [| str name; callback |]
-      | fields -> [| str name; Binding.options fields; callback |]
+      match (rollback, config) with
+      | None, [] -> [ str name; callback ]
+      | None, fields -> [ str name; Binding.options fields; callback ]
+      | Some r, fields ->
+          [ str name; Binding.options fields; callback; rollback_to_js r ]
     in
-    rpc_call ~decode:value_of_js t "do" (Array.to_list args)
+    rpc_call ~decode:value_of_js t "do" args
 
   let sleep t name duration =
     check_name ~who:"Workero.Workflow.Step.sleep" name;
@@ -141,6 +257,12 @@ module Step = struct
            "%s: the event type %S must have only letters, digits, - and _" who
            type_)
 
+  type step_event = {
+    event_type : string;
+    event_payload : Rpc.value;
+    event_timestamp : float;
+  }
+
   let wait_for_event ?timeout t name ~type_ =
     let who = "Workero.Workflow.Step.wait_for_event" in
     check_name ~who name;
@@ -154,7 +276,12 @@ module Step = struct
         | Some d -> [ ("timeout", Duration.to_js d) ]))
     in
     rpc_call
-      ~decode:(fun v -> value_of_js (Js.Unsafe.get v "payload"))
+      ~decode:(fun v ->
+        {
+          event_type = Decode.(field "type" string) v;
+          event_payload = value_of_js (Js.Unsafe.get v "payload");
+          event_timestamp = time_of_js (Js.Unsafe.get v "timestamp");
+        })
       t "waitForEvent"
       [ str name; options ]
 
@@ -167,8 +294,7 @@ let classes () =
     Js.Unsafe.set root "workflows" (Js.Unsafe.obj [||]);
   Js.Unsafe.get root "workflows"
 
-let register name run =
-  let who = "Workero.Workflow.register" in
+let register_with ~who ~event_of_js name run =
   if not (is_class_name name) then
     invalid_arg (Printf.sprintf "%s: %S is not a valid class name" who name);
   let root = Registry.root () in
@@ -191,6 +317,9 @@ let register name run =
   in
   Js.Unsafe.set (classes ()) name
     (Js.Unsafe.inject (Js.wrap_callback run_fiber))
+
+let register name run =
+  register_with ~who:"Workero.Workflow.register" ~event_of_js name run
 
 type t = js
 
@@ -250,8 +379,56 @@ module Instance = struct
   let status t = Binding.call ~decode:state_of_js t "status" [||]
   let pause t = Binding.call ~decode:Decode.unit t "pause" [||]
   let resume t = Binding.call ~decode:Decode.unit t "resume" [||]
-  let terminate t = Binding.call ~decode:Decode.unit t "terminate" [||]
-  let restart t = Binding.call ~decode:Decode.unit t "restart" [||]
+
+  type step_kind = Do | Sleep | Wait_for_event
+
+  type restart_from = {
+    name : string;
+    count : int option;
+    kind : step_kind option;
+  }
+
+  let restart_from ?count ?kind name =
+    Option.iter
+      (fun n ->
+        if n < 1 then
+          invalid_arg "Workero.Workflow.Instance.restart_from: count is below 1")
+      count;
+    { name; count; kind }
+
+  let kind_name = function
+    | Do -> "do"
+    | Sleep -> "sleep"
+    | Wait_for_event -> "waitForEvent"
+
+  let optional_args fields =
+    match List.filter_map Fun.id fields with
+    | [] -> [||]
+    | fields -> [| Binding.options fields |]
+
+  let terminate ?rollback t =
+    Binding.call ~decode:Decode.unit t "terminate"
+      (optional_args
+         [
+           Option.map
+             (fun b -> ("rollback", Js.Unsafe.inject (Js.bool b)))
+             rollback;
+         ])
+
+  let restart ?from t =
+    let from_js (f : restart_from) =
+      Binding.options
+        (List.filter_map Fun.id
+           [
+             Some ("name", str f.name);
+             Option.map (fun n -> ("count", number n)) f.count;
+             Option.map (fun k -> ("type", str (kind_name k))) f.kind;
+           ])
+    in
+    Binding.call ~decode:Decode.unit t "restart"
+      (optional_args [ Option.map (fun f -> ("from", from_js f)) from ])
+
+  let delete t = Binding.call ~decode:Decode.unit t "delete" [||]
 
   let send_event t ~type_ payload =
     Step.check_event_type ~who:"Workero.Workflow.Instance.send_event" type_;
@@ -262,20 +439,36 @@ module Instance = struct
       |]
 end
 
+type retention = js
+
+let retention ?success ?error () =
+  let field name = Option.map (fun d -> (name, Duration.to_js d)) in
+  Binding.options
+    (List.filter_map Fun.id
+       [ field "successRetention" success; field "errorRetention" error ])
+
 type options = js
 
-let options ?id ?params () =
+let check_id id =
   Option.iter
     (check_length ~who:"Workero.Workflow.options" ~what:"the instance id"
        ~max:100)
-    id;
+    id
+
+let options ?id ?params ?retention () =
+  check_id id;
   let field name f = Option.map (fun v -> (name, f v)) in
   Binding.options
     (List.filter_map Fun.id
-       [ field "id" str id; field "params" value_to_js params ])
+       [
+         field "id" str id;
+         field "params" value_to_js params;
+         field "retention" Fun.id retention;
+       ])
 
-let create ?id ?params t =
-  Binding.call ~decode:Decode.js t "create" [| options ?id ?params () |]
+let create ?id ?params ?retention t =
+  Binding.call ~decode:Decode.js t "create"
+    [| options ?id ?params ?retention () |]
 
 type batch_error = {
   index : int;
@@ -302,3 +495,49 @@ let create_batch t items =
     [| Binding.options [ ("instances", instances) ] |]
 
 let get t id = Binding.call ~decode:Decode.js t "get" [| str id |]
+
+let check_count ~who ~what n =
+  if n < 1 || n > 100 then
+    invalid_arg (Printf.sprintf "%s: %s must be in 1..100" who what)
+
+let create_batch_count ?params ?retention t ~count =
+  check_count ~who:"Workero.Workflow.create_batch_count" ~what:"count" count;
+  let field name f = Option.map (fun v -> (name, f v)) in
+  Binding.call
+    ~decode:(fun v ->
+      ( Decode.(field "created" (list js)) v,
+        Decode.(field "errors" (list batch_error_of_js)) v ))
+    t "createBatch"
+    [|
+      Binding.options
+        (List.filter_map Fun.id
+           [
+             Some ("count", number count);
+             field "params" value_to_js params;
+             field "retention" Fun.id retention;
+           ]);
+    |]
+
+type delete_error = {
+  failed_id : string;
+  failed_code : int;
+  failed_message : string;
+}
+
+let delete_batch t ids =
+  check_count ~who:"Workero.Workflow.delete_batch" ~what:"the number of ids"
+    (List.length ids);
+  let ids = Js.Unsafe.inject (Js.array (Array.of_list (List.map str ids))) in
+  Binding.call
+    ~decode:(fun v ->
+      ( Decode.(field "deleted" (list (field "id" string))) v,
+        Decode.(
+          field "errors"
+            (list (fun e ->
+                 {
+                   failed_id = field "id" string e;
+                   failed_code = field "code" int e;
+                   failed_message = field "message" string e;
+                 })))
+          v ))
+    t "deleteBatch" [| ids |]

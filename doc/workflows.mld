@@ -30,7 +30,7 @@ let () =
             (Step.retries ~limit:3 ~delay:(Workflow.Duration.seconds 5)
                ~backoff:Step.Exponential ())
           ~timeout:(Workflow.Duration.minutes 1)
-          (fun { Step.attempt } ->
+          (fun { Step.attempt; _ } ->
             let res = fetch "https://example.com/greeting" in
             Console.log (Printf.sprintf "greeting, attempt %d" attempt);
             `String (Response.body_text res))
@@ -82,12 +82,19 @@ already finished and does not call its callback. So:
   [Exponential]). [timeout] applies to each attempt. Without them the runtime
   uses 5 retries, a 10 second delay, exponential backoff and a 10 minute
   timeout. A step name has at most 256 characters.
+  The callback also gets the step name, the step count (2 for the second step
+  with that name) and the retry configuration.
+  {!Workero.Workflow.Step.retries_with} computes each retry delay from the
+  failed attempt. [~rollback] takes a {!Workero.Workflow.Step.val-rollback}
+  handler that undoes the step: the runtime calls the handlers in reverse order
+  when the instance fails or when
+  {!Workero.Workflow.Instance.terminate} has [~rollback:true].
 - {!Workero.Workflow.Step.sleep} and {!Workero.Workflow.Step.sleep_until}: wait
   for a {!Workero.Workflow.Duration.t} or until a time in milliseconds since the
   epoch, like {!Workero.Date.now}.
 - {!Workero.Workflow.Step.wait_for_event}: wait for an event of a given
-  [type_], sent with {!Workero.Workflow.Instance.send_event}, and return its
-  payload. The type has 1 to 100 letters, digits, [-] or [_]. It fails with
+  [type_], sent with {!Workero.Workflow.Instance.send_event}, and return the
+  event: its type, payload and timestamp. The type has 1 to 100 letters, digits, [-] or [_]. It fails with
   {!Workero.Js_error} after the timeout (24 hours by default). Catch the error
   to go on.
 
@@ -139,12 +146,23 @@ the [payload] of the event. {!Workero.Workflow.create_batch} takes a list of
 {!Workero.Workflow.val-options}, starts up to 100 instances, and returns the
 instances and the errors, for example for an [id] in use.
 {!Workero.Workflow.get} finds an instance by id.
+{!Workero.Workflow.create_batch_count} starts 1 to 100 instances with the same
+params and generated ids, and {!Workero.Workflow.delete_batch} deletes up to 100
+instances by id. {!Workero.Workflow.create}, {!Workero.Workflow.val-options} and
+{!Workero.Workflow.create_batch_count} take a {!Workero.Workflow.val-retention}
+that sets how long the runtime keeps a finished instance.
+
+The {!Workero.Workflow.type-event} of the function also has the
+[workflow_name] and the cron [schedule] of an instance that a [schedules] entry
+of the binding started.
 
 An instance has {!Workero.Workflow.Instance.id},
 {!Workero.Workflow.Instance.val-status}, {!Workero.Workflow.Instance.pause},
 {!Workero.Workflow.Instance.resume}, {!Workero.Workflow.Instance.terminate},
-{!Workero.Workflow.Instance.restart} and
-{!Workero.Workflow.Instance.send_event}. The calls suspend like
+{!Workero.Workflow.Instance.restart}, {!Workero.Workflow.Instance.delete} and
+{!Workero.Workflow.Instance.send_event}. [restart ~from] keeps the stored
+results of the steps before the one named by
+{!Workero.Workflow.Instance.val-restart_from}. The calls suspend like
 {!Workero.Promise.await}. They raise {!Workero.Js_error} when the runtime
 rejects them, for example for a missing instance, an [id] in use, or a
 [send_event] to an instance that is not running. {!Workero.Workflow.create},
