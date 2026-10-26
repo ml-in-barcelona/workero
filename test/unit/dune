@@ -36,10 +36,16 @@
   test_router)
  (modules :standard \ helpers test_json)
  (modes js)
+ (js_of_ocaml
+  (flags
+   (:standard --effects=cps)))
  (libraries helpers workero jsonkit alcotest js_of_ocaml))
 
 (test
  (name test_json)
  (modules test_json)
  (modes js)
+ (js_of_ocaml
+  (flags
+   (:standard --effects=cps)))
  (libraries helpers workero jsonkit alcotest js_of_ocaml))
