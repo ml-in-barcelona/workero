@@ -11,7 +11,8 @@ and run the copy locally.
 - [src/main.ml] handles [GET /], [POST /echo], and [GET /env].
 - [wrangler.toml] points to [_worker/index.js], runs
   [workero build src/main.bc.wasm.js], watches [src/], and sets [GREETING]
-  in [[vars]].
+  in [[vars]]. It enables the [enable_request_signal] compatibility flag, so
+  {!Workero.Request.signal} aborts when the client cancels.
 - [package.json] lists Wrangler 4.151.3 and binaryen 132. binaryen supplies
   [wasm-opt] for wasm_of_ocaml.
 

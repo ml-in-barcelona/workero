@@ -59,7 +59,7 @@ let rec tcp_response container attempts =
   in
   match
     let socket = D.Container.connect container ~port:8080 in
-    Socket.opened socket;
+    ignore (Socket.opened socket);
     Stream.Writer.write (Socket.writer socket)
       "GET /index.html HTTP/1.0\r\n\r\n";
     let response = read_all (Socket.reader socket) in

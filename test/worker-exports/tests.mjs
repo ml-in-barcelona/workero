@@ -16,8 +16,11 @@ export default {
     const queue = await exported(() =>
       env.WORKER.queue("jobs", [{ id: "m1", timestamp: new Date(0), body: "x", attempts: 1 }]),
     );
-    const email = (await (await env.PROBE.fetch("http://probe/")).json()).includes("email");
-    const actual = [fetch && "fetch", scheduled && "scheduled", queue && "queue", email && "email"]
+    const probed = await (await env.PROBE.fetch("http://probe/")).json();
+    const email = probed.includes("email");
+    const tail = probed.includes("tail");
+    const tailStream = probed.includes("tailStream");
+    const actual = [fetch && "fetch", scheduled && "scheduled", queue && "queue", email && "email", tail && "tail", tailStream && "tailStream"]
       .filter(Boolean)
       .join("+");
     if (actual !== env.EXPECT)

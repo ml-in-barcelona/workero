@@ -15,7 +15,7 @@ does not use sockets pays nothing for it.
 let handler _req _env _ctx =
   let open Workero in
   let socket = Socket.connect ~host:"gopher.floodgap.com" ~port:70 () in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   let writer = Socket.writer socket in
   Stream.Writer.write writer "/\r\n";
   Stream.Writer.close writer;
@@ -46,6 +46,9 @@ let () = Workero.serve handler
 - {!Workero.Socket.close} closes both sides. {!Workero.Socket.closed} waits for
   the socket to close.
 
+- {!Workero.Socket.opened} gives the remote and local address, when the runtime
+  reports them.
+
 {1 TLS}
 
 [~secure_transport:On] uses TLS from the first byte. For a protocol that starts
@@ -61,7 +64,7 @@ let handler _req _env _ctx =
     Socket.connect ~secure_transport:Starttls ~host:"db.example.com" ~port:5432
       ()
   in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   let reader = Socket.reader socket and writer = Socket.writer socket in
   Stream.Writer.write writer "plain text opening message";
   ignore (Stream.Reader.read reader);
@@ -75,6 +78,8 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ]}
+
+{!Workero.Socket.upgraded} is [true] on the old socket after the upgrade.
 
 [start_tls] returns a new socket. The old socket stops working. The runtime
 fails the upgrade while a reader or writer still locks a stream, so release both
@@ -94,6 +99,13 @@ workero do this: see [test/worker/upstream.mjs]. With this setup, TLS cannot be
 tested: [~secure_transport:On] fails with an error that mentions TLS, and
 [start_tls] fails with "startTls() is not supported on this connection". To
 test TLS, connect to a real network service.
+
+{1 Incoming connections}
+
+A Worker has no [connect] handler. Cloudflare does not deliver incoming TCP
+connections to a Worker, and the [ExportedHandler] type has no [connect]. Only
+[workerd] calls a [connect] handler, for a Worker that is the [globalOutbound]
+of another Worker. Workero does not export it.
 
 {1 Limits}
 

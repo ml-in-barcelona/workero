@@ -28,9 +28,10 @@ let forward ?headers m to_ =
   Binding.call ~decode:Decode.unit m "forward" args
 
 let reply m ~from ~to_ raw =
+  let raw = match raw with `Text s -> str s | `Stream s -> Stream.to_js s in
   let message =
     Binding.call ~decode:Decode.js (Registry.root ()) "emailMessage"
-      [| str from; str to_; str raw |]
+      [| str from; str to_; raw |]
   in
   Binding.call ~decode:Decode.unit m "reply" [| message |]
 

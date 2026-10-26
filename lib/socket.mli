@@ -13,6 +13,13 @@ type secure_transport =
   | On  (** TLS from the first byte. *)
   | Starttls  (** Plain TCP that {!start_tls} upgrades to TLS. *)
 
+type info = {
+  remote_address : string option;  (** The address of the server, if known. *)
+  local_address : string option;  (** The local address, if known. *)
+}
+(** Address information of an open connection. The runtime may leave a field
+    out. *)
+
 val connect :
   ?secure_transport:secure_transport ->
   ?allow_half_open:bool ->
@@ -35,9 +42,12 @@ val connect :
       when the runtime refuses the address, for example a Cloudflare address, a
       loopback address or port 25. *)
 
-val opened : t -> unit
-(** Waits until the connection is up. Suspends. Raises {!Js_error} when the
-    connection fails. *)
+val opened : t -> info
+(** Waits until the connection is up and gives its {!info}. Suspends. Raises
+    {!Js_error} when the connection fails. *)
+
+val upgraded : t -> bool
+(** [true] once {!start_tls} has upgraded the socket to TLS. *)
 
 val closed : t -> unit
 (** Waits until the socket is closed. Suspends. Raises {!Js_error} when the

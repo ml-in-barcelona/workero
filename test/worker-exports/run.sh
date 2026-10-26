@@ -89,5 +89,7 @@ check scheduled scheduled
 check both fetch+scheduled
 check queue queue
 check email email
+check tail tail
+check tail_stream tailStream
 check none none
 check workflow ""

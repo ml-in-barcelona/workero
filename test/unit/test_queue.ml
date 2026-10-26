@@ -151,6 +151,24 @@ let test_batch () =
   invalid_delay "Workero.Queue.Batch.retry_all" (-1) (fun () ->
       Queue.Batch.retry_all ~delay_seconds:(-1) b)
 
+let test_content_type () =
+  let fields m =
+    Js_of_ocaml.Js.to_string
+      (Js_of_ocaml.Js.Unsafe.fun_call
+         (js_eval "(m => m.contentType + ':' + typeof m.body)")
+         [| inject m |])
+  in
+  Alcotest.(check string)
+    "v8 text" "v8:string"
+    (fields (Queue.message ~content_type:`V8 (Queue.Text "x")));
+  Alcotest.(check string)
+    "implied" "json:object"
+    (fields (Queue.message ~content_type:`Json (Queue.Json (`Assoc []))));
+  Alcotest.check_raises "mismatch"
+    (Invalid_argument
+       "Workero.Queue.message: content type text does not match a bytes body")
+    (fun () -> ignore (Queue.message ~content_type:`Text (Queue.Bytes "x")))
+
 let () =
   Alcotest.run "workero.queue"
     [
@@ -158,6 +176,7 @@ let () =
         [
           Alcotest.test_case "of_env" `Quick test_of_env;
           Alcotest.test_case "delay validation" `Quick test_delay_validation;
+          Alcotest.test_case "content type" `Quick test_content_type;
           Alcotest.test_case "json nan" `Quick test_message_json_nan;
           Alcotest.test_case "message fields" `Quick test_message_fields;
           Alcotest.test_case "message bodies" `Quick test_message_bodies;

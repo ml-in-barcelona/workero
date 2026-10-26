@@ -42,12 +42,37 @@ val pause : t -> unit
 val resume : t -> unit
 ```
 ```ocaml
-val terminate : t -> unit
+val terminate : ?rollback:bool -> t -> unit
+```
+`terminate i` stops the instance. With `~rollback:true` the runtime first runs the [`Step.rollback`](./Workero-Workflow-Step.md#val-rollback) handlers.
+
+```ocaml
+type step_kind = 
+  | Do
+  | Sleep
+  | Wait_for_event
 ```
 ```ocaml
-val restart : t -> unit
+type restart_from
 ```
-Starts again from the beginning.
+A step to restart from.
+
+```ocaml
+val restart_from : ?count:int -> ?kind:step_kind -> string -> restart_from
+```
+`restart_from name` is the step called `name`. `count` picks the nth step with that name, from 1 (the default). `kind` picks a [`Step.do_`](./Workero-Workflow-Step.md#val-do_), a sleep or a [`Step.wait_for_event`](./Workero-Workflow-Step.md#val-wait_for_event) when names repeat across kinds.
+
+Raises `Invalid_argument` when `count` is below 1\.
+
+```ocaml
+val restart : ?from:restart_from -> t -> unit
+```
+Starts again from the beginning. With `from`, the steps before it keep their stored results. The runtime raises [`Js_error`](./Workero.md#exception-Js_error) when no step matches `from`.
+
+```ocaml
+val delete : t -> unit
+```
+Deletes the instance and its stored state. A running instance stops.
 
 ```ocaml
 val send_event : t -> type_:string -> Rpc.value -> unit

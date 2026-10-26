@@ -1,7 +1,7 @@
 
 # Handlers
 
-Register the event handlers that your Worker needs at the top level of its OCaml program. [`Workero.serve`](./Workero.md#val-serve) handles HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) handles cron triggers, [`Workero.queue`](./Workero.md#val-queue) consumes Queue messages and [`Workero.email`](./Workero.md#val-email) receives email. Each registration is independent: a cron-only or queue-only Worker does not need an HTTP handler. Classes for Durable Objects, entrypoints and Workflows are not event handlers. Register them with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register), [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) and [`Workero.Workflow.register`](./Workero-Workflow.md#val-register).
+Register the event handlers that your Worker needs at the top level of its OCaml program. [`Workero.serve`](./Workero.md#val-serve) handles HTTP requests, [`Workero.scheduled`](./Workero.md#val-scheduled) handles cron triggers, [`Workero.queue`](./Workero.md#val-queue) consumes Queue messages, [`Workero.email`](./Workero.md#val-email) receives email and [`Workero.tail`](./Workero.md#val-tail) receives the trace items of other Workers. Each registration is independent: a cron-only or queue-only Worker does not need an HTTP handler. Classes for Durable Objects, entrypoints and Workflows are not event handlers. Register them with [`Workero.Durable_object.register`](./Workero-Durable_object.md#val-register), [`Workero.Entrypoint.register`](./Workero-Entrypoint.md#val-register) and [`Workero.Workflow.register`](./Workero-Workflow.md#val-register).
 
 
 ## Handle HTTP requests
@@ -69,8 +69,13 @@ let () =
       Workero.Email.forward message "me@example.org")
 ```
 
+## Receive trace items
+
+[`Workero.tail`](./Workero.md#val-tail) takes a list of [`Workero.Trace.t`](./Workero-Trace.md#type-t), `env` and `ctx`. It returns `unit`. Register it in a Worker of its own, which a producer lists in `tail_consumers`. The [Tail Workers guide](./tail.md) shows the configuration and a complete handler.
+
+
 ## Runtime behavior
 
-Each event handler runs in a fiber. You can call [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await) inside it while other events run. The build's `index.js` exports only the handlers registered at startup: `fetch`, `scheduled`, `queue` and/or `email`. A program with no event handlers and no [Durable Object classes](./durable_objects.md), [entrypoint classes](./entrypoints.md) or [Workflow classes](./workflows.md) fails Worker initialization with `workero: the OCaml program registered no handler`.
+Each event handler runs in a fiber. You can call [`Workero.fetch`](./Workero.md#val-fetch), bindings and [`Workero.Promise.await`](./Workero-Promise.md#val-await) inside it while other events run. The build's `index.js` exports only the handlers registered at startup: `fetch`, `scheduled`, `queue`, `email` and/or `tail`. A program with no event handlers and no [Durable Object classes](./durable_objects.md), [entrypoint classes](./entrypoints.md) or [Workflow classes](./workflows.md) fails Worker initialization with `workero: the OCaml program registered no handler`.
 
-An uncaught HTTP handler exception rejects the response Promise, and the runtime returns `500`. An uncaught cron handler exception fails that run. An uncaught Queue handler exception fails that delivery; unacknowledged messages can be retried. An uncaught email handler exception rejects the event, and Cloudflare treats the delivery as failed. Other events continue. See [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue) and [`Workero.email`](./Workero.md#val-email) for their signatures.
+An uncaught HTTP handler exception rejects the response Promise, and the runtime returns `500`. An uncaught cron handler exception fails that run. An uncaught Queue handler exception fails that delivery; unacknowledged messages can be retried. An uncaught email handler exception rejects the event, and Cloudflare treats the delivery as failed. An uncaught tail handler exception rejects the event; the producer is not affected. Other events continue. See [`Workero.serve`](./Workero.md#val-serve), [`Workero.scheduled`](./Workero.md#val-scheduled), [`Workero.queue`](./Workero.md#val-queue), [`Workero.email`](./Workero.md#val-email) and [`Workero.tail`](./Workero.md#val-tail) for their signatures.

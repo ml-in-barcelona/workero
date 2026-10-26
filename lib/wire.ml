@@ -36,7 +36,7 @@ let bytes msg = read ~decode:Decode.bytes msg "arrayBuffer"
 let body_of_string s =
   Js.Unsafe.inject (Typed_array.Bytes.to_uint8Array (Bytes.unsafe_of_string s))
 
-let fetch_init ~who ?(method_ = Method.GET) ?(headers = []) ?body () =
+let fetch_init ~who ?signal ?(method_ = Method.GET) ?(headers = []) ?body () =
   (match (method_, body) with
   | (Method.GET | HEAD), Some _ ->
       invalid_arg (who ^ ": a GET or HEAD request has no body")
@@ -46,6 +46,10 @@ let fetch_init ~who ?(method_ = Method.GET) ?(headers = []) ?body () =
       ("method", str (Method.to_string method_));
       ("headers", headers_of_list headers);
     ]
-    @ match body with Some b -> [ ("body", body_of_string b) ] | None -> []
+    @ (match body with Some b -> [ ("body", body_of_string b) ] | None -> [])
+    @
+    match signal with
+    | Some s -> [ ("signal", Abort_signal.to_js s) ]
+    | None -> []
   in
   Js.Unsafe.obj (Array.of_list fields)

@@ -12,32 +12,49 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Limits of streams, forms and WebSockets
 
-- Workero has no client-disconnect callback for a streamed response. A [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) can reject when the client disconnects.
+- A [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) can reject when the client disconnects. [`Workero.Request.signal`](./Workero-Request.md#val-signal) aborts earlier for a streamed response, but only with the `enable_request_signal` compatibility flag. In `workerd` a handler that only awaits a timer got no abort event, and workero has not checked Cloudflare production, so do not rely on it to detect every disconnect. See [Abort and timeouts](./abort.md).
 - [`Workero.Response.copy`](./Workero-Response.md#val-copy) and [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) share the original body stream. It can be consumed only once. Call [`Workero.Response.clone`](./Workero-Response.md#val-clone) before reading if you need two copies.
 - [`Workero.Request.form_data`](./Workero-Request.md#val-form_data) holds the whole upload in memory. See [Forms](./forms.md).
 
+## Limits of abort signals
+
+- An abort cancels the I/O, not the fiber. OCaml code that computes, or awaits something other than a cancelable request, keeps running until it tests [`Workero.Abort_signal.aborted`](./Workero-Abort_signal.md#val-aborted) or races [`Workero.Abort_signal.to_promise`](./Workero-Abort_signal.md#val-to_promise). [`Workero.Timer.sleep`](./Workero-Timer.md#val-sleep) cannot be canceled.
+- `?signal` exists only on [`Workero.fetch`](./Workero.md#val-fetch), [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) and [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request). Sockets, WebSockets, KV, R2, D1 and Cache take no signal.
+- An abort reason is a message: [`Workero.Abort_controller.abort`](./Workero-Abort_controller.md#val-abort) gives an `AbortError` or a `TimeoutError`, never another JavaScript value.
+- [`Workero.Abort_signal.to_promise`](./Workero-Abort_signal.md#val-to_promise) and [`Workero.Abort_signal.on_abort`](./Workero-Abort_signal.md#val-on_abort) add a listener that stays until the signal aborts. There is no way to remove it, so each call on a signal that never aborts keeps one listener for the life of the signal.
+- [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request) with `?signal` replaces the signal that the request already has. It does not combine them; use [`Workero.Abort_signal.any`](./Workero-Abort_signal.md#val-any) for that.
+
+## HTML rewriting limits
+
+- There is no helper that joins the text chunks of a node. Join them until [`Workero.Html_rewriter.Text_chunk.last_in_text_node`](./Workero-Html_rewriter-Text_chunk.md#val-last_in_text_node).
+- A handler runs as a fiber, which costs about 1\.5 times a plain callback. A page with tens of thousands of matches pays about 2 microseconds more for each match.
+- OCaml exceptions from a handler reach the client only as a truncated body.
+- The tests run in `workerd`. They do not prove the order of two handlers that wait, because Cloudflare does not document it.
+
 ## Binding limits
 
-- [Queues](./queue.md): consumers do not receive the content type. [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json) on a `Text` body gives a JSON string. The other readers require compatible JavaScript value types and raise `Invalid_argument` for incompatible values. A `v8` body can be read only through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js); workero producers cannot send `v8`. `send` and `send_batch` expose `delay_seconds`, but no other send options. Cloudflare checks message size; workero does not. Configure dead letter queues and `max_retries` in `wrangler.toml`.
+- [Queues](./queue.md): consumers do not receive the content type. [`Workero.Queue.Message.body_json`](./Workero-Queue-Message.md#val-body_json) on a `Text` body gives a JSON string. The other readers require compatible JavaScript value types and raise `Invalid_argument` for incompatible values. A `v8` body can be read only through [`Workero.Queue.Message.body_js`](./Workero-Queue-Message.md#val-body_js). `send` and `message` take `~content_type` (``V8` sends the structured clone format), but the tests only show what the producer sends; a real consumer reading a `v8` message is not tested. `send` and `send_batch` expose `delay_seconds` and the content type, but no other send options. Cloudflare checks message size; workero does not. Configure dead letter queues and `max_retries` in `wrangler.toml`.
 - [Rate limiter](./rate_limiter.md): the key is the only call argument. Set the limit and period in `wrangler.toml`. Counts are per location and approximate.
-- [Workers AI](./ai.md): streaming answers and gateway options are not supported. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` for a stream.
+- [Workers AI](./ai.md): [`Workero.Ai.run_stream`](./Workero-Ai.md#val-run_stream) and `?gateway` are wrapped, but the tests use a stub that returns a small stream and only records the options. They do not prove AI Gateway caching, retries, timeouts or logging, or the chunks of a real model stream. [`Workero.Ai.run`](./Workero-Ai.md#val-run) raises `Invalid_argument` for a stream; use `run_stream`. Other options of `env.AI.run` and the other methods of the binding are not wrapped.
 - [Analytics Engine](./analytics_engine.md): `write` returns no result. Cloudflare checks the limits of 20 blobs and 20 doubles; workero does not. There is no query API.
 - [Hyperdrive](./hyperdrive.md): connection details only. There is no query driver, so workero cannot read from the database yet. The host and password are valid only inside the running Worker. In `workerd` the host is a fake name with no database behind it.
-- [Sockets](./socket.md): outbound connections only, from a handler. There is no `connect` handler for incoming TCP and no `Socket.upgraded`. [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives no address information. `workerd` cannot test TLS: with a Worker as outbound, `secure_transport:On` and `start_tls` fail. Cloudflare limits the destination (no Cloudflare addresses, loopback or port 25\) and the number of open connections for each request; see its documentation.
+- [Sockets](./socket.md): outbound connections only, from a handler. There is no `connect` handler for incoming TCP, as Cloudflare has none. [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives the address information that the runtime reports; `workerd` gives no `local_address`. `workerd` cannot test TLS: with a Worker as outbound, `secure_transport:On` and `start_tls` fail, so the tests do not show [`Workero.Socket.upgraded`](./Workero-Socket.md#val-upgraded) becoming `true`. Cloudflare limits the destination (no Cloudflare addresses, loopback or port 25\) and the number of open connections for each request; see its documentation.
 - Sockets: `index.js` always imports `cloudflare:sockets`. It is available on Cloudflare and in `workerd` without a flag. A program run outside a Worker, for example in Node.js, raises `Failure` from [`Workero.Socket.connect`](./Workero-Socket.md#val-connect).
 - [Email](./email.md): `workerd` has no way to deliver a test email, and it has no `cloudflare:email` module. [`Workero.Email.reply`](./Workero-Email.md#val-reply) fails there with a [`Workero.Js_error`](./Workero.md#exception-Js_error). The tests call the handler from a JavaScript harness with a mock message and a stand-in module, so they do not prove what the real runtime accepts.
-- Email: [`Workero.Email.reply`](./Workero-Email.md#val-reply) takes the raw message as a string, not a stream. [`Workero.Email.raw_text`](./Workero-Email.md#val-raw_text) and [`Workero.Email.raw_bytes`](./Workero-Email.md#val-raw_bytes) copy the whole message into the memory of the program; use [`Workero.Email.raw`](./Workero-Email.md#val-raw) for a large message. The raw message can be read once. The runtime checks the rules for `forward` headers and for the `reply` message.
+- Email: [`Workero.Email.reply`](./Workero-Email.md#val-reply) takes the raw message as ``Text` or ``Stream`. The harness reads the stream, so the tests do not prove that Email Routing accepts a stream. [`Workero.Email.raw_text`](./Workero-Email.md#val-raw_text) and [`Workero.Email.raw_bytes`](./Workero-Email.md#val-raw_bytes) copy the whole message into the memory of the program; use [`Workero.Email.raw`](./Workero-Email.md#val-raw) for a large message. The raw message can be read once. The runtime checks the rules for `forward` headers and for the `reply` message.
+- [Tail Workers](./tail.md): [`Workero.tail`](./Workero.md#val-tail) and [`Workero.tail_stream`](./Workero.md#val-tail_stream) register the handlers of the default export; an entrypoint class can have a `tail` handler but no streaming one. The streaming tail is tested only in `workerd`; the Cloudflare documentation was not checked for it. [`Workero.Trace.event`](./Workero-Trace.md#type-event) has typed cases for fetch, scheduled, queue, alarm, email, rpc, tail, hibernatable WebSocket and custom events; any other event is `Other`. `workerd` reports `0.` for [`Workero.Trace.wall_time`](./Workero-Trace.md#val-wall_time) and [`Workero.Trace.cpu_time`](./Workero-Trace.md#val-cpu_time).
 
 ## Workflow limits
 
 - [Workflows](./workflows.md): workerd has no Workflows engine, so the tests run the class and the binding against a small JavaScript engine. It calls the OCaml class over RPC as Cloudflare's engine does, and it implements steps, retries, `sleep`, `wait_for_event` and replay. The tests do not prove persistence, eviction, real retry timing, the Cloudflare limits or a deployment. Run a Workflow with `wrangler dev` or on Cloudflare before you rely on it.
 - Step results, event payloads, params and outputs are [`Workero.Rpc.value`](./Workero-Rpc.md#type-value)s. A number above 1073741823 reads as a ``Float`, not an ``Int` (see [Workflows](./workflows.md)).
-- Not wrapped: `retention`, `createBatch` with `count`, `deleteBatch`, `Instance.delete`, `subscribe`, `terminate` and `restart` options, rollback handlers, the rest of the step context (`step`, `config`), a function as `delay`, the cron `schedule` and the `workflowName` of the event. `wait_for_event` returns the payload, not the event.
+- Not wrapped: `subscribe`, because Cloudflare does not document its types.
+- The JavaScript engine of the tests guesses details that Cloudflare does not document: the error code of `delete_batch`, the shape of the step configuration, the cron payload and the order of rollbacks. It does not enforce retention. Check these on Cloudflare.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.
 
 ## Entrypoint limits
 
-- [Entrypoints](./entrypoints.md): the `scheduled`, `queue`, `email` and `tail` handlers of a class are not supported.
+- [Entrypoints](./entrypoints.md): a class can have `scheduled`, `queue` and `tail` handlers. It has no `email` handler, because the runtime delivers email only to the default export.
 - The runtime creates a new instance of an entrypoint for each call, so it keeps no state between calls.
 - An entrypoint and a Durable Object class cannot share a name.
 - A method declared in `~rpc` on a class whose handlers have no `rpc` fails on the first call, not at build time.
@@ -58,12 +75,9 @@ Behavior that differs from JavaScript Workers and native OCaml, and features not
 
 ## Not supported yet
 
-- The `tail` handler.
 - Durable Objects without SQLite storage.
 - Vectorize and the Send Email binding.
-- `HTMLRewriter`.
-- `AbortController` and request cancellation.
-- Most of `crypto.subtle`. [`Workero.Crypto`](./Workero-Crypto.md) has digests, HMAC, AES-GCM, PBKDF2 and HKDF with raw keys. It has no key generation, no `exportKey`, no `jwk`, `pkcs8` or `spki` import, no RSA, ECDSA, ECDH, Ed25519, AES-CBC or AES-CTR, no `wrapKey` and no `DigestStream`. Keys are never extractable.
+- Parts of `crypto.subtle`: Ed448, X448, and RSA public exponents other than 3 and 65537, which `workerd` rejects. See [Web Crypto](./crypto.md).
 
 ## Differences from native OCaml
 

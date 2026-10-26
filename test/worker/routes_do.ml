@@ -641,7 +641,7 @@ let container_stub log =
                       in
                       let socket = obj [||] in
                       set socket (Js.string "opened")
-                        (promise "resolve" (inject Js.undefined));
+                        (promise "resolve" (inject (obj [||])));
                       set socket (Js.string "readable")
                         (get echo (Js.string "readable"));
                       set socket (Js.string "writable")
@@ -683,7 +683,7 @@ let container_probe () =
   D.Container.destroy ~message:"bye" container;
   D.Container.destroy container;
   let socket = D.Container.connect container ~port:9000 in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   let writer = Socket.writer socket in
   Stream.Writer.write writer "ping";
   Stream.Writer.close writer;

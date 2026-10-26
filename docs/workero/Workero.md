@@ -132,7 +132,7 @@ JavaScript `Date`. Times are milliseconds since the Unix epoch, as a `float`. In
 ```ocaml
 module Crypto : sig ... end
 ```
-The Web Crypto functions of the global `crypto` object: random values, and a subset of `crypto.subtle`. See [Timers, time, and randomness](./globals.md).
+The Web Crypto functions of the global `crypto` object: random values and `crypto.subtle`. See [Timers, time, and randomness](./globals.md) and [Web Crypto](./crypto.md).
 
 ```ocaml
 module Console : sig ... end
@@ -155,9 +155,24 @@ module Fetcher : sig ... end
 A `Fetcher` sends requests to another Worker, to static assets or to a Durable Object. Configure service and assets bindings in `wrangler.toml` with `[[services]]` or `[assets]`. A Durable Object stub comes from [`Durable_object.Namespace.get`](./Workero-Durable_object-Namespace.md#val-get). The calls suspend like [`Promise.await`](./Workero-Promise.md#val-await). They raise [`Js_error`](./#exception-Js_error) when the runtime throws or rejects, for example when the target Worker raises.
 
 ```ocaml
+module Abort_signal : sig ... end
+```
+`AbortSignal`: tells running work to stop.
+
+```ocaml
+module Abort_controller : sig ... end
+```
+`AbortController`: aborts an [`Abort_signal`](./Workero-Abort_signal.md).
+
+```ocaml
 module Queue : sig ... end
 ```
 Cloudflare Queues. A [`t`](./Workero-Queue.md#type-t) sends messages through a producer binding in `wrangler.toml` (`[[queues.producers]]`). A [`Workero.queue`](./#val-queue) handler consumes batches from a queue configured under `[[queues.consumers]]`, not through a producer binding. See [Queue](./queue.md) for a complete Worker.
+
+```ocaml
+module Trace : sig ... end
+```
+Trace items, the argument of a [`Workero.tail`](./#val-tail) handler. A trace item records one invocation of a producer Worker: its event, its console output, its exceptions and its outcome. See [Tail Workers](./tail.md).
 
 ```ocaml
 module Socket : sig ... end
@@ -200,6 +215,11 @@ module Workflow : sig ... end
 Cloudflare Workflows: durable, multi-step programs.
 
 ```ocaml
+module Html_rewriter : sig ... end
+```
+Rewrite an HTML response while it streams, like the JavaScript `HTMLRewriter`. The runtime parses the body and calls your functions for the nodes that match. OCaml does not read the body, so a large page costs no OCaml memory except the nodes that you handle.
+
+```ocaml
 val serve : (Request.t -> Env.t -> Context.t -> Response.t) -> unit
 ```
 `serve handler` registers the request handler, like `fetch(request, env, ctx)` in a JavaScript Worker. The handler runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. An exception raised by the handler rejects the response Promise, and the runtime answers with status 500\.
@@ -220,7 +240,20 @@ val email : (Email.t -> Env.t -> Context.t -> unit) -> unit
 `email handler` registers the Email Routing handler, like `email(message, env, ctx)` in a JavaScript Worker. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers. It can be combined with [`serve`](./#val-serve), [`scheduled`](./#val-scheduled) and [`queue`](./#val-queue). The handler must call [`Email.forward`](./Workero-Email.md#val-forward), [`Email.reply`](./Workero-Email.md#val-reply) or [`Email.set_reject`](./Workero-Email.md#val-set_reject), or the runtime drops the message. An exception raised by the handler rejects the event Promise, so the runtime treats the delivery as failed.
 
 ```ocaml
+val tail : (Trace.t list -> Env.t -> Context.t -> unit) -> unit
+```
+`tail handler` registers the tail handler, like `tail(events, env, ctx)` in a JavaScript Worker. It receives the trace items of the producer Workers that list this Worker in `tail_consumers`. It runs in a fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`fetch`](./#val-fetch) and the body readers; [`Context.wait_until`](./Workero-Context.md#val-wait_until) runs work after the handler returns. An exception raised by the handler rejects the event Promise. The runtime ignores a tail failure for the producer, so log inside the handler. Build a tail Worker as its own program, and do not list a Worker as its own tail consumer.
+
+```ocaml
+val tail_stream : 
+  (Trace.Stream.t -> Env.t -> Context.t -> Trace.Stream.t -> unit) ->
+  unit
+```
+`tail_stream handler` registers the streaming tail handler, like `tailStream(onset, env, ctx)` in a JavaScript Worker. The runtime calls `handler` once for each invocation of a producer Worker that lists this Worker in `streaming_tails`, with the onset event. `handler` returns the function that receives each later event of the same invocation, as it happens, up to the outcome. Both run in a fiber, like [`tail`](./#val-tail). Build a tail Worker as its own program.
+
+```ocaml
 val fetch : 
+  ?signal:Abort_signal.t ->
   ?method_:Method.t ->
   ?headers:(string * string) list ->
   ?body:string ->
@@ -228,6 +261,8 @@ val fetch :
   Response.t
 ```
 `fetch url` sends an HTTP request and waits for the response headers, like JavaScript `fetch`. `method_` is `GET` by default. `body` is sent as raw bytes and sets no `content-type`. Read the response body with [`Response.body_text`](./Workero-Response.md#val-body_text) or [`Response.body_bytes`](./Workero-Response.md#val-body_bytes). Call it only from inside a handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function.
+
+`signal` cancels the request and the reading of its body. When it aborts, the call or the body reader raises [`Js_error`](./#exception-Js_error) with an `AbortError` or `TimeoutError`; see [`Abort_signal.is_abort`](./Workero-Abort_signal.md#val-is_abort). A signal that has already aborted fails the call without a request. For a timeout, pass `~signal:(Abort_signal.timeout ms)`.
 
 Raises `Invalid_argument` when `body` is given with `GET` or `HEAD`.
 

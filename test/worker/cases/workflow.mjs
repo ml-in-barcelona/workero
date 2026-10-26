@@ -115,7 +115,7 @@ export default async (env, failures) => {
     equal(done.has_output, false, p, "has_output: ");
   });
 
-  await check("Workflow: wait_for_event returns the payload of send_event", failures, async (p) => {
+  await check("Workflow: wait_for_event returns the event that send_event sent", failures, async (p) => {
     await create(env, "event-1", { scenario: "event" });
     const waiting = await until(env, "event-1", "waiting");
     equal(waiting.has_output, false, p, "has_output: ");
@@ -240,5 +240,136 @@ export default async (env, failures) => {
       p,
     );
     equal(await ok(env, "of_env_error?binding=FLOW"), "ok", p);
+  });
+
+  const rollbacks = (inspected) => inspected.log.filter((e) => e.op === "rollback");
+
+  await check("Workflow: do_ gives the step name, count, attempt and retry configuration", failures, async (p) => {
+    await create(env, "ctx-1", { scenario: "ctx" });
+    equal(
+      (await until(env, "ctx-1", "complete")).output,
+      [
+        { name: "ctx", count: 1, attempt: 1, limit: 4, backoff: "linear" },
+        { name: "ctx", count: 2, attempt: 1, limit: 5, backoff: "exponential" },
+        { name: "plain", count: 1, attempt: 1, limit: 5, backoff: "exponential" },
+      ],
+      p,
+    );
+  });
+
+  await check("Workflow: retries_with computes the delay of each retry from the failed attempt", failures, async (p) => {
+    await create(env, "delay-1", { scenario: "delay_fn" });
+    equal((await until(env, "delay-1", "complete")).output, 3, p);
+    const inspected = await env.ENGINE.inspect("delay-1");
+    equal(inspected.log.filter((e) => e.op === "delay").map((e) => e.delay), [1011, 1012], p, "delays: ");
+    equal(attempts(inspected, "flaky"), [1, 2, 3], p, "attempts: ");
+  });
+
+  await check("Workflow: rollback handlers run in reverse order when the instance fails", failures, async (p) => {
+    await create(env, "rollback-1", { scenario: "rollback" });
+    await until(env, "rollback-1", "errored");
+    const ran = rollbacks(await env.ENGINE.inspect("rollback-1"));
+    equal(ran.map((e) => e.name), ["b", "a"], p, "order: ");
+    if (!ran[0]?.threw?.includes("undo b B")) p.push(`handler b saw ${ran[0]?.threw}`);
+    if (!ran[1]?.threw?.includes("undo a A")) p.push(`handler a saw ${ran[1]?.threw}`);
+    if (!ran[0]?.threw?.includes("stop here")) p.push(`handler b error ${ran[0]?.threw}`);
+    equal(ran.map((e) => e.config), [{ timeout: 5000 }, undefined], p, "rollback config: ");
+  });
+
+  await check("Workflow: terminate ~rollback:true runs the rollback handlers, and terminate does not", failures, async (p) => {
+    await create(env, "rbw-1", { scenario: "rollback_wait" });
+    await create(env, "rbw-2", { scenario: "rollback_wait" });
+    await until(env, "rbw-1", "waiting");
+    await until(env, "rbw-2", "waiting");
+    await ok(env, "terminate?id=rbw-1&rollback=true");
+    await ok(env, "terminate?id=rbw-2");
+    equal((await status(env, "rbw-1")).status, "terminated", p, "rbw-1: ");
+    const ran = rollbacks(await env.ENGINE.inspect("rbw-1"));
+    equal(ran.map((e) => e.name), ["a"], p, "rolled back: ");
+    if (!ran[0]?.threw?.includes("undo a")) p.push(`handler saw ${ran[0]?.threw}`);
+    equal(rollbacks(await env.ENGINE.inspect("rbw-2")), [], p, "without rollback: ");
+  });
+
+  await check("Workflow: restart ~from keeps the results of the steps before it", failures, async (p) => {
+    await create(env, "from-1", { scenario: "steps" });
+    equal((await until(env, "from-1", "complete")).output, [1, 2, 3], p);
+    await ok(env, "restart?id=from-1&from=two&count=2");
+    await until(env, "from-1", "complete");
+    const reran = (await env.ENGINE.inspect("from-1")).log.filter((e) => e.op === "do").map((e) => `${e.name}:${e.count}`);
+    equal(reran, ["two:2"], p, "steps run again: ");
+    await ok(env, "restart?id=from-1&from=nap&kind=sleep");
+    await until(env, "from-1", "complete");
+    equal((await env.ENGINE.inspect("from-1")).log.filter((e) => e.op === "do").map((e) => `${e.name}:${e.count}`), ["two:2"], p, "from a sleep: ");
+    const none = await call(env, "restart?id=from-1&from=nap&kind=do");
+    equal(none.status, 502, p, "no matching kind: ");
+    if (!none.body.includes("no step matches")) p.push(`body ${none.body}`);
+    const bad = await call(env, "restart?id=from-1&from=two&count=0");
+    equal(bad.body, "Invalid_argument Workero.Workflow.Instance.restart_from: count is below 1", p, "count 0: ");
+  });
+
+  await check("Workflow: wait_for_event returns the type, payload and timestamp of the event", failures, async (p) => {
+    await create(env, "evf-1", { scenario: "event_full" });
+    await until(env, "evf-1", "waiting");
+    await ok(env, `send_event?id=evf-1&type=approve&payload=${encodeURIComponent('{"ok":true}')}`);
+    equal((await until(env, "evf-1", "complete")).output, { type: "approve", payload: { ok: true }, recent: true }, p);
+  });
+
+  await check("Workflow: retention reaches the runtime", failures, async (p) => {
+    await ok(env, "create?id=ret-1&success=1000&error=2000");
+    await ok(env, "create?id=ret-2&success=1000");
+    await ok(env, "create?id=ret-3");
+    equal((await env.ENGINE.inspect("ret-1")).retention, { successRetention: 1000, errorRetention: 2000 }, p, "both: ");
+    equal((await env.ENGINE.inspect("ret-2")).retention, { successRetention: 1000 }, p, "success only: ");
+    equal((await env.ENGINE.inspect("ret-3")).retention, undefined, p, "none: ");
+  });
+
+  await check("Workflow: create_batch_count starts that many instances with the same params and retention", failures, async (p) => {
+    const params = encodeURIComponent(JSON.stringify({ scenario: "basic", k: 7 }));
+    const batch = await ok(env, `create_batch_count?count=3&params=${params}&success=500`);
+    equal(batch.created.length, 3, p, "created: ");
+    equal(batch.errors, 0, p, "errors: ");
+    equal(new Set(batch.created).size, 3, p, "distinct ids: ");
+    for (const id of batch.created) {
+      equal((await until(env, id, "complete")).output.payload, { scenario: "basic", k: 7 }, p, `${id} payload: `);
+      equal((await env.ENGINE.inspect(id)).retention, { successRetention: 500 }, p, `${id} retention: `);
+    }
+    equal((await call(env, "create_batch_count?count=0")).body, "Invalid_argument Workero.Workflow.create_batch_count: count must be in 1..100", p, "count 0: ");
+    equal((await call(env, "create_batch_count?count=101")).body, "Invalid_argument Workero.Workflow.create_batch_count: count must be in 1..100", p, "count 101: ");
+  });
+
+  await check("Workflow: Instance.delete removes the instance", failures, async (p) => {
+    await create(env, "del-1", { scenario: "basic" });
+    await until(env, "del-1", "complete");
+    await ok(env, "delete?id=del-1");
+    const gone = await call(env, "get?id=del-1");
+    equal(gone.status, 502, p, "get after delete: ");
+    if (!gone.body.includes("not_found")) p.push(`get body ${gone.body}`);
+    equal((await call(env, "delete?id=del-1")).status, 502, p, "second delete: ");
+  });
+
+  await check("Workflow: delete_batch returns the ids deleted and the errors", failures, async (p) => {
+    await create(env, "del-2", { scenario: "basic" });
+    await create(env, "del-3", { scenario: "event" });
+    equal(
+      await ok(env, "delete_batch?ids=del-2,del-3,nope"),
+      { deleted: ["del-2", "del-3"], errors: [{ id: "nope", code: 10400 }] },
+      p,
+    );
+    equal((await call(env, "get?id=del-3")).status, 502, p, "running instance gone: ");
+    equal((await call(env, "delete_batch?ids=")).body, "Invalid_argument Workero.Workflow.delete_batch: the number of ids must be in 1..100", p, "no ids: ");
+  });
+
+  await check("Workflow: the event has the workflow name and no schedule for a direct instance", failures, async (p) => {
+    equal(await ok(env, "create?binding=FULL&id=full-1"), "full-1", p, "id: ");
+    equal(
+      (await until(env, "full-1", "complete")).output,
+      { workflow_name: "test-flow", instance_id: "full-1", payload: { $undefined: true }, schedule: null },
+      p,
+    );
+  });
+
+  await check("Workflow: the event has the cron schedule of a scheduled instance", failures, async (p) => {
+    await env.FULL_ENGINE.triggerCron({ id: "cron-1" }, "0 * * * *", 1700000000000);
+    equal((await until(env, "cron-1", "complete")).output.schedule, { cron: "0 * * * *", scheduled_time: 1700000000000 }, p);
   });
 };

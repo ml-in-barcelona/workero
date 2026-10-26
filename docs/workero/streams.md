@@ -87,7 +87,7 @@ let handler _req _env ctx =
 
 let () = Workero.serve handler
 ```
-A loop that does not write cannot see the disconnect.
+A loop that does not write cannot see the disconnect. With the `enable_request_signal` compatibility flag, [`Workero.Request.signal`](./Workero-Request.md#val-signal) aborts when the client cancels; see [Abort and timeouts](./abort.md).
 
 
 ## Release a lock
