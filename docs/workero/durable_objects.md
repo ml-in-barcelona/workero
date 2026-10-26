@@ -362,6 +362,27 @@ let () =
         "api.example.com" (Fetcher.of_env env "SELF");
       Durable_object.make ())
 ```
+[`Workero.Durable_object.Container.exec`](./Workero-Durable_object-Container.md#val-exec) runs a program in the running container. [`Workero.Durable_object.Container.Process.output`](./Workero-Durable_object-Container-Process.md#val-output) waits for it and returns its standard output, standard error and exit code. Use [`Workero.Durable_object.Container.Process.stdin`](./Workero-Durable_object-Container-Process.md#val-stdin) and [`Workero.Durable_object.Container.Process.stdout`](./Workero-Durable_object-Container-Process.md#val-stdout) to stream instead:
+
+```ocaml
+open Workero
+
+let () =
+  Durable_object.register "Sandbox" (fun state _env ->
+      let container = Option.get (Durable_object.State.container state) in
+      Durable_object.make
+        ~fetch:(fun _req ->
+          let process =
+            Durable_object.Container.exec container ~cwd:"/tmp"
+              [ "sh"; "-c"; "echo hello; exit 3" ]
+          in
+          let output = Durable_object.Container.Process.output process in
+          Response.text
+            (Printf.sprintf "%s(exit %d)" output.stdout output.exit_code))
+        ())
+```
+[`Workero.Durable_object.Container.inspect`](./Workero-Durable_object-Container.md#val-inspect) reports the image and the labels of the container. [`Workero.Durable_object.Container.snapshot_container`](./Workero-Durable_object-Container.md#val-snapshot_container) saves the whole container and [`Workero.Durable_object.Container.snapshot_directory`](./Workero-Durable_object-Container.md#val-snapshot_directory) one directory. Pass the result to `~container_snapshot` or `~directory_snapshots` of [`Workero.Durable_object.Container.start`](./Workero-Durable_object-Container.md#val-start) to restore it. [`Workero.Durable_object.Container.intercept_outbound_tcp`](./Workero-Durable_object-Container.md#val-intercept_outbound_tcp) sends raw TCP connections of the container to the `connect` handler of another Worker. It and `snapshot_directory` need the `experimental` compatibility flag, which `workerd` accepts only with `--experimental`.
+
 To run a container in `workerd`, give the namespace a `container` with an image, and give the config a `containerEngine` that uses the local Docker daemon:
 
 ```capnp

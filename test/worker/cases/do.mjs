@@ -28,6 +28,12 @@ const cases = [
     status: 200,
     body: 'start:{"entrypoint":["sh","-c","x"],"env":{"A":"1"},"enableInternet":true};start:{};monitor;signal:15;destroy:bye;destroy:-;connect:9000:10.0.0.1:9000;timeout:60000;http:*.example.com:a;all:b;https:*:c|Error: exit 3|port 8080 http://container/x|ping|invalid,invalid,invalid',
   },
+  {
+    name: "Container wraps exec, inspect, snapshots, snapshot restore and the TCP interceptor (stub)",
+    request: ["http://test/do-container-stub-ext"],
+    status: 200,
+    body: 'exec:["echo","hi"]:{"cwd":"/w","env":{"A":"1"},"user":"u","stdin":"pipe","stdout":"pipe","stderr":"combined"};kill:15;kill:-;exec:["sh"]:{"stdin":{},"stdout":"ignore","stderr":"pipe","pty":{"cols":10,"rows":20}};resize:80x24;exec:["ls"]:{};inspect;snapshot-container:{"name":"nightly"};snapshot-directory:{"dir":"/data","name":"data"};start:{"containerSnapshot":{"id":"s1","size":2048,"name":"nightly"},"directorySnapshots":[{"snapshot":{"id":"d1","size":512,"dir":"/data"}},{"snapshot":{"id":"d1","size":512,"dir":"/data"},"mountPoint":"/restored"}]};tcp:10.0.0.2:5432:t|ping|7|3|true|out|err|true|3|false|false|role=web|img:1|s1,2048,nightly|512,/data,d1',
+  },
   { name: "a class named like a reserved word is exported and works", request: to("CLASS", "r", "incr"), status: 200, body: "200|1" },
   { name: "Storage.get reads a Date written by JavaScript as its ISO string", request: counter("raw", "raw-put?kind=date"), status: 200, body: "200|put" },
   { name: "Storage.get of the Date", request: counter("raw", "stored?key=raw"), status: 200, body: '200|"1970-01-01T00:00:00.000Z"' },

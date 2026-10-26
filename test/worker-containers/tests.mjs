@@ -8,6 +8,11 @@ const cases = [
   ["monitor returns when the program exits", "m/monitor", "exited"],
   ["signal reaches the main process", "s/signal", "stopped"],
   ["destroy with a message makes monitor raise it", "d/destroy-message", "Error: bye"],
+  ["exec runs a command with cwd and env and reports output and exit code", "e/exec", "out=hi:/tmp\n|err=oops\n|exit=3"],
+  ["exec pipes stdin to the process", "x/exec-stdin", "ping"],
+  ["inspect describes the running container", "n/inspect", "inspect=some|true"],
+  ["a container snapshot restores the file system", "c/snapshot", "size>0=true|out=saved\n|err=|exit=0"],
+  ["a directory snapshot restores the directory", "r/snapshot-dir", "out=kept\n|err=|exit=0"],
 ];
 
 export default {

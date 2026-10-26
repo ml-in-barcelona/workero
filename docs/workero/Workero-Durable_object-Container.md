@@ -9,6 +9,20 @@ The container attached to an object, on Cloudflare Containers. Declare it in `wr
 type t
 ```
 ```ocaml
+module Snapshot : sig ... end
+```
+```ocaml
+module Directory_snapshot : sig ... end
+```
+```ocaml
+type info = {
+  labels : (string * string) list;
+  image : string;
+}
+```
+What [`inspect`](./#val-inspect) reports.
+
+```ocaml
 val running : t -> bool
 ```
 `true` once [`start`](./#val-start) ran and until the container exits or is destroyed. It does not mean that the program in the container accepts connections.
@@ -18,10 +32,12 @@ val start :
   ?entrypoint:string list ->
   ?env:(string * string) list ->
   ?enable_internet:bool ->
+  ?container_snapshot:Snapshot.t ->
+  ?directory_snapshots:Directory_snapshot.restore list ->
   t ->
   unit
 ```
-Boots the container and returns at once, before it is ready to accept connections. `entrypoint` replaces the command of the image, `env` adds environment variables, and `enable_internet` allows outbound traffic. Raises [`Js_error`](./Workero.md#exception-Js_error) when the container already runs.
+Boots the container and returns at once, before it is ready to accept connections. `entrypoint` replaces the command of the image, `env` adds environment variables, and `enable_internet` allows outbound traffic. `container_snapshot` starts the container from a [`snapshot_container`](./#val-snapshot_container) result, and `directory_snapshots` restore results of [`snapshot_directory`](./#val-snapshot_directory) before the program starts. Raises [`Js_error`](./Workero.md#exception-Js_error) when the container already runs.
 
 ```ocaml
 val monitor : t -> unit
@@ -67,6 +83,50 @@ Like [`intercept_outbound_http`](./#val-intercept_outbound_http) for every outbo
 val intercept_outbound_https : t -> string -> Fetcher.t -> unit
 ```
 Like [`intercept_outbound_http`](./#val-intercept_outbound_http) for HTTPS. `address` is a host name or a pattern with an optional port; `"*"` means every host on port 443\. The container must trust `/etc/cloudflare/certs/cloudflare-containers-ca.crt`. Suspends.
+
+```ocaml
+val intercept_outbound_tcp : t -> string -> Fetcher.t -> unit
+```
+`intercept_outbound_tcp container address fetcher` sends the raw TCP connections of the container to `address`, a `"host:port"` string, to the `connect` handler of the Worker behind `fetcher`. A workero Worker has no `connect` handler, so `fetcher` must reach another Worker. Suspends. Needs the `experimental` compatibility flag, which `workerd` accepts only with `--experimental`.
+
+```ocaml
+val snapshot_container : ?name:string -> t -> Snapshot.t
+```
+Saves the whole running container. Pass the result as `container_snapshot` to [`start`](./#val-start) on a stopped container to resume from it. Suspends.
+
+```ocaml
+val snapshot_directory : 
+  ?name:string ->
+  t ->
+  dir:string ->
+  Directory_snapshot.t
+```
+`snapshot_directory container ~dir` saves the directory `dir` of the running container. Restore it with `directory_snapshots` of [`start`](./#val-start). Suspends. Needs the `experimental` compatibility flag, which `workerd` accepts only with `--experimental`.
+
+```ocaml
+val inspect : t -> info option
+```
+The labels and the image of the container, or `None` when the runtime has no information. Suspends.
+
+```ocaml
+module Process : sig ... end
+```
+A program started by [`exec`](./#val-exec).
+
+```ocaml
+val exec : 
+  ?cwd:string ->
+  ?env:(string * string) list ->
+  ?user:string ->
+  ?stdin:[ `Pipe | `Stream of Stream.t ] ->
+  ?stdout:[ `Pipe | `Ignore ] ->
+  ?stderr:[ `Pipe | `Ignore | `Combined ] ->
+  ?pty:[ `Default | `Size of int * int ] ->
+  t ->
+  string list ->
+  Process.t
+```
+`exec container cmd` starts the program `cmd` (the program and its arguments) in the running container and returns before it ends. `cwd`, `env` and `user` set the directory, extra environment variables and user of the process. `stdin` is a pipe, see [`Process.stdin`](./Workero-Durable_object-Container-Process.md#val-stdin), or a stream that the process reads. Without `stdin` or `pty`, the standard input of the process is empty. `stderr:`Combined` merges standard error into standard output. `pty` gives the process a terminal, ``Size (cols, rows)` sets its size. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the container does not run.
 
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
