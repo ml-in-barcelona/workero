@@ -6,7 +6,7 @@ Build a Cloudflare Worker in OCaml, run it locally, then change its response. St
 
 ## Prerequisites
 
-- [opam](https://opam.ocaml.org/doc/Install.html) with an active OCaml 5\.4 or later switch. The source package requires Dune 3\.24 or later, `js_of_ocaml` and `wasm_of_ocaml-compiler` 6\.4.1 or later and below 6\.5, and `jsonkit` 1\.1 or later and below 2\. opam resolves these dependencies.
+- [opam](https://opam.ocaml.org/doc/Install.html) with an active OCaml 5\.4 or later switch. The source package requires Dune 3\.24 or later, `js_of_ocaml` and `wasm_of_ocaml-compiler` 6\.5.0 or later and below 6\.6, and `jsonkit` 1\.1 or later and below 2\. opam resolves these dependencies.
 - Git to clone workero.
 - Node.js 22 or later with npm to install Wrangler and binaryen. binaryen supplies `wasm-opt`, which wasm\_of\_ocaml needs on `PATH`.
 The `workero` package is not yet available from the opam package index. Install it from source instead.
