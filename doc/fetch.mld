@@ -26,6 +26,8 @@ The default method is [GET]. A [~body] is raw bytes and does not set
 {!Workero.Js_error}; catch it if your handler must return a response on a
 network failure.
 
+To stop a slow request, pass [~signal]; see {{!page-abort}Abort and timeouts}.
+
 Call [fetch] inside a handler or a function passed to
 {!Workero.Context.wait_until}. To forward the response without reading its
 body, use {!Workero.Response.copy}. If you set [~headers] on the copy, include

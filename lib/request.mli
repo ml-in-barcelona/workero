@@ -44,6 +44,15 @@ val form_data : t -> Form_data.t
 val clone : t -> t
 (** [request.clone()]; both copies can read the body. *)
 
+val signal : t -> Abort_signal.t
+(** The signal of the incoming request. It aborts when the runtime detects that
+    the client canceled the request. It needs the [enable_request_signal]
+    compatibility flag, which the project template sets; without the flag the
+    signal never aborts. Workerd delivers the abort for a streamed response; it
+    gave none for a handler that only awaits a timer, so do not rely on it to
+    detect every disconnect. Do not pass it to work that must outlive the
+    client, such as a {!Workero.fetch} in {!Context.wait_until}. *)
+
 val cf : t -> Cf.t
 (** The Cloudflare properties of the request. *)
 

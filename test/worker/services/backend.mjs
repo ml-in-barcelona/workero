@@ -3,6 +3,7 @@ const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).jo
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.pathname.endsWith("/slow")) await new Promise((resolve) => setTimeout(resolve, 500));
     switch (url.pathname) {
       case "/hex":
         return new Response(hex(new Uint8Array(await request.arrayBuffer())));

@@ -45,8 +45,8 @@ let () = Workero.serve handler
 Follow [Getting started](https://ml-in-barcelona.github.io/workero/workero/getting_started.html)
 to edit the template and run it locally. The [Runtime APIs](https://ml-in-barcelona.github.io/workero/workero/runtime_apis.html)
 and [Bindings](https://ml-in-barcelona.github.io/workero/workero/bindings.html)
-guides cover requests, JSON, routing, scheduled handlers, sockets, email,
-entrypoints and RPC, Workflows, Queues, Hyperdrive, Durable Objects, SQL,
+guides cover requests, JSON, routing, HTML rewriting, scheduled handlers,
+tail Workers, sockets, email, entrypoints and RPC, Workflows, Queues, Hyperdrive, Durable Objects, SQL,
 hibernating WebSockets, and Containers.
 See the [CLI guide](https://ml-in-barcelona.github.io/workero/workero/cli.html)
 for packaging and [CONTRIBUTING.md](CONTRIBUTING.md) for repository work.

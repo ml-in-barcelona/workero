@@ -89,5 +89,6 @@ check scheduled scheduled
 check both fetch+scheduled
 check queue queue
 check email email
+check tail tail
 check none none
 check workflow ""
