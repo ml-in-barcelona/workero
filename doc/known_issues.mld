@@ -140,8 +140,9 @@ not supported yet.
   option of [exec], or the [image], [instance], [labels] and [hardTimeout]
   options of [start].
   {!Workero.Durable_object.Container.intercept_outbound_tcp} and
-  {!Workero.Durable_object.Container.snapshot_directory} need
-  [workerd --experimental]. The tests run [State.container] against [None] in
+  {!Workero.Durable_object.Container.snapshot_directory} need the
+  [experimental] compatibility flag, which [workerd] accepts only with
+  [--experimental]. The tests run [State.container] against [None] in
   [workerd] and against a JavaScript stub. A separate test,
   [test/worker-containers], starts real containers in CI and prints
   [SKIP containers] where Docker or its images are missing. Raw TCP connect,

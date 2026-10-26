@@ -254,8 +254,9 @@ module Container : sig
   (** [intercept_outbound_tcp container address fetcher] sends the raw TCP
       connections of the container to [address], a ["host:port"] string, to the
       [connect] handler of the Worker behind [fetcher]. A workero Worker has no
-      [connect] handler, so [fetcher] must reach another Worker. Suspends.
-      Available in [workerd] only with [--experimental]. *)
+      [connect] handler, so [fetcher] must reach another Worker. Suspends. Needs
+      the [experimental] compatibility flag, which [workerd] accepts only with
+      [--experimental]. *)
 
   val snapshot_container : ?name:string -> t -> Snapshot.t
   (** Saves the whole running container. Pass the result as [container_snapshot]
@@ -265,7 +266,8 @@ module Container : sig
     ?name:string -> t -> dir:string -> Directory_snapshot.t
   (** [snapshot_directory container ~dir] saves the directory [dir] of the
       running container. Restore it with [directory_snapshots] of {!start}.
-      Suspends. Available in [workerd] only with [--experimental]. *)
+      Suspends. Needs the [experimental] compatibility flag, which [workerd]
+      accepts only with [--experimental]. *)
 
   val inspect : t -> info option
   (** The labels and the image of the container, or [None] when the runtime has

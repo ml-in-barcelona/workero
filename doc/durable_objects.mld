@@ -531,9 +531,10 @@ the container. {!Workero.Durable_object.Container.snapshot_container} saves the
 whole container and {!Workero.Durable_object.Container.snapshot_directory} one
 directory. Pass the result to [~container_snapshot] or [~directory_snapshots] of
 {!Workero.Durable_object.Container.start} to restore it.
-{!Workero.Durable_object.Container.intercept_outbound_tcp} works like the HTTP
-interceptors for raw TCP connections. It and [snapshot_directory] need
-[workerd --experimental].
+{!Workero.Durable_object.Container.intercept_outbound_tcp} sends raw TCP
+connections of the container to the [connect] handler of another Worker. It and
+[snapshot_directory] need the [experimental] compatibility flag, which
+[workerd] accepts only with [--experimental].
 
 To run a container in [workerd], give the namespace a [container] with an image,
 and give the config a [containerEngine] that uses the local Docker daemon:

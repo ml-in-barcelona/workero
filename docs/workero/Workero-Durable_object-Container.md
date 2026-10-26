@@ -87,7 +87,7 @@ Like [`intercept_outbound_http`](./#val-intercept_outbound_http) for HTTPS. `add
 ```ocaml
 val intercept_outbound_tcp : t -> string -> Fetcher.t -> unit
 ```
-`intercept_outbound_tcp container address fetcher` sends the raw TCP connections of the container to `address`, a `"host:port"` string, to the `connect` handler of the Worker behind `fetcher`. A workero Worker has no `connect` handler, so `fetcher` must reach another Worker. Suspends. Available in `workerd` only with `--experimental`.
+`intercept_outbound_tcp container address fetcher` sends the raw TCP connections of the container to `address`, a `"host:port"` string, to the `connect` handler of the Worker behind `fetcher`. A workero Worker has no `connect` handler, so `fetcher` must reach another Worker. Suspends. Needs the `experimental` compatibility flag, which `workerd` accepts only with `--experimental`.
 
 ```ocaml
 val snapshot_container : ?name:string -> t -> Snapshot.t
@@ -101,7 +101,7 @@ val snapshot_directory :
   dir:string ->
   Directory_snapshot.t
 ```
-`snapshot_directory container ~dir` saves the directory `dir` of the running container. Restore it with `directory_snapshots` of [`start`](./#val-start). Suspends. Available in `workerd` only with `--experimental`.
+`snapshot_directory container ~dir` saves the directory `dir` of the running container. Restore it with `directory_snapshots` of [`start`](./#val-start). Suspends. Needs the `experimental` compatibility flag, which `workerd` accepts only with `--experimental`.
 
 ```ocaml
 val inspect : t -> info option
