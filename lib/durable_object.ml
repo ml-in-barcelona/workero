@@ -151,23 +151,85 @@ end
 module Container = struct
   type t = js
 
+  let number n = Js.Unsafe.inject (Js.number_of_float (float_of_int n))
+
+  let strings l =
+    Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string l)))
+
+  let string_map kvs = Binding.options (List.map (fun (k, v) -> (k, str v)) kvs)
+  let field name f = Option.map (fun v -> (name, f v))
+
+  let entries obj =
+    Decode.(
+      list (fun pair ->
+          (string (Js.Unsafe.get pair "0"), string (Js.Unsafe.get pair "1"))))
+      (meth (global "Object") "entries" [| obj |])
+
+  module Snapshot = struct
+    type t = { id : string; size : int; name : string option }
+
+    let of_js v =
+      Decode.
+        {
+          id = field "id" string v;
+          size = field "size" int v;
+          name = field "name" (option string) v;
+        }
+
+    let to_js t =
+      Binding.options
+        (("id", str t.id)
+        :: ("size", number t.size)
+        :: List.filter_map Fun.id [ field "name" str t.name ])
+  end
+
+  module Directory_snapshot = struct
+    type t = { id : string; size : int; dir : string; name : string option }
+    type restore = { snapshot : t; mount_point : string option }
+
+    let of_js v =
+      Decode.
+        {
+          id = field "id" string v;
+          size = field "size" int v;
+          dir = field "dir" string v;
+          name = field "name" (option string) v;
+        }
+
+    let to_js t =
+      Binding.options
+        (("id", str t.id)
+        :: ("size", number t.size)
+        :: ("dir", str t.dir)
+        :: List.filter_map Fun.id [ field "name" str t.name ])
+
+    let restore_to_js r =
+      Binding.options
+        (("snapshot", Js.Unsafe.inject (to_js r.snapshot))
+        :: List.filter_map Fun.id [ field "mountPoint" str r.mount_point ])
+  end
+
+  type info = { labels : (string * string) list; image : string }
+
   let running t = to_bool (Js.Unsafe.get t "running")
 
-  let start ?entrypoint ?env ?enable_internet t =
-    let strings l =
-      Js.Unsafe.inject (Js.array (Array.of_list (List.map Js.string l)))
-    in
-    let field name f = Option.map (fun v -> (name, f v)) in
+  let start ?entrypoint ?env ?enable_internet ?container_snapshot
+      ?directory_snapshots t =
     let options =
       Binding.options
         (List.filter_map Fun.id
            [
              field "entrypoint" strings entrypoint;
-             field "env"
-               (fun kvs ->
-                 Binding.options (List.map (fun (k, v) -> (k, str v)) kvs))
-               env;
+             field "env" string_map env;
              field "enableInternet" bool_js enable_internet;
+             field "containerSnapshot" Snapshot.to_js container_snapshot;
+             field "directorySnapshots"
+               (fun l ->
+                 Js.Unsafe.inject
+                   (Js.array
+                      (Array.of_list
+                         (List.map Directory_snapshot.restore_to_js l))))
+               directory_snapshots;
            ])
     in
     ignore (Binding.invoke t "start" [| options |])
@@ -230,6 +292,111 @@ module Container = struct
   let intercept_outbound_https t address fetcher =
     Binding.call ~decode:Decode.unit t "interceptOutboundHttps"
       [| str address; Fetcher.to_js fetcher |]
+
+  let intercept_outbound_tcp t address fetcher =
+    Binding.call ~decode:Decode.unit t "interceptOutboundTcp"
+      [| str address; Fetcher.to_js fetcher |]
+
+  let snapshot_container ?name t =
+    let args =
+      match name with
+      | None -> [||]
+      | Some n -> [| Js.Unsafe.inject (Binding.options [ ("name", str n) ]) |]
+    in
+    Binding.call ~decode:Snapshot.of_js t "snapshotContainer" args
+
+  let snapshot_directory ?name t ~dir =
+    let options =
+      Binding.options
+        (("dir", str dir) :: List.filter_map Fun.id [ field "name" str name ])
+    in
+    Binding.call ~decode:Directory_snapshot.of_js t "snapshotDirectory"
+      [| Js.Unsafe.inject options |]
+
+  let inspect t =
+    Binding.call
+      ~decode:
+        (Decode.option (fun v ->
+             {
+               labels = entries (Js.Unsafe.get v "labels");
+               image = Decode.(field "image" string) v;
+             }))
+      t "inspect" [||]
+
+  module Process = struct
+    type t = js
+    type output = { stdout : string; stderr : string; exit_code : int }
+
+    let pid t = int_of_js (Js.Unsafe.get t "pid")
+    let is_pty t = to_bool (Js.Unsafe.get t "isPty")
+
+    let stream t name =
+      let v = Js.Unsafe.get t name in
+      if is_nullish v then None else Some v
+
+    let stdin t =
+      Option.map
+        (fun s -> Stream.Writer.of_js (Binding.invoke s "getWriter" [||]))
+        (stream t "stdin")
+
+    let stdout t = Option.map Stream.of_js (stream t "stdout")
+    let stderr t = Option.map Stream.of_js (stream t "stderr")
+
+    let exit_code t =
+      Promise.await
+        (Promise.of_js ~decode:Decode.int (Js.Unsafe.get t "exitCode"))
+
+    let output t =
+      Binding.call
+        ~decode:(fun v ->
+          Decode.
+            {
+              stdout = field "stdout" bytes v;
+              stderr = field "stderr" bytes v;
+              exit_code = field "exitCode" int v;
+            })
+        t "output" [||]
+
+    let kill ?signal t =
+      let args = match signal with None -> [||] | Some n -> [| number n |] in
+      ignore (Binding.invoke t "kill" args)
+
+    let resize t ~cols ~rows =
+      ignore (Binding.invoke t "resize" [| number cols; number rows |])
+  end
+
+  let exec ?cwd ?env ?user ?stdin ?stdout ?stderr ?pty t cmd =
+    let options =
+      Binding.options
+        (List.filter_map Fun.id
+           [
+             field "cwd" str cwd;
+             field "env" string_map env;
+             field "user" str user;
+             field "stdin"
+               (function `Pipe -> str "pipe" | `Stream s -> Stream.to_js s)
+               stdin;
+             field "stdout"
+               (function `Pipe -> str "pipe" | `Ignore -> str "ignore")
+               stdout;
+             field "stderr"
+               (function
+                 | `Pipe -> str "pipe"
+                 | `Ignore -> str "ignore"
+                 | `Combined -> str "combined")
+               stderr;
+             field "pty"
+               (function
+                 | `Default -> bool_js true
+                 | `Size (cols, rows) ->
+                     Js.Unsafe.inject
+                       (Binding.options
+                          [ ("cols", number cols); ("rows", number rows) ]))
+               pty;
+           ])
+    in
+    Binding.call ~decode:Fun.id t "exec"
+      [| strings cmd; Js.Unsafe.inject options |]
 
   let of_js (v : js) : t = v
   let to_js (t : t) : js = t

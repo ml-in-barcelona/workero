@@ -136,13 +136,17 @@ not supported yet.
   jurisdictions, or the tag and 2048-byte attachment limits. Test these in
   a deployed Worker.
 - {{!page-durable_objects}Containers}:
-  {!Workero.Durable_object.Container} does not wrap [interceptOutboundTcp],
-  [exec], [inspect] or the snapshot functions. The tests run [State.container]
-  against [None] in [workerd] and against a JavaScript stub. A separate test,
+  {!Workero.Durable_object.Container} does not wrap [setLabels], the [signal]
+  option of [exec], or the [image], [instance], [labels] and [hardTimeout]
+  options of [start].
+  {!Workero.Durable_object.Container.intercept_outbound_tcp} and
+  {!Workero.Durable_object.Container.snapshot_directory} need
+  [workerd --experimental]. The tests run [State.container] against [None] in
+  [workerd] and against a JavaScript stub. A separate test,
   [test/worker-containers], starts real containers in CI and prints
-  [SKIP containers] where Docker or its images are missing. Raw TCP connect and
-  outbound interception run only there. [workerd] runs containers only with
-  Docker and an egress interceptor image.
+  [SKIP containers] where Docker or its images are missing. Raw TCP connect,
+  outbound interception, [exec], [inspect] and snapshot restore run only there.
+  [workerd] runs containers only with Docker and an egress interceptor image.
 
 {1 Not supported yet}
 

@@ -162,6 +162,24 @@ module Container : sig
 
   type t
 
+  module Snapshot : sig
+    type t = { id : string; size : int; name : string option }
+    (** A snapshot of the whole container. [size] is in bytes. *)
+  end
+
+  module Directory_snapshot : sig
+    type t = { id : string; size : int; dir : string; name : string option }
+    (** A snapshot of one directory of the container, taken at [dir]. [size] is
+        in bytes. *)
+
+    type restore = { snapshot : t; mount_point : string option }
+    (** Restores [snapshot] at [mount_point], or at [snapshot.dir] when
+        [mount_point] is [None]. *)
+  end
+
+  type info = { labels : (string * string) list; image : string }
+  (** What {!inspect} reports. *)
+
   val running : t -> bool
   (** [true] once {!start} ran and until the container exits or is destroyed. It
       does not mean that the program in the container accepts connections. *)
@@ -170,12 +188,17 @@ module Container : sig
     ?entrypoint:string list ->
     ?env:(string * string) list ->
     ?enable_internet:bool ->
+    ?container_snapshot:Snapshot.t ->
+    ?directory_snapshots:Directory_snapshot.restore list ->
     t ->
     unit
   (** Boots the container and returns at once, before it is ready to accept
       connections. [entrypoint] replaces the command of the image, [env] adds
       environment variables, and [enable_internet] allows outbound traffic.
-      Raises {!Js_error} when the container already runs. *)
+      [container_snapshot] starts the container from a {!snapshot_container}
+      result, and [directory_snapshots] restore results of {!snapshot_directory}
+      before the program starts. Raises {!Js_error} when the container already
+      runs. *)
 
   val monitor : t -> unit
   (** Waits until the container exits. Raises {!Js_error} when it exits with an
@@ -226,6 +249,87 @@ module Container : sig
       pattern with an optional port; ["*"] means every host on port 443. The
       container must trust [/etc/cloudflare/certs/cloudflare-containers-ca.crt].
       Suspends. *)
+
+  val intercept_outbound_tcp : t -> string -> Fetcher.t -> unit
+  (** [intercept_outbound_tcp container address fetcher] sends the raw TCP
+      connections of the container to [address], a ["host:port"] string, to the
+      [connect] handler of the Worker behind [fetcher]. A workero Worker has no
+      [connect] handler, so [fetcher] must reach another Worker. Suspends.
+      Available in [workerd] only with [--experimental]. *)
+
+  val snapshot_container : ?name:string -> t -> Snapshot.t
+  (** Saves the whole running container. Pass the result as [container_snapshot]
+      to {!start} on a stopped container to resume from it. Suspends. *)
+
+  val snapshot_directory :
+    ?name:string -> t -> dir:string -> Directory_snapshot.t
+  (** [snapshot_directory container ~dir] saves the directory [dir] of the
+      running container. Restore it with [directory_snapshots] of {!start}.
+      Suspends. Available in [workerd] only with [--experimental]. *)
+
+  val inspect : t -> info option
+  (** The labels and the image of the container, or [None] when the runtime has
+      no information. Suspends. *)
+
+  module Process : sig
+    (** A program started by {!exec}. *)
+
+    type t
+    type output = { stdout : string; stderr : string; exit_code : int }
+
+    val pid : t -> int
+    (** The process id, inside the container. *)
+
+    val is_pty : t -> bool
+    (** [true] when {!exec} gave a [pty]. *)
+
+    val stdin : t -> Stream.Writer.t option
+    (** A writer for the standard input, when {!exec} had [stdin:`Pipe], or a
+        [pty] and no [stdin]. Close it to send the end of input. Each call takes
+        a new writer of the same stream, so call it once. *)
+
+    val stdout : t -> Stream.t option
+    (** The standard output, unless {!exec} had [stdout:`Ignore]. *)
+
+    val stderr : t -> Stream.t option
+    (** The standard error, unless {!exec} had [stderr:`Ignore] or
+        [stderr:`Combined], or a [pty]. *)
+
+    val exit_code : t -> int
+    (** Waits for the process to end. Suspends. *)
+
+    val output : t -> output
+    (** Reads standard output and standard error to the end and waits for the
+        process to end. It consumes the streams: do not read them as well.
+        Suspends. *)
+
+    val kill : ?signal:int -> t -> unit
+    (** Sends a Unix signal number to the process, [15] (SIGTERM) by default. *)
+
+    val resize : t -> cols:int -> rows:int -> unit
+    (** Resizes the terminal of a process started with [pty]. Raises {!Js_error}
+        for another process, or when [cols] or [rows] is outside 1 to 65535. *)
+  end
+
+  val exec :
+    ?cwd:string ->
+    ?env:(string * string) list ->
+    ?user:string ->
+    ?stdin:[ `Pipe | `Stream of Stream.t ] ->
+    ?stdout:[ `Pipe | `Ignore ] ->
+    ?stderr:[ `Pipe | `Ignore | `Combined ] ->
+    ?pty:[ `Default | `Size of int * int ] ->
+    t ->
+    string list ->
+    Process.t
+  (** [exec container cmd] starts the program [cmd] (the program and its
+      arguments) in the running container and returns before it ends. [cwd],
+      [env] and [user] set the directory, extra environment variables and user
+      of the process. [stdin] is a pipe, see {!Process.stdin}, or a stream that
+      the process reads. Without [stdin] or [pty], the standard input of the
+      process is empty. [stderr:`Combined] merges standard error into standard
+      output. [pty] gives the process a terminal, [`Size (cols, rows)] sets its
+      size. Suspends. Raises {!Js_error} when the container does not run. *)
 
   val of_js : Js_of_ocaml.Js.Unsafe.any -> t
   val to_js : t -> Js_of_ocaml.Js.Unsafe.any

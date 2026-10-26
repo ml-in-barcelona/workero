@@ -70,6 +70,22 @@ let rec tcp_response container attempts =
   | response -> response
   | exception Js_error e -> retry (Promise.error_to_string e)
 
+let rec run container ?cwd ?env ?stdin cmd attempts =
+  match D.Container.exec ?cwd ?env ?stdin container cmd with
+  | process -> process
+  | exception Js_error e ->
+      if attempts = 0 then
+        failwith ("exec never worked: " ^ Promise.error_to_string e)
+      else (
+        Promise.await (Timer.sleep 500);
+        run container ?cwd ?env ?stdin cmd (attempts - 1))
+
+let output container ?cwd ?env cmd =
+  let o = D.Container.Process.output (run container ?cwd ?env cmd 40) in
+  Printf.sprintf "out=%s|err=%s|exit=%d" o.stdout o.stderr o.exit_code
+
+let sh container script = output container [ "sh"; "-c"; script ]
+
 let sandbox state env =
   let container = Option.get (D.State.container state) in
   let start entrypoint =
@@ -124,6 +140,49 @@ let sandbox state env =
           match D.Container.monitor container with
           | () -> ok "no raise"
           | exception Js_error e -> ok (Promise.error_to_string e))
+      | "/exec" ->
+          start trap;
+          ok
+            (output container ~cwd:"/tmp"
+               ~env:[ ("GREETING", "hi") ]
+               [ "sh"; "-c"; "echo $GREETING:$(pwd); echo oops >&2; exit 3" ])
+      | "/exec-stdin" ->
+          start trap;
+          let p = run container ~stdin:`Pipe [ "cat" ] 40 in
+          let writer = Option.get (D.Container.Process.stdin p) in
+          Stream.Writer.write writer "ping";
+          Stream.Writer.close writer;
+          ok (D.Container.Process.output p).stdout
+      | "/inspect" -> (
+          start trap;
+          ignore (output container [ "true" ]);
+          match D.Container.inspect container with
+          | Some info -> ok ("inspect=some|" ^ string_of_bool (info.image <> ""))
+          | None -> ok "inspect=none")
+      | "/snapshot" ->
+          start trap;
+          ignore (sh container "echo saved > /root/state");
+          let snapshot = D.Container.snapshot_container container in
+          D.Container.destroy container;
+          D.Container.start ~entrypoint:[ "sh"; "-c"; trap ]
+            ~container_snapshot:snapshot container;
+          ok
+            (Printf.sprintf "size>0=%b|%s" (snapshot.size > 0)
+               (sh container "cat /root/state"))
+      | "/snapshot-dir" ->
+          start trap;
+          ignore (sh container "mkdir -p /data; echo kept > /data/f");
+          let snapshot =
+            D.Container.snapshot_directory container ~dir:"/data"
+          in
+          D.Container.destroy container;
+          D.Container.start ~entrypoint:[ "sh"; "-c"; trap ]
+            ~directory_snapshots:
+              [
+                { D.Container.Directory_snapshot.snapshot; mount_point = None };
+              ]
+            container;
+          ok (sh container "cat /data/f")
       | _ -> Response.text ~status:`Not_Found "not found")
     ()
 

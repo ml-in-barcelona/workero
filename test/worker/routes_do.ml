@@ -472,6 +472,9 @@ let container_stub log =
   let g name = get global (Js.string name) in
   let num v = int_of_float (Js.float_of_number (coerce v)) in
   let record entry = log := entry :: !log in
+  let defined v =
+    Js.to_string (Js.typeof (Js.Unsafe.coerce v)) <> "undefined"
+  in
   let promise m arg = meth_call (g "Promise") m [| arg |] in
   let c = obj [||] in
   set c (Js.string "start")
@@ -516,6 +519,102 @@ let container_stub log =
       "http:" ^ Js.to_string addr ^ ":" ^ tag binding);
   recorded "interceptOutboundHttps" (fun addr binding ->
       "https:" ^ Js.to_string addr ^ ":" ^ tag binding);
+  let json v = Js.to_string (meth_call (g "JSON") "stringify" [| inject v |]) in
+  let resolved v = promise "resolve" v in
+  let bytes text =
+    meth_call
+      (new_obj (g "TextEncoder") [||])
+      "encode"
+      [| inject (Js.string text) |]
+  in
+  let process cmd options =
+    record ("exec:" ^ json cmd ^ ":" ^ json options);
+    let echo =
+      new_obj (g "TransformStream")
+        [|
+          inject (obj [||]);
+          inject (obj [||]);
+          inject (obj [| ("highWaterMark", inject 16) |]);
+        |]
+    in
+    let p = obj [||] in
+    set p (Js.string "pid") (inject 7);
+    set p (Js.string "isPty")
+      (inject
+         (Js.bool (defined options && defined (get options (Js.string "pty")))));
+    let option name =
+      defined options && defined (get options (Js.string name))
+    in
+    let piped =
+      option "stdin"
+      && Js.to_string (Js.typeof (get options (Js.string "stdin"))) = "string"
+    in
+    if piped || (option "pty" && not (option "stdin")) then
+      set p (Js.string "stdin") (get echo (Js.string "writable"));
+    set p (Js.string "stdout") (get echo (Js.string "readable"));
+    set p (Js.string "stderr") (inject Js.null);
+    set p (Js.string "exitCode") (resolved (inject 3));
+    set p (Js.string "output")
+      (inject
+         (Js.Unsafe.callback_with_arity 1 (fun () ->
+              resolved
+                (obj
+                   [|
+                     ("stdout", inject (bytes "out"));
+                     ("stderr", inject (bytes "err"));
+                     ("exitCode", inject 3);
+                   |]))));
+    set p (Js.string "kill")
+      (inject
+         (Js.Unsafe.callback_with_arity 1 (fun n ->
+              record ("kill:" ^ if defined n then string_of_int (num n) else "-"))));
+    set p (Js.string "resize")
+      (inject
+         (Js.Unsafe.callback_with_arity 2 (fun cols rows ->
+              record (Printf.sprintf "resize:%dx%d" (num cols) (num rows)))));
+    p
+  in
+  set c (Js.string "exec")
+    (inject
+       (Js.Unsafe.callback_with_arity 2 (fun cmd options ->
+            resolved (process cmd options))));
+  set c (Js.string "inspect")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun () ->
+            record "inspect";
+            resolved
+              (obj
+                 [|
+                   ( "labels",
+                     inject (obj [| ("role", inject (Js.string "web")) |]) );
+                   ("image", inject (Js.string "img:1"));
+                 |]))));
+  set c
+    (Js.string "snapshotContainer")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun options ->
+            record ("snapshot-container:" ^ json options);
+            resolved
+              (obj
+                 [|
+                   ("id", inject (Js.string "s1"));
+                   ("size", inject 2048);
+                   ("name", inject (Js.string "nightly"));
+                 |]))));
+  set c
+    (Js.string "snapshotDirectory")
+    (inject
+       (Js.Unsafe.callback_with_arity 1 (fun options ->
+            record ("snapshot-directory:" ^ json options);
+            resolved
+              (obj
+                 [|
+                   ("id", inject (Js.string "d1"));
+                   ("size", inject 512);
+                   ("dir", get options (Js.string "dir"));
+                 |]))));
+  recorded "interceptOutboundTcp" (fun addr binding ->
+      "tcp:" ^ Js.to_string addr ^ ":" ^ tag binding);
   set c
     (Js.string "interceptAllOutboundHttp")
     (inject
@@ -617,10 +716,77 @@ let container_probe () =
     (Option.value echoed ~default:"-")
     invalids
 
+let container_ext_probe () =
+  let log = ref [] in
+  let c = container_stub log in
+  let state =
+    D.State.of_js
+      (Js.Unsafe.inject (Js.Unsafe.obj [| ("container", Js.Unsafe.inject c) |]))
+  in
+  let container = Option.get (D.State.container state) in
+  let p =
+    D.Container.exec ~cwd:"/w"
+      ~env:[ ("A", "1") ]
+      ~user:"u" ~stdin:`Pipe ~stdout:`Pipe ~stderr:`Combined container
+      [ "echo"; "hi" ]
+  in
+  let echoed =
+    let writer = Option.get (D.Container.Process.stdin p) in
+    Stream.Writer.write writer "ping";
+    Stream.Writer.close writer;
+    Stream.Reader.read
+      (Stream.reader (Option.get (D.Container.Process.stdout p)))
+  in
+  let exit_code = D.Container.Process.exit_code p in
+  let out = D.Container.Process.output p in
+  D.Container.Process.kill ~signal:15 p;
+  D.Container.Process.kill p;
+  let stderr_is_none = D.Container.Process.stderr p = None in
+  let _, readable = Stream.pipe () in
+  let q =
+    D.Container.exec ~stdin:(`Stream readable) ~stdout:`Ignore ~stderr:`Pipe
+      ~pty:(`Size (10, 20))
+      container [ "sh" ]
+  in
+  D.Container.Process.resize q ~cols:80 ~rows:24;
+  let plain = D.Container.exec container [ "ls" ] in
+  let info = Option.get (D.Container.inspect container) in
+  let snap = D.Container.snapshot_container ~name:"nightly" container in
+  let dir =
+    D.Container.snapshot_directory ~name:"data" container ~dir:"/data"
+  in
+  D.Container.start ~container_snapshot:snap
+    ~directory_snapshots:
+      [
+        { D.Container.Directory_snapshot.snapshot = dir; mount_point = None };
+        { snapshot = dir; mount_point = Some "/restored" };
+      ]
+    container;
+  let binding =
+    Fetcher.of_js
+      (Js.Unsafe.obj [| ("tag", Js.Unsafe.inject (Js.string "t")) |])
+  in
+  D.Container.intercept_outbound_tcp container "10.0.0.2:5432" binding;
+  Printf.sprintf "%s|%s|%d|%d|%b|%s|%s|%b|%d|%b|%b|%s|%s|%s,%d,%s|%d,%s,%s"
+    (String.concat ";" (List.rev !log))
+    (Option.value echoed ~default:"-")
+    (D.Container.Process.pid p)
+    exit_code
+    (D.Container.Process.is_pty q)
+    out.D.Container.Process.stdout out.stderr stderr_is_none out.exit_code
+    (D.Container.Process.is_pty plain)
+    (D.Container.Process.stdin plain <> None)
+    (String.concat "," (List.map (fun (k, v) -> k ^ "=" ^ v) info.labels))
+    info.image snap.id snap.size
+    (Option.value snap.name ~default:"-")
+    dir.size dir.dir dir.id
+
 let handle req env _ctx =
   let segments = String.split_on_char '/' (Request.path req) in
   match segments with
   | [ ""; "do-container-stub" ] -> Some (Response.text (container_probe ()))
+  | [ ""; "do-container-stub-ext" ] ->
+      Some (Response.text (container_ext_probe ()))
   | [ ""; "do"; binding; name; op ] -> (
       let namespace = D.Namespace.of_env env binding in
       let stub = D.Namespace.get_by_name namespace name in
