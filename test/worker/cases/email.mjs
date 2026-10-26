@@ -96,7 +96,7 @@ const cases = [
     },
   },
   {
-    name: "Email.reply_stream builds an EmailMessage with a stream as the raw message",
+    name: "Email.reply with a `Stream builds an EmailMessage with a stream as the raw message",
     spec: message("reply-stream@example.com"),
     expected: {
       calls: [

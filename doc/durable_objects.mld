@@ -477,7 +477,7 @@ let () =
           let socket =
             Durable_object.Container.connect container ~port:9000
           in
-          Socket.opened socket;
+          ignore (Socket.opened socket);
           Stream.Writer.write (Socket.writer socket) "ping";
           match Stream.Reader.read (Socket.reader socket) with
           | Some reply -> Response.text reply

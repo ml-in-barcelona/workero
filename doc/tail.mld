@@ -103,7 +103,7 @@ let () =
         | _ -> ())
 ]}
 
-{!Workero.Trace.Stream.kind} is {!type:Workero.Trace.Stream.kind}: [Onset],
+{!val:Workero.Trace.Stream.kind} is {!type:Workero.Trace.Stream.kind}: [Onset],
 [Log], [Exception], [Return], [Outcome], [Span_open], [Span_close],
 [Diagnostic_channel], [Attributes] or [Other]. Events of one invocation share
 {!Workero.Trace.Stream.invocation_id} and arrive with a growing

@@ -60,19 +60,20 @@ let () =
       let open Workero in
       let id = Option.value (Email.header message "message-id") ~default:"" in
       Email.reply message ~from:"support@example.com" ~to_:(Email.from message)
-        (String.concat "\r\n"
-           [
-             "From: support@example.com";
-             "To: " ^ Email.from message;
-             "Message-ID: <reply-1@example.com>";
-             "In-Reply-To: " ^ id;
-             "Subject: Received";
-             "";
-             "We got your message.";
-             "";
-           ]))
+        (`Text
+           (String.concat "\r\n"
+              [
+                "From: support@example.com";
+                "To: " ^ Email.from message;
+                "Message-ID: <reply-1@example.com>";
+                "In-Reply-To: " ^ id;
+                "Subject: Received";
+                "";
+                "We got your message.";
+                "";
+              ])))
 ```
-[`Workero.Email.reply_stream`](./Workero-Email.md#val-reply_stream) takes the same complete message as a [`Workero.Stream.t`](./Workero-Stream.md#type-t), for example from [`Workero.Stream.pipe`](./Workero-Stream.md#val-pipe). Write it from a [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) function, because the runtime reads the stream while the call waits.
+[`Workero.Email.reply`](./Workero-Email.md#val-reply) also takes ``Stream s`, with the same complete message as a [`Workero.Stream.t`](./Workero-Stream.md#type-t), for example from [`Workero.Stream.pipe`](./Workero-Stream.md#val-pipe). The text form is ``Text raw`. Write it from a [`Workero.Context.wait_until`](./Workero-Context.md#val-wait_until) function, because the runtime reads the stream while the call waits.
 
 `reply` creates the `EmailMessage` from the `cloudflare:email` module when it is called. `workerd` does not provide that module. See [Support and known issues](./known_issues.md).
 

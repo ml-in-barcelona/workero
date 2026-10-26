@@ -43,9 +43,7 @@ let connect ?(secure_transport = Off) ?(allow_half_open = false) ~host ~port ()
 let await_property socket name =
   Promise.await (Promise.of_js ~decode:Decode.unit (Js.Unsafe.get socket name))
 
-let opened s = await_property s "opened"
-
-let info s =
+let opened s =
   Promise.await
     (Promise.of_js
        ~decode:(fun v ->

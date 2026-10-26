@@ -42,12 +42,8 @@ val connect :
       when the runtime refuses the address, for example a Cloudflare address, a
       loopback address or port 25. *)
 
-val opened : t -> unit
-(** Waits until the connection is up. Suspends. Raises {!Js_error} when the
-    connection fails. *)
-
-val info : t -> info
-(** Like {!opened}, and gives the {!info} of the connection. Suspends. Raises
+val opened : t -> info
+(** Waits until the connection is up and gives its {!info}. Suspends. Raises
     {!Js_error} when the connection fails. *)
 
 val upgraded : t -> bool

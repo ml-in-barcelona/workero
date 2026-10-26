@@ -41,14 +41,9 @@ Raises `Invalid_argument` when `host` is empty or `port` is outside 1 to 65535, 
 
 raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime refuses the address, for example a Cloudflare address, a loopback address or port 25.
 ```ocaml
-val opened : t -> unit
+val opened : t -> info
 ```
-Waits until the connection is up. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the connection fails.
-
-```ocaml
-val info : t -> info
-```
-Like [`opened`](./#val-opened), and gives the [`info`](./#val-info) of the connection. Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the connection fails.
+Waits until the connection is up and gives its [`info`](./#type-info). Suspends. Raises [`Js_error`](./Workero.md#exception-Js_error) when the connection fails.
 
 ```ocaml
 val upgraded : t -> bool

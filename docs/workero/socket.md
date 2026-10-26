@@ -12,7 +12,7 @@ There is nothing to configure. `workero build` writes `index.js` with `import { 
 let handler _req _env _ctx =
   let open Workero in
   let socket = Socket.connect ~host:"gopher.floodgap.com" ~port:70 () in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   let writer = Socket.writer socket in
   Stream.Writer.write writer "/\r\n";
   Stream.Writer.close writer;
@@ -33,7 +33,7 @@ let () = Workero.serve handler
 - [`Workero.Socket.reader`](./Workero-Socket.md#val-reader) and [`Workero.Socket.writer`](./Workero-Socket.md#val-writer) give the [`Workero.Stream`](./Workero-Stream.md) readers and writers. Each locks its stream, so call each one once for each socket, or unlock the stream with [`Workero.Stream.Reader.release`](./Workero-Stream-Reader.md#val-release) or [`Workero.Stream.Writer.release`](./Workero-Stream-Writer.md#val-release). [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) waits when the server is slow to read (back-pressure).
 - [`Workero.Stream.Reader.read`](./Workero-Stream-Reader.md#val-read) gives `None` when the server ends its side. [`Workero.Stream.Writer.close`](./Workero-Stream-Writer.md#val-close) ends yours.
 - [`Workero.Socket.close`](./Workero-Socket.md#val-close) closes both sides. [`Workero.Socket.closed`](./Workero-Socket.md#val-closed) waits for the socket to close.
-- [`Workero.Socket.info`](./Workero-Socket.md#type-info) waits like [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) and gives the remote and local address, when the runtime reports them.
+- [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives the remote and local address, when the runtime reports them.
 
 ## TLS
 
@@ -47,7 +47,7 @@ let handler _req _env _ctx =
     Socket.connect ~secure_transport:Starttls ~host:"db.example.com" ~port:5432
       ()
   in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   let reader = Socket.reader socket and writer = Socket.writer socket in
   Stream.Writer.write writer "plain text opening message";
   ignore (Stream.Reader.read reader);

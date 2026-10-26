@@ -74,7 +74,7 @@ let () =
             Workero.Console.error (name ^ ": " ^ message)
         | _ -> ())
 ```
-[`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#type-kind) is [`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#type-kind): `Onset`, `Log`, `Exception`, `Return`, `Outcome`, `Span_open`, `Span_close`, `Diagnostic_channel`, `Attributes` or `Other`. Events of one invocation share [`Workero.Trace.Stream.invocation_id`](./Workero-Trace-Stream.md#val-invocation_id) and arrive with a growing [`Workero.Trace.Stream.sequence`](./Workero-Trace-Stream.md#val-sequence).
+[`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#val-kind) is [`Workero.Trace.Stream.kind`](./Workero-Trace-Stream.md#type-kind): `Onset`, `Log`, `Exception`, `Return`, `Outcome`, `Span_open`, `Span_close`, `Diagnostic_channel`, `Attributes` or `Other`. Events of one invocation share [`Workero.Trace.Stream.invocation_id`](./Workero-Trace-Stream.md#val-invocation_id) and arrive with a growing [`Workero.Trace.Stream.sequence`](./Workero-Trace-Stream.md#val-sequence).
 
 
 ## Limits

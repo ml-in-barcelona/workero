@@ -81,21 +81,23 @@ let () =
       let open Workero in
       let id = Option.value (Email.header message "message-id") ~default:"" in
       Email.reply message ~from:"support@example.com" ~to_:(Email.from message)
-        (String.concat "\r\n"
-           [
-             "From: support@example.com";
-             "To: " ^ Email.from message;
-             "Message-ID: <reply-1@example.com>";
-             "In-Reply-To: " ^ id;
-             "Subject: Received";
-             "";
-             "We got your message.";
-             "";
-           ]))
+        (`Text
+           (String.concat "\r\n"
+              [
+                "From: support@example.com";
+                "To: " ^ Email.from message;
+                "Message-ID: <reply-1@example.com>";
+                "In-Reply-To: " ^ id;
+                "Subject: Received";
+                "";
+                "We got your message.";
+                "";
+              ])))
 ]}
 
-{!Workero.Email.reply_stream} takes the same complete message as a
-{!Workero.Stream.t}, for example from {!Workero.Stream.pipe}. Write it from a
+{!Workero.Email.reply} also takes [`Stream s], with the same complete message as
+a {!Workero.Stream.t}, for example from {!Workero.Stream.pipe}. The text form is
+[`Text raw]. Write it from a
 {!Workero.Context.wait_until} function, because the runtime reads the stream
 while the call waits.
 

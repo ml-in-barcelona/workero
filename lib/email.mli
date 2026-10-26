@@ -53,21 +53,22 @@ val forward : ?headers:(string * string) list -> t -> string -> unit
     forwarded message; the runtime accepts only names that start with ["X-"].
     Suspends. *)
 
-val reply : t -> from:string -> to_:string -> string -> unit
+val reply :
+  t ->
+  from:string ->
+  to_:string ->
+  [ `Text of string | `Stream of Stream.t ] ->
+  unit
 (** [reply message ~from ~to_ raw] sends [raw], a complete message with headers,
     as a reply to [message]. [from] must be an address of the Worker's domain
     and [to_] the sender. [raw] needs a [Message-ID] header and an [In-Reply-To]
-    header that holds the [Message-ID] of [message]. Suspends.
+    header that holds the [Message-ID] of [message]. Give it as [`Text] or, for
+    a large message or one built in pieces, as a [`Stream]. The runtime reads
+    the stream, so do not read it yourself. Suspends.
 
     @raise Js_error
       when the runtime rejects the reply, or when the runtime has no
       [cloudflare:email] module (workerd). *)
-
-val reply_stream : t -> from:string -> to_:string -> Stream.t -> unit
-(** Like {!reply}, with the raw message as a stream, for a message that is large
-    or built in pieces. The stream must hold the same complete message, with the
-    same headers. The runtime reads the stream, so do not read it yourself.
-    Suspends. *)
 
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 val to_js : t -> Js_of_ocaml.Js.Unsafe.any

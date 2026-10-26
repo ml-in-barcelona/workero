@@ -7,7 +7,7 @@ let connect ?secure_transport ?allow_half_open () =
   let socket =
     Socket.connect ?secure_transport ?allow_half_open ~host ~port:7 ()
   in
-  Socket.opened socket;
+  ignore (Socket.opened socket);
   socket
 
 let read_all reader total =
@@ -113,7 +113,7 @@ let invalid () =
 
 let info () =
   let socket = Socket.connect ~host ~port:7 () in
-  let { Socket.remote_address; local_address } = Socket.info socket in
+  let { Socket.remote_address; local_address } = Socket.opened socket in
   let show = function Some a -> "some:" ^ a | None -> "none" in
   Socket.close socket;
   Printf.sprintf "remote=%s local=%s" (show remote_address) (show local_address)
