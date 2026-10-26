@@ -9,6 +9,8 @@ const cases = [
   { name: "Socket.close then closed", request: ["http://test/socket/close"], status: 200, body: "closed" },
   { name: "Socket: reader and writer lock the stream", request: ["http://test/socket/locked"], status: 200, bodyIncludes: "reader=Js_error: TypeError" },
   { name: "Stream.Reader.release and Writer.release unlock the socket streams", request: ["http://test/socket/release"], status: 200, body: "echo=again" },
+  { name: "Socket.opened gives the remote address and no local address in workerd", request: ["http://test/socket/info"], status: 200, body: "remote=some:tcp.test:7 local=none" },
+  { name: "Socket.upgraded is false before and, in workerd, after start_tls", request: ["http://test/socket/upgraded"], status: 200, body: "plain=false before=false original=false secure=false" },
   { name: "Socket.connect rejects an empty host and bad ports", request: ["http://test/socket/invalid"], status: 200, body: [
     "Invalid_argument: Workero.Socket.connect: host is empty",
     "Invalid_argument: Workero.Socket.connect: port 0 is outside 1 to 65535",

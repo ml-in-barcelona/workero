@@ -46,6 +46,10 @@ module Duration : sig
   val days : int -> t
 end
 
+type schedule = { cron : string; scheduled_time : float }
+(** The cron trigger that started an instance. [scheduled_time] is in
+    milliseconds since the epoch. *)
+
 type event = {
   payload : Rpc.value;
       (** The [params] of {!create}; [`Undefined] when there were none. *)
@@ -53,6 +57,10 @@ type event = {
       (** When the instance was created, in milliseconds since the epoch, like
           {!Date.now}. *)
   instance_id : string;
+  workflow_name : string;  (** The name of the Workflow. *)
+  schedule : schedule option;
+      (** [Some _] for an instance started by a cron [schedules] entry of the
+          binding in [wrangler.toml]. *)
 }
 (** The event given to the function of {!register}. *)
 
@@ -65,6 +73,40 @@ module Step : sig
   type retries
   (** How to retry a failed step. *)
 
+  type config = {
+    retries_limit : int option;
+        (** The retry limit that applies to the step, if the runtime reports
+            one. *)
+    backoff : backoff option;
+  }
+  (** The retry configuration that the runtime reports for a step. It leaves out
+      [delay] and [timeout], which the runtime reports as a number or a string.
+  *)
+
+  type context = {
+    attempt : int;  (** 1 on the first try, 2 on the first retry. *)
+    step_name : string;
+    step_count : int;
+        (** 1 for the first step with this name, 2 for the second. *)
+    config : config;
+  }
+  (** What the runtime tells a step callback about the call. *)
+
+  type delay_context = {
+    delay_ctx : context;
+    delay_error : string * string;
+        (** Name and message of the error that failed the attempt. *)
+  }
+  (** What the runtime gives to the function of {!retries_with}. *)
+
+  val retries_with :
+    ?backoff:backoff -> limit:int -> (delay_context -> Duration.t) -> retries
+  (** [retries_with ~limit f] is like {!val-retries}, with the delay before each
+      retry computed by [f] from the failed attempt. [f] runs in its own fiber
+      and may call {!Promise.await}.
+
+      Raises [Invalid_argument] when [limit] is not in [0..10000]. *)
+
   val retries :
     ?backoff:backoff -> limit:int -> delay:Duration.t -> unit -> retries
   (** [retries ~limit ~delay ()] retries up to [limit] times, waiting [delay]
@@ -73,14 +115,30 @@ module Step : sig
 
       Raises [Invalid_argument] when [limit] is not in [0..10000]. *)
 
-  type context = {
-    attempt : int;  (** 1 on the first try, 2 on the first retry. *)
+  type rollback_context = {
+    rollback_ctx : context;  (** The context of the step. *)
+    rollback_error : string * string;
+        (** Name and message of the error that made the runtime roll back. *)
+    rollback_output : Rpc.value;  (** What the step returned. *)
   }
-  (** What the runtime tells a step callback about the call. *)
+
+  type rollback
+  (** A handler that undoes a step. *)
+
+  val rollback :
+    ?retries:retries ->
+    ?timeout:Duration.t ->
+    (rollback_context -> unit) ->
+    rollback
+  (** [rollback f] runs [f] to undo a step. The runtime calls it, in reverse
+      order of the steps, when the instance fails or when {!Instance.terminate}
+      has [~rollback:true]. [retries] and [timeout] apply to the handler. [f]
+      runs in its own fiber and may call {!Promise.await}. *)
 
   val do_ :
     ?retries:retries ->
     ?timeout:Duration.t ->
+    ?rollback:rollback ->
     t ->
     string ->
     (context -> Rpc.value) ->
@@ -108,10 +166,19 @@ module Step : sig
       epoch. Use a value computed in a step or taken from the event, so that
       replays agree. *)
 
+  type step_event = {
+    event_type : string;
+    event_payload : Rpc.value;
+    event_timestamp : float;
+        (** When the runtime received the event, in milliseconds since the
+            epoch. *)
+  }
+  (** An event that {!Instance.send_event} delivered. *)
+
   val wait_for_event :
-    ?timeout:Duration.t -> t -> string -> type_:string -> Rpc.value
+    ?timeout:Duration.t -> t -> string -> type_:string -> step_event
   (** [wait_for_event step name ~type_] waits for {!Instance.send_event} with
-      the same [type_] and returns its payload. An event sent earlier is kept.
+      the same [type_] and returns the event. An event sent earlier is kept.
       [timeout] defaults to 24 hours. When it expires, raises {!Js_error}.
 
       Raises [Invalid_argument] when [type_] is empty, longer than 100
@@ -169,10 +236,30 @@ module Instance : sig
 
   val pause : t -> unit
   val resume : t -> unit
-  val terminate : t -> unit
 
-  val restart : t -> unit
-  (** Starts again from the beginning. *)
+  val terminate : ?rollback:bool -> t -> unit
+  (** [terminate i] stops the instance. With [~rollback:true] the runtime first
+      runs the {!Step.val-rollback} handlers. *)
+
+  type step_kind = Do | Sleep | Wait_for_event
+
+  type restart_from
+  (** A step to restart from. *)
+
+  val restart_from : ?count:int -> ?kind:step_kind -> string -> restart_from
+  (** [restart_from name] is the step called [name]. [count] picks the nth step
+      with that name, from 1 (the default). [kind] picks a {!Step.do_}, a sleep
+      or a {!Step.wait_for_event} when names repeat across kinds.
+
+      Raises [Invalid_argument] when [count] is below 1. *)
+
+  val restart : ?from:restart_from -> t -> unit
+  (** Starts again from the beginning. With [from], the steps before it keep
+      their stored results. The runtime raises {!Js_error} when no step matches
+      [from]. *)
+
+  val delete : t -> unit
+  (** Deletes the instance and its stored state. A running instance stops. *)
 
   val send_event : t -> type_:string -> Rpc.value -> unit
   (** [send_event i ~type_ payload] delivers an event to {!Step.wait_for_event}.
@@ -182,15 +269,26 @@ module Instance : sig
       {!Step.wait_for_event}. *)
 end
 
-val create : ?id:string -> ?params:Rpc.value -> t -> Instance.t
+type retention
+(** How long the runtime keeps the state of finished instances. *)
+
+val retention : ?success:Duration.t -> ?error:Duration.t -> unit -> retention
+(** [retention ~success ~error ()] keeps a completed instance for [success] and
+    a failed one for [error]. What is left out defaults to the binding's
+    [default_retention] and then to the maximum of the account. *)
+
+val create :
+  ?id:string -> ?params:Rpc.value -> ?retention:retention -> t -> Instance.t
 (** [create workflow] starts an instance. [id] defaults to a generated one;
-    [params] is the [payload] of the {!event}. Raises {!Js_error} when [id] is
-    in use, and [Invalid_argument] when [id] is longer than 100 characters. *)
+    [params] is the [payload] of the {!type-event}. Raises {!Js_error} when [id]
+    is in use, and [Invalid_argument] when [id] is longer than 100 characters.
+*)
 
 type options
 (** The arguments of one instance in {!create_batch}. *)
 
-val options : ?id:string -> ?params:Rpc.value -> unit -> options
+val options :
+  ?id:string -> ?params:Rpc.value -> ?retention:retention -> unit -> options
 
 type batch_error = {
   index : int;
@@ -208,3 +306,26 @@ val create_batch : t -> options list -> Instance.t list * batch_error list
 val get : t -> string -> Instance.t
 (** [get workflow id] is the instance [id]. Raises {!Js_error} when it does not
     exist. *)
+
+val create_batch_count :
+  ?params:Rpc.value ->
+  ?retention:retention ->
+  t ->
+  count:int ->
+  Instance.t list * batch_error list
+(** [create_batch_count workflow ~count] starts [count] instances with generated
+    ids and the same [params] and [retention]. Raises [Invalid_argument] when
+    [count] is not in [1..100]. *)
+
+type delete_error = {
+  failed_id : string;
+  failed_code : int;
+  failed_message : string;
+}
+(** An instance that {!delete_batch} did not delete. *)
+
+val delete_batch : t -> string list -> string list * delete_error list
+(** [delete_batch workflow ids] deletes up to 100 instances at once. It returns
+    the ids deleted and the errors. A running instance stops without running its
+    rollback handlers. Raises [Invalid_argument] when [ids] has no element or
+    more than 100. *)

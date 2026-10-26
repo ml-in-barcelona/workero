@@ -66,9 +66,14 @@ val forward : ?headers:(string * string) list -> t -> string -> unit
 `forward message address` forwards the message to `address`, which must be a verified destination address of the account. `headers` adds headers to the forwarded message; the runtime accepts only names that start with `"X-"`. Suspends.
 
 ```ocaml
-val reply : t -> from:string -> to_:string -> string -> unit
+val reply : 
+  t ->
+  from:string ->
+  to_:string ->
+  [ `Text of string | `Stream of Stream.t ] ->
+  unit
 ```
-`reply message ~from ~to_ raw` sends `raw`, a complete message with headers, as a reply to `message`. `from` must be an address of the Worker's domain and `to_` the sender. `raw` needs a `Message-ID` header and an `In-Reply-To` header that holds the `Message-ID` of `message`. Suspends.
+`reply message ~from ~to_ raw` sends `raw`, a complete message with headers, as a reply to `message`. `from` must be an address of the Worker's domain and `to_` the sender. `raw` needs a `Message-ID` header and an `In-Reply-To` header that holds the `Message-ID` of `message`. Give it as ``Text` or, for a large message or one built in pieces, as a ``Stream`. The runtime reads the stream, so do not read it yourself. Suspends.
 
 raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects the reply, or when the runtime has no cloudflare:email module (workerd).
 ```ocaml

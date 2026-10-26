@@ -71,6 +71,31 @@ let content () =
   in
   Response.text (on (R.Text "<b>hi</b>") ^ "\n" ^ on (R.Html "<b>hi</b>"))
 
+let stream_of ctx chunks =
+  Option.get
+    (Response.body
+       (Response.stream ctx (fun w ->
+            List.iter (Stream.Writer.write w) chunks;
+            Stream.Writer.close w)))
+
+let stream_content ctx =
+  let on c =
+    rewrite
+      (R.create ()
+      |> R.on ~element:(fun el -> R.Element.set_inner_content el (c ())) "p")
+      "<p>old</p>"
+  in
+  let body () = Option.get (Response.body (Response.html "<b>hi</b>")) in
+  Response.text
+    (String.concat "\n"
+       [
+         on (fun () -> R.Text_stream (body ()));
+         on (fun () -> R.Html_stream (body ()));
+         on (fun () -> R.Html_stream (stream_of ctx [ "<i>"; "a"; "</i>" ]));
+         on (fun () -> R.Text_response (Response.html "<b>hi</b>"));
+         on (fun () -> R.Html_response (Response.html "<b>hi</b>"));
+       ])
+
 let document () =
   let seen = Buffer.create 64 in
   let note s = Buffer.add_string seen (s ^ ";") in
@@ -204,12 +229,13 @@ let interleave () =
   in
   Response.text (Buffer.contents log)
 
-let handle req _env _ctx =
+let handle req _env ctx =
   match URL.path (Request.url req) with
   | "/html/two" -> Some (two_paragraphs ())
   | "/html/attributes" -> Some (attributes ())
   | "/html/edits" -> Some (edits ())
   | "/html/content" -> Some (content ())
+  | "/html/stream-content" -> Some (stream_content ctx)
   | "/html/document" -> Some (document ())
   | "/html/comments-text" -> Some (comments_and_text ())
   | "/html/chunks" -> Some (text_chunks ())

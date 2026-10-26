@@ -14,6 +14,13 @@ let hashes = Crypto.[ Sha1; Sha256; Sha384; Sha512 ]
 
 module K = Crypto.Key
 
+let contains sub s =
+  let n = String.length sub in
+  let rec go i =
+    i + n <= String.length s && (String.sub s i n = sub || go (i + 1))
+  in
+  go 0
+
 let verdict f =
   match f () with
   | b -> string_of_bool b
@@ -487,13 +494,6 @@ let handle req _env _ctx =
       let signature = Crypto.ecdsa_sign Crypto.Sha256 from_jwk "m" in
       let locked = K.generate_pair K.Ed25519 in
       let jwk = K.export_jwk aes in
-      let contains sub s =
-        let n = String.length sub in
-        let rec go i =
-          i + n <= String.length s && (String.sub s i n = sub || go (i + 1))
-        in
-        go 0
-      in
       Some
         (Response.text
            (String.concat ","
@@ -575,5 +575,237 @@ let handle req _env _ctx =
                 run Crypto.Sha1;
                 string_of_bool
                   (run Crypto.Sha512 = hex (Crypto.digest Crypto.Sha512 "abc"));
+              ]))
+  | "/subtle/timing-safe-equal" ->
+      let mac =
+        unhex "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+      in
+      let flipped =
+        String.mapi
+          (fun i c -> if i = 31 then Char.chr (Char.code c lxor 1) else c)
+          mac
+      in
+      let eq a b = string_of_bool (Crypto.timing_safe_equal a b) in
+      Some
+        (Response.text
+           (String.concat ","
+              [
+                eq mac (unhex (hex mac));
+                eq mac flipped;
+                eq mac (String.sub mac 0 31);
+                eq "" "";
+                eq "\000\255" "\000\255";
+                eq "\000\255" "\000\254";
+              ]))
+  | "/subtle/derive-key" ->
+      let raw k = hex (K.export_raw k) in
+      let pbkdf2 =
+        Crypto.pbkdf2_key Crypto.Sha1 ~password:"password" ~salt:"salt"
+          ~iterations:2 ~extractable:true ~bits:128 K.Aes_gcm
+      in
+      let okm_key = String.make 22 '\x0b' in
+      let salt = unhex "000102030405060708090a0b0c" in
+      let info = unhex "f0f1f2f3f4f5f6f7f8f9" in
+      let hkdf_cbc =
+        Crypto.hkdf_key Crypto.Sha256 ~key:okm_key ~salt ~info ~extractable:true
+          ~bits:128 K.Aes_cbc
+      in
+      let hkdf_hmac =
+        Crypto.hkdf_key Crypto.Sha256 ~key:okm_key ~salt ~info ~extractable:true
+          ~bits:256 (K.Hmac Crypto.Sha256)
+      in
+      let locked =
+        Crypto.hkdf_key Crypto.Sha256 ~key:okm_key ~salt ~info ~bits:128
+          K.Aes_ctr
+      in
+      let alice =
+        K.import (K.Private_jwk K.X25519) Crypto_vectors.x25519_jwk_alice
+      in
+      let bob_public =
+        K.import (K.Public_raw K.X25519)
+          (unhex
+             "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f")
+      in
+      let x25519 =
+        Crypto.x25519_derive_key alice ~public:bob_public ~extractable:true
+          ~bits:256 K.Aes_gcm
+      in
+      let a = K.generate_pair (K.Ecdh Crypto.P256) in
+      let b = K.generate_pair (K.Ecdh Crypto.P256) in
+      let ecdh_a =
+        Crypto.ecdh_derive_key a.private_ ~public:b.public ~extractable:true
+          ~bits:128 K.Aes_gcm
+      in
+      let ecdh_b =
+        Crypto.ecdh_derive_key b.private_ ~public:a.public ~extractable:true
+          ~bits:128 K.Aes_gcm
+      in
+      let sealed =
+        Crypto.aes_gcm_encrypt ecdh_a ~iv:(String.make 12 'i') "shared"
+      in
+      Some
+        (Response.text
+           (String.concat ","
+              [
+                raw pbkdf2;
+                raw hkdf_cbc;
+                raw hkdf_hmac;
+                raw x25519;
+                string_of_bool (K.extractable locked);
+                string_of_bool (K.extractable pbkdf2);
+                rejected (fun () ->
+                    ignore (K.export_raw locked);
+                    ());
+                string_of_bool (raw ecdh_a = raw ecdh_b);
+                (match
+                   Crypto.aes_gcm_decrypt ecdh_b ~iv:(String.make 12 'i') sealed
+                 with
+                | Some p -> p
+                | None -> "none");
+                rejected (fun () ->
+                    ignore
+                      (Crypto.pbkdf2_key Crypto.Sha1 ~password:"p" ~salt:"s"
+                         ~iterations:0 K.Aes_gcm);
+                    ());
+                rejected (fun () ->
+                    ignore
+                      (Crypto.hkdf_key Crypto.Sha256 ~key:"k" ~salt:"" ~info:""
+                         ~bits:100 K.Aes_gcm);
+                    ());
+                rejected (fun () ->
+                    ignore
+                      (Crypto.ecdh_derive_key a.private_ ~public:b.public
+                         ~bits:0 (K.Hmac Crypto.Sha256));
+                    ());
+              ]))
+  | "/subtle/wrap-aes-cbc-ctr" ->
+      let kek_bytes = unhex "2b7e151628aed2a6abf7158809cf4f3c" in
+      let data = unhex "6bc1bee22e409f96e93d7e117393172a" in
+      let target = K.import ~extractable:true (K.Secret_raw K.Aes_gcm) data in
+      let cbc_key = K.import (K.Secret_raw K.Aes_cbc) kek_bytes in
+      let cbc () =
+        Crypto.Aes_cbc
+          { key = cbc_key; iv = unhex "000102030405060708090a0b0c0d0e0f" }
+      in
+      let cbc_wrapped = Crypto.wrap_key (cbc ()) ~format:Crypto.Raw target in
+      let cbc_back =
+        Crypto.unwrap_key ~extractable:true (cbc ()) (K.Secret_raw K.Aes_gcm)
+          cbc_wrapped
+      in
+      let ctr_key = K.import (K.Secret_raw K.Aes_ctr) kek_bytes in
+      let ctr () =
+        Crypto.Aes_ctr
+          {
+            key = ctr_key;
+            counter = unhex "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+            counter_bits = 128;
+          }
+      in
+      let ctr_wrapped = Crypto.wrap_key (ctr ()) ~format:Crypto.Raw target in
+      let ctr_back =
+        Crypto.unwrap_key ~extractable:true (ctr ()) (K.Secret_raw K.Aes_gcm)
+          ctr_wrapped
+      in
+      Some
+        (Response.text
+           (String.concat ","
+              [
+                string_of_int (String.length cbc_wrapped);
+                hex (String.sub cbc_wrapped 0 16);
+                hex (K.export_raw cbc_back);
+                hex ctr_wrapped;
+                hex (K.export_raw ctr_back);
+                rejected (fun () ->
+                    ignore
+                      (Crypto.wrap_key
+                         (Crypto.Aes_cbc { key = cbc_key; iv = "short" })
+                         ~format:Crypto.Raw target);
+                    ());
+                rejected (fun () ->
+                    ignore
+                      (Crypto.wrap_key
+                         (Crypto.Aes_ctr
+                            {
+                              key = ctr_key;
+                              counter = String.make 16 'c';
+                              counter_bits = 0;
+                            })
+                         ~format:Crypto.Raw target);
+                    ());
+              ]))
+  | "/subtle/rsa-public-exponent" ->
+      let exponent pair =
+        let jwk = K.export_jwk pair.K.public in
+        if contains {|"e":"Aw"|} jwk then "3"
+        else if contains {|"e":"AQAB"|} jwk then "65537"
+        else "other"
+      in
+      let alg = K.Rsassa_pkcs1_v1_5 Crypto.Sha256 in
+      let three =
+        K.generate_pair ~extractable:true ~modulus_bits:1024 ~public_exponent:3
+          alg
+      in
+      let default = K.generate_pair ~extractable:true ~modulus_bits:1024 alg in
+      let explicit =
+        K.generate_pair ~extractable:true ~modulus_bits:1024
+          ~public_exponent:65537 alg
+      in
+      let signature = Crypto.rsassa_pkcs1_sign three.private_ "msg" in
+      Some
+        (Response.text
+           (String.concat ","
+              [
+                exponent three;
+                exponent default;
+                exponent explicit;
+                string_of_bool
+                  (Crypto.rsassa_pkcs1_verify three.public ~signature "msg");
+                rejected (fun () ->
+                    ignore
+                      (K.generate_pair ~modulus_bits:1024 ~public_exponent:17
+                         alg);
+                    ());
+                rejected (fun () ->
+                    ignore
+                      (K.generate_pair ~modulus_bits:1024 ~public_exponent:0 alg);
+                    ());
+                rejected (fun () ->
+                    ignore (K.generate_pair ~public_exponent:3 K.Ed25519);
+                    ());
+              ]))
+  | "/subtle/key-properties" ->
+      let list = String.concat "+" in
+      let aes = K.generate K.Aes_gcm in
+      let hmac = K.generate (K.Hmac Crypto.Sha256) in
+      let ecdsa = K.generate_pair (K.Ecdsa Crypto.P256) in
+      let ecdh = K.generate_pair (K.Ecdh Crypto.P384) in
+      let oaep =
+        K.generate_pair ~modulus_bits:1024 (K.Rsa_oaep Crypto.Sha256)
+      in
+      let imported = K.import (K.Secret_raw K.Aes_kw) (String.make 16 'k') in
+      Some
+        (Response.text
+           (String.concat "\n"
+              [
+                K.algorithm aes;
+                list (K.usages aes);
+                K.algorithm hmac;
+                list (K.usages hmac);
+                K.algorithm ecdsa.private_;
+                list (K.usages ecdsa.private_);
+                list (K.usages ecdsa.public);
+                K.algorithm ecdh.public;
+                list (K.usages ecdh.private_);
+                string_of_bool
+                  (contains {|"name":"RSA-OAEP"|} (K.algorithm oaep.public));
+                string_of_bool
+                  (contains {|"modulusLength":1024|} (K.algorithm oaep.public));
+                string_of_bool
+                  (contains {|"hash":{"name":"SHA-256"}|}
+                     (K.algorithm oaep.private_));
+                list (K.usages oaep.public);
+                list (K.usages oaep.private_);
+                K.algorithm imported;
+                list (K.usages imported);
               ]))
   | _ -> None

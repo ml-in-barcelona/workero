@@ -30,7 +30,32 @@ let () = Workero.serve handler
 - [`Workero.Ai.of_env`](./Workero-Ai.md#val-of_env) opens the binding. It raises `Invalid_argument` when there is no such binding, or when the binding has no `run` method.
 - [`Workero.Ai.run`](./Workero-Ai.md#val-run) takes a model name and the input as a `Jsonkit.t`, waits for the model, and returns its answer as a `Jsonkit.t`. The input fields depend on the model. See the [model catalog](https://developers.cloudflare.com/workers-ai/models/).
 - [`Workero.Ai.run_bytes`](./Workero-Ai.md#val-run_bytes) is the same call for a model that returns an image or audio. It returns the raw bytes; choose a model whose output is binary.
-If the runtime fails, for example on an unknown model, the call raises [`Workero.Js_error`](./Workero.md#exception-Js_error). `run` raises `Invalid_argument` when the model answers with a stream, and `run_bytes` when the answer is not binary data. Streaming answers are not supported yet. Do not set `stream` in the input of `run`.
+
+## Stream an answer
+
+[`Workero.Ai.run_stream`](./Workero-Ai.md#val-run_stream) sets `stream` to `true` in the input and returns the answer as a [`Workero.Stream.t`](./Workero-Stream.md#type-t). Text models send server-sent events. Pass the stream to [`Workero.Response.of_stream`](./Workero-Response.md#val-of_stream) to forward it to the client:
+
+```ocaml
+let handler _req env _ctx =
+  let open Workero in
+  let ai = Ai.of_env env "AI" in
+  let events =
+    Ai.run_stream ai "@cf/meta/llama-3.1-8b-instruct"
+      (`Assoc [ ("prompt", `String "Tell me a story") ])
+  in
+  Response.of_stream ~headers:[ ("content-type", "text/event-stream") ] events
+
+let () = Workero.serve handler
+```
+
+## Route through AI Gateway
+
+[`Workero.Ai.run`](./Workero-Ai.md#val-run), [`Workero.Ai.run_bytes`](./Workero-Ai.md#val-run_bytes) and [`Workero.Ai.run_stream`](./Workero-Ai.md#val-run_stream) take `~gateway`, made with [`Workero.Ai.gateway`](./Workero-Ai.md#val-gateway). It sets the gateway `id`, caching, logging, a timeout, [`Workero.Ai.retries`](./Workero-Ai.md#val-retries) and log metadata.
+
+```ocaml
+let gateway = Workero.Ai.gateway "my-gateway" ~cache_ttl:3600 ~skip_cache:false
+```
+If the runtime fails, for example on an unknown model, the call raises [`Workero.Js_error`](./Workero.md#exception-Js_error). `run` raises `Invalid_argument` when the model answers with a stream; use `run_stream` for that. `run_bytes` raises it when the answer is not binary data. Do not set `stream` in the input of `run`.
 
 
 ## Verify and deploy

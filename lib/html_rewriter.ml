@@ -2,14 +2,25 @@ module Js = Js_of_ocaml.Js
 open Internal
 
 type t = js
-type content = Text of string | Html of string
+
+type content =
+  | Text of string
+  | Html of string
+  | Text_stream of Stream.t
+  | Html_stream of Stream.t
+  | Text_response of Response.t
+  | Html_response of Response.t
 
 let create () = Js.Unsafe.new_obj (global "HTMLRewriter") [||]
+let html_option = Js.Unsafe.obj [| ("html", Js.Unsafe.inject Js._true) |]
 
 let content_args = function
   | Text s -> [| str s |]
-  | Html s ->
-      [| str s; Js.Unsafe.obj [| ("html", Js.Unsafe.inject Js._true) |] |]
+  | Html s -> [| str s; html_option |]
+  | Text_stream s -> [| Stream.to_js s |]
+  | Html_stream s -> [| Stream.to_js s; html_option |]
+  | Text_response r -> [| Response.to_js r |]
+  | Html_response r -> [| Response.to_js r; html_option |]
 
 let unit_call node name args =
   ignore (Binding.invoke node name args);

@@ -33,9 +33,20 @@ let is_method_name name = is_identifier name && not (List.mem name reserved)
 type t = {
   fetch : (Request.t -> Response.t) option;
   rpc : (string -> Rpc.t list -> Rpc.t) option;
+  scheduled : (Scheduled.t -> unit) option;
+  queue : (Queue.Batch.t -> unit) option;
+  tail : (Trace.t list -> unit) option;
 }
 
-let make ?fetch ?rpc () = { fetch; rpc }
+let make ?fetch ?rpc ?scheduled ?queue ?tail () =
+  { fetch; rpc; scheduled; queue; tail }
+
+let event_handler of_js handler =
+ fun event : js ->
+  Async.run (fun () ->
+      flushing (fun () ->
+          handler (of_js event);
+          Js.Unsafe.inject Js.undefined))
 
 let handlers_js t =
   let field name f = Option.map (fun f -> (name, Async.promising (f : _))) f in
@@ -56,6 +67,13 @@ let handlers_js t =
                      let args = List.map Rpc.of_js (Decode.(list js) args) in
                      Rpc.to_js (rpc (Decode.string name) args))))
            t.rpc);
+      field "scheduled" (Option.map (event_handler Scheduled.of_js) t.scheduled);
+      field "queue" (Option.map (event_handler Queue.Batch.of_js) t.queue);
+      field "tail"
+        (Option.map
+           (event_handler (fun events ->
+                List.map Trace.of_js (Decode.(list js) events)))
+           t.tail);
     ]
   in
   Js.Unsafe.obj (Array.of_list (List.filter_map Fun.id fields))

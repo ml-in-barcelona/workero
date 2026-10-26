@@ -37,6 +37,41 @@ const producerCases = [
     log: [{ path: "/message", format: "text", delay: "86400", body: "héllo" }],
   },
   {
+    name: "Queue.send with content type v8 sends a Json body as a v8 message",
+    request: ["http://test/queue/send?kind=json&ct=v8"],
+    log: [{ path: "/message", format: "v8", delay: null, body: "ff0f6f22026964490e22047461677341022201612201622400027b02" }],
+  },
+  {
+    name: "Queue.send with content type v8 sends a Text body as a v8 message with the delay",
+    request: ["http://test/queue/send?kind=text&ct=v8&delay=4"],
+    log: [{ path: "/message", format: "v8", delay: "4", body: "ff0f220568e96c6c6f" }],
+  },
+  {
+    name: "Queue.send with content type v8 sends a Bytes body as a v8 message",
+    request: ["http://test/queue/send?kind=bytes&ct=v8"],
+    log: [{ path: "/message", format: "v8", delay: null, body: "ff0f420400ff800a5642000400" }],
+  },
+  {
+    name: "Queue.send accepts the content type that the body implies",
+    request: ["http://test/queue/send?kind=json&ct=json"],
+    log: [{ path: "/message", format: "json", delay: null, body: '{"id":7,"tags":["a","b"]}' }],
+  },
+  {
+    name: "Queue.send_batch sends v8 messages next to default ones",
+    request: ["http://test/queue/send-batch-v8"],
+    log: [
+      {
+        path: "/batch",
+        delay: null,
+        messages: [
+          { format: "v8", delay: null, body: "ff0f6f22026964490e22047461677341022201612201622400027b02" },
+          { format: "v8", delay: "3", body: "ff0f2205706c61696e" },
+          { format: "text", delay: null, body: "default" },
+        ],
+      },
+    ],
+  },
+  {
     name: "Queue.send_batch sends each body with its content type and delay, and the batch delay",
     request: ["http://test/queue/send-batch?delay=2"],
     log: [
@@ -91,6 +126,15 @@ const httpCases = [
   },
   { name: "Queue.send, message and send_batch reject a negative delay", request: ["http://test/queue/bad-delay?delay=-1"], status: 200, body: delayText(-1) },
   { name: "Queue.send, message and send_batch reject a delay over 86400", request: ["http://test/queue/bad-delay?delay=86401"], status: 200, body: delayText(86401) },
+  {
+    name: "Queue.send and message reject a content type other than v8 that the body does not imply",
+    request: ["http://test/queue/bad-content-type"],
+    status: 200,
+    body: [
+      "invalid: Workero.Queue.send: content type text does not match a json body",
+      "invalid: Workero.Queue.message: content type bytes does not match a text body",
+    ].join("\n"),
+  },
   { name: "Queue.of_env rejects a variable", request: ["http://test/queue/shape?name=GREETING"], status: 200, body: shape("GREETING", "is a string, not a queue producer") },
   {
     name: "Queue.of_env rejects an object without send",

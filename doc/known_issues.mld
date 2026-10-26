@@ -51,8 +51,6 @@ not supported yet.
 
 {1 HTML rewriting limits}
 
-- {{!page-html_rewriter}HTML rewriting}: content is a string. A [Response] or
-  a stream as content is not wrapped.
 - There is no helper that joins the text chunks of a node. Join them until
   {!Workero.Html_rewriter.Text_chunk.last_in_text_node}.
 - A handler runs as a fiber, which costs about 1.5 times a plain callback.
@@ -68,15 +66,21 @@ not supported yet.
   {!Workero.Queue.Message.body_json} on a [Text] body gives a JSON string.
   The other readers require compatible JavaScript value types and raise
   [Invalid_argument] for incompatible values. A [v8] body can be
-  read only through {!Workero.Queue.Message.body_js}; workero producers cannot
-  send [v8]. [send] and [send_batch] expose [delay_seconds], but no other send
-  options. Cloudflare checks message size; workero does not. Configure dead
-  letter queues and [max_retries] in [wrangler.toml].
+  read only through {!Workero.Queue.Message.body_js}. [send] and [message] take
+  [~content_type] ([`V8] sends the structured clone format), but the tests only
+  show what the producer sends; a real consumer reading a [v8] message is not
+  tested. [send] and [send_batch] expose [delay_seconds] and the content type,
+  but no other send options. Cloudflare checks message size; workero does not.
+  Configure dead letter queues and [max_retries] in [wrangler.toml].
 - {{!page-rate_limiter}Rate limiter}: the key is the only call argument. Set
   the limit and period in [wrangler.toml]. Counts are per location and
   approximate.
-- {{!page-ai}Workers AI}: streaming answers and gateway options are not
-  supported. {!Workero.Ai.run} raises [Invalid_argument] for a stream.
+- {{!page-ai}Workers AI}: {!Workero.Ai.run_stream} and [?gateway] are wrapped,
+  but the tests use a stub that returns a small stream and only records the
+  options. They do not prove AI Gateway caching, retries, timeouts or logging,
+  or the chunks of a real model stream. {!Workero.Ai.run} raises
+  [Invalid_argument] for a stream; use [run_stream]. Other options of
+  [env.AI.run] and the other methods of the binding are not wrapped.
 - {{!page-analytics_engine}Analytics Engine}: [write] returns no result.
   Cloudflare checks the limits of 20 blobs and 20 doubles; workero does not.
   There is no query API.
@@ -85,9 +89,11 @@ not supported yet.
   are valid only inside the running Worker. In [workerd] the host is a fake name
   with no database behind it.
 - {{!page-socket}Sockets}: outbound connections only, from a handler. There is
-  no [connect] handler for incoming TCP and no [Socket.upgraded].
-  {!Workero.Socket.opened} gives no address information. [workerd] cannot test
-  TLS: with a Worker as outbound, [secure_transport:On] and [start_tls] fail.
+  no [connect] handler for incoming TCP, as Cloudflare has none.
+  {!Workero.Socket.opened} gives the address information that the runtime
+  reports; [workerd] gives no [local_address]. [workerd] cannot test TLS: with a
+  Worker as outbound, [secure_transport:On] and [start_tls] fail, so the tests
+  do not show {!Workero.Socket.upgraded} becoming [true].
   Cloudflare limits the destination (no Cloudflare addresses, loopback or
   port 25) and the number of open connections for each request; see its
   documentation.
@@ -99,17 +105,20 @@ not supported yet.
   {!Workero.Js_error}. The tests call the handler from a JavaScript harness with
   a mock message and a stand-in module, so they do not prove what the real
   runtime accepts.
-- Email: {!Workero.Email.reply} takes the raw message as a string, not a stream.
-  {!Workero.Email.raw_text} and {!Workero.Email.raw_bytes} copy the whole
-  message into the memory of the program; use {!Workero.Email.raw} for a large
+- Email: {!Workero.Email.reply} takes the raw message as [`Text] or [`Stream].
+  The harness reads the stream, so the tests do not prove that Email Routing
+  accepts a stream. {!Workero.Email.raw_text} and {!Workero.Email.raw_bytes}
+  copy the whole message into the memory of the program; use {!Workero.Email.raw} for a large
   message. The raw message can be read once. The runtime checks the rules for
   [forward] headers and for the [reply] message.
-- {{!page-tail}Tail Workers}: only the default export has a [tail] handler,
-  registered with {!Workero.tail}. Streaming tails ([tailStream]) are not
-  supported. {!type:Workero.Trace.event} has typed cases for fetch, scheduled and
-  queue events; any other event is [Other]. [workerd] reports [0.] for
-  {!Workero.Trace.wall_time} and {!Workero.Trace.cpu_time}. The tests do not
-  cover events other than fetch, scheduled and queue.
+- {{!page-tail}Tail Workers}: {!Workero.tail} and {!Workero.tail_stream}
+  register the handlers of the default export; an entrypoint class can have a
+  [tail] handler but no streaming one. The streaming tail is tested only in [workerd]; the
+  Cloudflare documentation was not checked for it. {!type:Workero.Trace.event}
+  has typed cases for fetch, scheduled, queue, alarm, email, rpc, tail,
+  hibernatable WebSocket and custom events; any other event is [Other].
+  [workerd] reports [0.] for {!Workero.Trace.wall_time} and
+  {!Workero.Trace.cpu_time}.
 
 {1 Workflow limits}
 
@@ -123,17 +132,18 @@ not supported yet.
 - Step results, event payloads, params and outputs are {!Workero.Rpc.value}s.
   A number above 1073741823 reads as a [`Float], not an [`Int] (see
   {{!page-workflows}Workflows}).
-- Not wrapped: [retention], [createBatch] with [count], [deleteBatch],
-  [Instance.delete], [subscribe], [terminate] and [restart] options, rollback
-  handlers, the rest of the step context ([step], [config]), a function as
-  [delay], the cron [schedule] and the [workflowName] of the event.
-  [wait_for_event] returns the payload, not the event.
+- Not wrapped: [subscribe], because Cloudflare does not document its types.
+- The JavaScript engine of the tests guesses details that Cloudflare does not
+  document: the error code of [delete_batch], the shape of the step
+  configuration, the cron payload and the order of rollbacks. It does not
+  enforce retention. Check these on Cloudflare.
 - A Workflow class and a Durable Object or entrypoint class cannot share a name.
 
 {1 Entrypoint limits}
 
-- {{!page-entrypoints}Entrypoints}: the [scheduled], [queue], [email] and [tail]
-  handlers of a class are not supported.
+- {{!page-entrypoints}Entrypoints}: a class can have [scheduled], [queue] and
+  [tail] handlers. It has no [email] handler, because the runtime delivers
+  email only to the default export.
 - The runtime creates a new instance of an entrypoint for each call, so it keeps
   no state between calls.
 - An entrypoint and a Durable Object class cannot share a name.
@@ -190,9 +200,8 @@ not supported yet.
 
 - Durable Objects without SQLite storage.
 - Vectorize and the Send Email binding.
-- Parts of [crypto.subtle]: [deriveKey], wrapping with AES-CBC or AES-CTR,
-  [timingSafeEqual], Ed448, RSA public exponents other than 65537, and the key
-  properties [algorithm] and [usages]. See {{!page-crypto}Web Crypto}.
+- Parts of [crypto.subtle]: Ed448, X448, and RSA public exponents other than 3
+  and 65537, which [workerd] rejects. See {{!page-crypto}Web Crypto}.
 
 {1 Differences from native OCaml}
 

@@ -4,6 +4,7 @@ open Internal
 type t = js
 type body = Json of Jsonkit.t | Text of string | Bytes of string
 type message = js
+type content_type = [ `Json | `Text | `Bytes | `V8 ]
 
 let max_delay_seconds = 86400
 
@@ -23,20 +24,39 @@ let content_type_and_value = function
   | Text s -> ("text", str s)
   | Bytes s -> ("bytes", Wire.body_of_string s)
 
+let content_type_name = function
+  | `Json -> "json"
+  | `Text -> "text"
+  | `Bytes -> "bytes"
+  | `V8 -> "v8"
+
+let content_type_and_value ?content_type who body =
+  let implied, value = content_type_and_value body in
+  match content_type with
+  | None -> (implied, value)
+  | Some `V8 -> ("v8", value)
+  | Some c when content_type_name c = implied -> (implied, value)
+  | Some c ->
+      invalid_arg
+        (Printf.sprintf "%s: content type %s does not match a %s body" who
+           (content_type_name c) implied)
+
 let delay_field = function
   | Some d -> [ ("delaySeconds", Js.Unsafe.inject (d : int)) ]
   | None -> []
 
-let message ?delay_seconds body =
-  check_delay "Workero.Queue.message" delay_seconds;
-  let content_type, value = content_type_and_value body in
+let message ?content_type ?delay_seconds body =
+  let who = "Workero.Queue.message" in
+  check_delay who delay_seconds;
+  let content_type, value = content_type_and_value ?content_type who body in
   Binding.options
     ([ ("body", value); ("contentType", str content_type) ]
     @ delay_field delay_seconds)
 
-let send ?delay_seconds queue body =
-  check_delay "Workero.Queue.send" delay_seconds;
-  let content_type, value = content_type_and_value body in
+let send ?content_type ?delay_seconds queue body =
+  let who = "Workero.Queue.send" in
+  check_delay who delay_seconds;
+  let content_type, value = content_type_and_value ?content_type who body in
   Binding.call ~decode:Decode.unit queue "send"
     [|
       value;

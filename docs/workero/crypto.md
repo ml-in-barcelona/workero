@@ -8,6 +8,8 @@
 
 [`Workero.Crypto.digest`](./Workero-Crypto.md#val-digest) hashes a string with SHA-1, SHA-256, SHA-384 or SHA-512, chosen by [`Workero.Crypto.hash`](./Workero-Crypto.md#type-hash). [`Workero.Crypto.Digest_stream`](./Workero-Crypto-Digest_stream.md) hashes a stream that you write chunk by chunk, without keeping the data. [`Workero.Crypto.pbkdf2`](./Workero-Crypto.md#val-pbkdf2) and [`Workero.Crypto.hkdf`](./Workero-Crypto.md#val-hkdf) derive bytes. Deployed Workers allow at most 100000 PBKDF2 iterations.
 
+[`Workero.Crypto.timing_safe_equal`](./Workero-Crypto.md#val-timing_safe_equal) compares two strings in time that does not depend on where they differ. Use it for MACs and tokens, not `=`. It is a Cloudflare extension of `crypto.subtle`. Strings of different lengths are not equal, and the call says so at once.
+
 ```ocaml
 open Workero
 
@@ -33,7 +35,9 @@ There are three ways to get a key:
 - [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate) makes a symmetric key, and [`Workero.Crypto.Key.generate_pair`](./Workero-Crypto-Key.md#val-generate_pair) makes a pair, from an algorithm such as `Hmac Sha256`, `Aes_gcm`, `Rsa_pss Sha256`, `Ecdsa P256` or `Ed25519`.
 - [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import) reads a key. The constructor of its first argument gives the format and the algorithm: `Secret_raw`, `Secret_jwk`, `Public_raw`, `Public_spki`, `Public_jwk`, `Private_pkcs8` or `Private_jwk`. The type of the result follows. `raw`, `spki` and `pkcs8` data are bytes (DER for the last two). `jwk` data is the JSON text of a JSON Web Key.
 - [`Workero.Crypto.Key.import_hmac`](./Workero-Crypto-Key.md#val-import_hmac) and [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm) are the short forms for raw keys.
-Keys are not extractable unless you pass `~extractable:true`. The public key of a generated pair is always extractable. [`Workero.Crypto.Key.export_raw`](./Workero-Crypto-Key.md#val-export_raw), [`Workero.Crypto.Key.export_jwk`](./Workero-Crypto-Key.md#val-export_jwk), [`Workero.Crypto.Key.export_spki`](./Workero-Crypto-Key.md#val-export_spki) and [`Workero.Crypto.Key.export_pkcs8`](./Workero-Crypto-Key.md#val-export_pkcs8) read a key back. They raise [`Workero.Js_error`](./Workero.md#exception-Js_error) for a key that is not extractable or a format that the algorithm does not have, such as `raw` for an RSA key. The usages of a key follow its algorithm: you do not choose them.
+Keys are not extractable unless you pass `~extractable:true`. The public key of a generated pair is always extractable. [`Workero.Crypto.Key.export_raw`](./Workero-Crypto-Key.md#val-export_raw), [`Workero.Crypto.Key.export_jwk`](./Workero-Crypto-Key.md#val-export_jwk), [`Workero.Crypto.Key.export_spki`](./Workero-Crypto-Key.md#val-export_spki) and [`Workero.Crypto.Key.export_pkcs8`](./Workero-Crypto-Key.md#val-export_pkcs8) read a key back. They raise [`Workero.Js_error`](./Workero.md#exception-Js_error) for a key that is not extractable or a format that the algorithm does not have, such as `raw` for an RSA key. The usages of a key follow its algorithm: you do not choose them. [`Workero.Crypto.Key.algorithm`](./Workero-Crypto-Key.md#val-algorithm) and [`Workero.Crypto.Key.usages`](./Workero-Crypto-Key.md#val-usages) read the `algorithm` and `usages` properties of a key. The first gives JSON text, such as `{"name":"AES-GCM","length":256}`.
+
+An RSA pair has the public exponent 65537\. Pass `~public_exponent:3` to [`Workero.Crypto.Key.generate_pair`](./Workero-Crypto-Key.md#val-generate_pair) for 3\. `workerd` rejects other exponents.
 
 This handler makes an Ed25519 pair, signs, and verifies with the exported public key:
 
@@ -79,13 +83,25 @@ let shared_key () =
   Crypto.hkdf Crypto.Sha256 ~key:secret ~salt:"" ~info:"app" ~length:32
 ```
 
+## Deriving keys
+
+[`Workero.Crypto.pbkdf2_key`](./Workero-Crypto.md#val-pbkdf2_key), [`Workero.Crypto.hkdf_key`](./Workero-Crypto.md#val-hkdf_key), [`Workero.Crypto.ecdh_derive_key`](./Workero-Crypto.md#val-ecdh_derive_key) and [`Workero.Crypto.x25519_derive_key`](./Workero-Crypto.md#val-x25519_derive_key) are `deriveKey`: they make a key for an algorithm, such as `Aes_gcm` or `Hmac Sha256`, straight from a password, a key or a shared secret. The result is not extractable unless you pass `~extractable:true`. `~bits` sets the key length, as in [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate).
+
+```ocaml
+open Workero
+
+let key_of_password password salt =
+  Crypto.pbkdf2_key Crypto.Sha256 ~password ~salt ~iterations:100_000
+    Crypto.Key.Aes_gcm
+```
+
 ## Wrapping keys
 
-[`Workero.Crypto.wrap_key`](./Workero-Crypto.md#val-wrap_key) exports a key in a format and encrypts it with an AES-KW, AES-GCM or RSA-OAEP key. [`Workero.Crypto.unwrap_key`](./Workero-Crypto.md#val-unwrap_key) decrypts and imports it, with the same `import` values as [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import). Wrap with the public RSA-OAEP key and unwrap with the private one. A key from [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm) cannot wrap. Use [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate) or [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import).
+[`Workero.Crypto.wrap_key`](./Workero-Crypto.md#val-wrap_key) exports a key in a format and encrypts it with an AES-KW, AES-GCM, AES-CBC, AES-CTR or RSA-OAEP key. AES-CBC and AES-CTR do not authenticate the wrapped key: prefer AES-KW or AES-GCM. [`Workero.Crypto.unwrap_key`](./Workero-Crypto.md#val-unwrap_key) decrypts and imports it, with the same `import` values as [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import). Wrap with the public RSA-OAEP key and unwrap with the private one. A key from [`Workero.Crypto.Key.import_aes_gcm`](./Workero-Crypto-Key.md#val-import_aes_gcm) cannot wrap. Use [`Workero.Crypto.Key.generate`](./Workero-Crypto-Key.md#val-generate) or [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import).
 
 
 ## Errors
 
 Bad arguments that the library can check raise `Invalid_argument`. A rejection from the runtime raises [`Workero.Js_error`](./Workero.md#exception-Js_error): a key in the wrong format, a non-extractable key that you export, or a failed unwrap. [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import) of an unfit key also raises it.
 
-Not wrapped yet: `deriveKey` (derive bytes, then import them), wrapping with AES-CBC or AES-CTR, `timingSafeEqual`, Ed448, and the key properties `algorithm` and `usages`. See [Known issues](./known_issues.md).
+Not available: Ed448 and X448 (`workerd` does not know them), and RSA public exponents other than 3 and 65537 (`workerd` rejects them). See [Known issues](./known_issues.md).

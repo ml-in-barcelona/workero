@@ -18,7 +18,7 @@ Raises `Invalid_argument` when `n` is negative or more than 65536, the limit of 
 
 ## Web Crypto `crypto.subtle`
 
-`crypto.subtle`: digests, HMAC, AES (GCM, CBC, CTR, KW), RSA (RSASSA-PKCS1-v1\_5, RSA-PSS, RSA-OAEP), ECDSA, ECDH, Ed25519, X25519, PBKDF2 and HKDF. It has key generation, import and export in the formats `raw`, `jwk`, `spki` and `pkcs8`, and `wrapKey` and `unwrapKey`. Data goes in and out as OCaml strings that hold raw bytes. The functions below suspend the request while the runtime works, like [`Promise.await`](./Workero-Promise.md#val-await), so call them only inside a handler.
+`crypto.subtle`: digests, HMAC, AES (GCM, CBC, CTR, KW), RSA (RSASSA-PKCS1-v1\_5, RSA-PSS, RSA-OAEP), ECDSA, ECDH, Ed25519, X25519, PBKDF2 and HKDF. It has key generation, import and export in the formats `raw`, `jwk`, `spki` and `pkcs8`, `wrapKey` and `unwrapKey`, `deriveKey`, and the Cloudflare extension `timingSafeEqual`. Data goes in and out as OCaml strings that hold raw bytes. The functions below suspend the request while the runtime works, like [`Promise.await`](./Workero-Promise.md#val-await), so call them only inside a handler.
 
 The type of a key names its algorithm, and for an asymmetric key its half: [`Key.public`](./Workero-Crypto-Key.md#type-public) or [`Key.private_`](./Workero-Crypto-Key.md#type-private_). The compiler rejects an HMAC key in [`rsa_pss_verify`](./#val-rsa_pss_verify), and a public key in [`rsa_pss_sign`](./#val-rsa_pss_sign).
 
@@ -45,6 +45,11 @@ type curve =
 ```ocaml
 module Key : sig ... end
 ```
+```ocaml
+val timing_safe_equal : string -> string -> bool
+```
+`timing_safe_equal a b` is `crypto.subtle.timingSafeEqual`, a Cloudflare extension: `true` when `a` and `b` hold the same bytes. The comparison does not stop at the first difference, so its time does not tell an attacker where the strings differ. Strings of different lengths give `false` at once: the length is not secret. Use it to compare MACs, tokens and passwords.
+
 ```ocaml
 val hmac_sign : Key.hmac Key.t -> string -> string
 ```
@@ -104,6 +109,36 @@ val hkdf :
 `hkdf hash ~key ~salt ~info ~length` derives `length` bytes with HKDF (RFC 5869\). `key` is the input key material.
 
 Raises `Invalid_argument` when `length` is not positive. A `length` over 255 times the digest length is a [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error).
+
+```ocaml
+val pbkdf2_key : 
+  hash ->
+  password:string ->
+  salt:string ->
+  iterations:int ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+```
+`pbkdf2_key hash ~password ~salt ~iterations algorithm` is `crypto.subtle.deriveKey` with PBKDF2: it derives a key for `algorithm` without giving the bytes to OCaml. The key has the same bytes as the first bytes of [`pbkdf2`](./#val-pbkdf2). `extractable` is `false` by default. `bits` is as in [`Key.generate`](./Workero-Crypto-Key.md#val-generate): 128, 192 or 256 for AES and 256 by default, and the key length for HMAC. The usages follow the algorithm, as in [`Key.generate`](./Workero-Crypto-Key.md#val-generate). The limit of 100000 iterations on deployed Workers applies.
+
+Raises `Invalid_argument` when `iterations` is not positive or `bits` is not valid for `algorithm`.
+
+```ocaml
+val hkdf_key : 
+  hash ->
+  key:string ->
+  salt:string ->
+  info:string ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+```
+Like [`pbkdf2_key`](./#val-pbkdf2_key) for HKDF (RFC 5869\). `key` is the input key material.
+
+Raises `Invalid_argument` when `bits` is not valid for the algorithm.
 
 
 ## Signatures
@@ -257,6 +292,30 @@ val x25519_derive_bits :
 ```
 Like [`ecdh_derive_bits`](./#val-ecdh_derive_bits) for X25519. The secret has 32 bytes.
 
+```ocaml
+val ecdh_derive_key : 
+  Key.ecdh Key.private_ Key.t ->
+  public:Key.ecdh Key.public Key.t ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+```
+`ecdh_derive_key key ~public algorithm` is `crypto.subtle.deriveKey` with ECDH: a key for `algorithm` made from the shared secret of `key` and `public`. Both parties get the same key. `extractable` and `bits` are as in [`pbkdf2_key`](./#val-pbkdf2_key). The private key needs the `deriveKey` usage, which keys from [`Key.generate_pair`](./Workero-Crypto-Key.md#val-generate_pair) and [`Key.import`](./Workero-Crypto-Key.md#val-import) have.
+
+Raises `Invalid_argument` when `bits` is not valid for `algorithm`.
+
+```ocaml
+val x25519_derive_key : 
+  Key.x25519 Key.private_ Key.t ->
+  public:Key.x25519 Key.public Key.t ->
+  ?extractable:bool ->
+  ?bits:int ->
+  'k Key.secret_algorithm ->
+  'k Key.t
+```
+Like [`ecdh_derive_key`](./#val-ecdh_derive_key) for X25519.
+
 
 ## Wrapping keys
 
@@ -281,6 +340,15 @@ type _ wrapper =
     iv : string;
     aad : string option;
   } -> 'role wrapper
+  | Aes_cbc : {
+    key : Key.aes_cbc Key.t;
+    iv : string;
+  } -> 'role wrapper
+  | Aes_ctr : {
+    key : Key.aes_ctr Key.t;
+    counter : string;
+    counter_bits : int;
+  } -> 'role wrapper
   | Rsa_oaep_wrap : {
     key : Key.rsa_oaep Key.public Key.t;
     label : string option;
@@ -288,14 +356,14 @@ type _ wrapper =
   | Rsa_oaep_unwrap : {
     key : Key.rsa_oaep Key.private_ Key.t;
     label : string option;
-  } -> unwrapping wrapper (* A key that wraps other keys, with the algorithm parameters. The index tells the direction: RSA-OAEP wraps with the public key and unwraps with the private key. A key from Key.import_aes_gcm cannot wrap; use Key.generate or Key.import. *)
+  } -> unwrapping wrapper (* A key that wraps other keys, with the algorithm parameters. The index tells the direction: RSA-OAEP wraps with the public key and unwraps with the private key. Aes_cbc and Aes_ctr take the parameters of aes_cbc_encrypt and aes_ctr_encrypt; they do not authenticate the wrapped key, so prefer Aes_kw or Aes_gcm. A key from Key.import_aes_gcm cannot wrap; use Key.generate or Key.import. *)
 ```
 ```ocaml
 val wrap_key : wrapping wrapper -> format:format -> 'kind Key.t -> string
 ```
 `wrap_key wrapper ~format key` is `crypto.subtle.wrapKey`: the key `key`, exported in `format` and encrypted. `key` must be extractable. The wrapping key needs the `wrapKey` usage.
 
-Raises `Invalid_argument` when `Aes_gcm` has an empty `iv`. Other failures, such as a non-extractable `key` or an unfit `format`, raise [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error).
+Raises `Invalid_argument` when `Aes_gcm` has an empty `iv`, when `Aes_cbc` has an `iv` that is not 16 bytes, or when `Aes_ctr` has a bad `counter` or `counter_bits`. Other failures, such as a non-extractable `key` or an unfit `format`, raise [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error).
 
 ```ocaml
 val unwrap_key : 
@@ -307,7 +375,7 @@ val unwrap_key :
 ```
 `unwrap_key wrapper what wrapped` is `crypto.subtle.unwrapKey`: it decrypts `wrapped` and imports the result as `what` says. A wrong key or changed data raises [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error).
 
-Raises `Invalid_argument` when `Aes_gcm` has an empty `iv`.
+Raises `Invalid_argument` for the same wrapper arguments as [`wrap_key`](./#val-wrap_key).
 
 
 ## Streaming digests
