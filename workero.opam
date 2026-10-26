@@ -9,8 +9,8 @@ bug-reports: "https://github.com/ml-in-barcelona/workero/issues"
 depends: [
   "ocaml" {>= "5.4"}
   "dune" {>= "3.24"}
-  "js_of_ocaml" {>= "6.4.1" & < "6.5"}
-  "wasm_of_ocaml-compiler" {>= "6.4.1" & < "6.5"}
+  "js_of_ocaml" {>= "6.5.0" & < "6.6"}
+  "wasm_of_ocaml-compiler" {>= "6.5.0" & < "6.6"}
   "cmdliner" {>= "2.0"}
   "jsonkit" {>= "1.1.0" & < "2"}
   "html_of_jsx" {with-dev-setup & >= "0.1.1"}
