@@ -12,11 +12,14 @@ class Instance {
   resume() {
     return this.engine.resume(this.id);
   }
-  terminate() {
-    return this.engine.terminate(this.id);
+  terminate(options) {
+    return this.engine.terminate(this.id, options);
   }
-  restart() {
-    return this.engine.restart(this.id);
+  restart(options) {
+    return this.engine.restart(this.id, options);
+  }
+  delete() {
+    return this.engine.delete(this.id);
   }
   sendEvent({ type, payload }) {
     return this.engine.sendEvent(this.id, { type, payload });
@@ -30,6 +33,9 @@ export default ({ ENGINE }) => ({
   async createBatch(options) {
     const result = await ENGINE.createBatch(options);
     return { created: result.created.map(({ id }) => new Instance(id, ENGINE)), errors: result.errors };
+  },
+  async deleteBatch(ids) {
+    return ENGINE.deleteBatch(ids);
   },
   async get(id) {
     return new Instance((await ENGINE.get(id)).id, ENGINE);
