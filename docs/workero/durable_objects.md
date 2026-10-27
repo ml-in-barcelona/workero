@@ -150,7 +150,7 @@ Arguments and results are [`Workero.Rpc.t`](./Workero-Rpc.md#type-t): the JSON c
 - ``Map` and ``Set` keep their order.
 - ``Stream` is a [`Workero.Stream.t`](./Workero-Stream.md#type-t). The receiver consumes it.
 - ``Stub` is a [`Workero.Fetcher.t`](./Workero-Fetcher.md#type-t): a service binding or a Durable Object stub.
-- ``Function` is a function. The callee can call it while the call runs. A function in a result stays callable through its stub.
+- ``Function` is a function. The callee can call it while the call runs. A function in an argument is released when the call returns. A function in a result stays callable through its stub.
 ```ocaml
 open Workero
 
@@ -176,7 +176,7 @@ An `Error`, a typed array other than `Uint8Array`, a class instance and a `Symbo
 
 ## Use storage and IDs
 
-[`Workero.Durable_object.Storage`](./Workero-Durable_object-Storage.md) exposes `get`, `put`, `delete`, `list`, and `delete_all` for keys in the object's SQLite-backed storage. `get`, `put`, `delete`, and `list` do not suspend. Values use `Jsonkit.t`, converted through `JSON.stringify` and `JSON.parse`. JavaScript values without a JSON form do not round-trip: a `Date` reads as an ISO string, a `Map` as `{}`, and `get` or `list` raises `Invalid_argument` for a `BigInt` or cyclic object. `list` supports prefix, inclusive start, exclusive end, reverse order, and a limit. `delete_all` suspends and removes keys but not the alarm; `sync` suspends until earlier writes are durable. The key-value methods require a SQLite-backed class. For SQL on the same object, use `Storage.sql` below; [`Workero.D1`](./Workero-D1.md) is a separate database binding.
+[`Workero.Durable_object.Storage`](./Workero-Durable_object-Storage.md) exposes `get`, `put`, `delete`, `list`, and `delete_all` for keys in the object's SQLite-backed storage. `get`, `put`, `delete`, and `list` do not suspend. Values use `Jsonkit.t`, converted through `JSON.stringify` and `JSON.parse`. JavaScript values without a JSON form do not round-trip: a `Date` reads as an ISO string, a `Map` as `{}`, and `get` or `list` raises `Invalid_argument` for a `BigInt` or cyclic object. [`Workero.Durable_object.Storage.put`](./Workero-Durable_object-Storage.md#val-put) raises `Invalid_argument` for a `nan` or infinite float. `list` supports prefix, inclusive start, exclusive end, reverse order, and a limit. `delete_all` suspends and removes keys but not the alarm; `sync` suspends until earlier writes are durable. The key-value methods require a SQLite-backed class. A class listed in `new_classes` builds, but its key-value and SQL calls fail at runtime. For SQL on the same object, use `Storage.sql` below; [`Workero.D1`](./Workero-D1.md) is a separate database binding.
 
 `Namespace.id_from_name` maps a name to a stable ID. `Namespace.unique_id` creates a random ID. `Namespace.get` takes an ID and returns its stub; `Namespace.get_by_name` combines `id_from_name` and `get`. Use `Id.to_string` and `Namespace.id_from_string` to serialize and restore an ID in its namespace. `State.id` identifies the current object, and `Id.name` returns its name when available. A location hint on `get` matters only when the object is first created. `workerd` does not implement jurisdictions, so `unique_id ~jurisdiction` raises `Js_error` in local `workerd`.
 

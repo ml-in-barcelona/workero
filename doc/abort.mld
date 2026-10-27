@@ -110,4 +110,6 @@ is [false] for it. Treat any [Js_error] from a write as a disconnect.
 [?signal] exists on {!Workero.fetch}, {!Workero.Fetcher.fetch} and
 {!Workero.Fetcher.fetch_request}. {!Workero.Fetcher.fetch_request} builds a new
 request with the signal and leaves the signal of the request that you pass
-unchanged. Bindings such as KV, R2, D1 and Cache take no signal.
+unchanged. The new signal replaces the one that the request has; it does not
+combine them. Use {!Workero.Abort_signal.any} for that. Bindings such as KV, R2,
+D1 and Cache take no signal.

@@ -102,4 +102,6 @@ To use a Workflow of another Worker, add `script_name` to the `[[workflows]]` en
 
 ## Limits
 
+`workerd` has no Workflows engine, so the tests run the class and the binding against a small JavaScript engine. It calls the OCaml class over RPC as Cloudflare's engine does, and it implements steps, retries, `sleep`, `wait_for_event` and replay. The tests do not prove persistence, eviction, real retry timing, the Cloudflare limits or a deployment. Run a Workflow with `wrangler dev` or on Cloudflare before you rely on it.
+
 The runtime enforces its [limits](https://developers.cloudflare.com/workflows/reference/limits/): 1,024 steps (free) or 10,000 (paid, up to 25,000) per instance, 1 MiB for a step result and for an event payload, 365 days for a sleep, and an instance id of up to 100 characters. See the [open issues](https://github.com/ml-in-barcelona/workero/issues) for what workero leaves out.

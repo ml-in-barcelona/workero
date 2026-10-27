@@ -175,7 +175,8 @@ passed to {!Workero.Entrypoint.register}. The function passed to
 {!Workero.Durable_object.Storage.transaction_sync} cannot await either: it
 raises [Invalid_argument], and the transaction rolls back. Use
 {!Workero.Durable_object.Storage.val-transaction} to await in a transaction.
-Waiting elsewhere fails:
+Waiting elsewhere fails. A function that JavaScript calls, such as a
+[setTimeout] callback, cannot await:
 
 - In a {!Workero.Timer.set_timeout} callback, the callback runs outside the
   handler fiber.

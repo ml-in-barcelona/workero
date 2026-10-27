@@ -197,7 +197,8 @@ that RPC carries, in both directions and at any depth:
 - [`Stream] is a {!Workero.Stream.t}. The receiver consumes it.
 - [`Stub] is a {!Workero.Fetcher.t}: a service binding or a Durable Object stub.
 - [`Function] is a function. The callee can call it while the call runs.
-  A function in a result stays callable through its stub.
+  A function in an argument is released when the call returns. A function in a
+  result stays callable through its stub.
 
 {@ocaml[
 open Workero
@@ -234,11 +235,14 @@ An [Error], a typed array other than [Uint8Array], a class instance and a
 [JSON.stringify] and [JSON.parse]. JavaScript values without a JSON form do
 not round-trip: a [Date] reads as an ISO string, a [Map] as [{}], and [get]
 or [list] raises [Invalid_argument] for a [BigInt] or cyclic object.
+{!Workero.Durable_object.Storage.put} raises [Invalid_argument] for a [nan] or
+infinite float.
 [list] supports prefix, inclusive start, exclusive end, reverse order, and a
 limit. [delete_all] suspends and removes keys but not the alarm; [sync]
 suspends until earlier writes are durable. The key-value methods require a
-SQLite-backed class. For SQL on the same object, use [Storage.sql] below;
-{!Workero.D1} is a separate database binding.
+SQLite-backed class. A class listed in [new_classes] builds, but its key-value
+and SQL calls fail at runtime. For SQL on the same object, use [Storage.sql]
+below; {!Workero.D1} is a separate database binding.
 
 [Namespace.id_from_name] maps a name to a stable ID. [Namespace.unique_id]
 creates a random ID. [Namespace.get] takes an ID and returns its stub;

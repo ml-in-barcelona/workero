@@ -32,7 +32,7 @@ Header names are case-insensitive. [`Workero.Request.header`](./Workero-Request.
 
 [`Workero.Response.text`](./Workero-Response.md#val-text) sends text, [`Workero.Response.html`](./Workero-Response.md#val-html) sends HTML, and [`Workero.Response.make`](./Workero-Response.md#val-make) sends raw bytes. Pass `~status` or `~headers` to set them. Use `Response.empty `No_Content` when the response has no body, or [`Workero.Response.redirect`](./Workero-Response.md#val-redirect) for a redirect. See [Streams](./streams.md) for streamed responses and [JSON](./json.md) for JSON responses.
 
-Named no-body statuses (``No_Content`, ``Reset_Content`, ``Not_Modified`) do not type-check with the body constructors. A numeric ``Status n` still type-checks: a status outside 200 to 599, or a non-empty body with status 204, 205, or 304, raises `Invalid_argument` at runtime. An empty string body with one of these statuses sends no body. See [`Workero.Status`](./Workero-Status.md) for status names.
+Named no-body statuses (``No_Content`, ``Reset_Content`, ``Not_Modified`) do not type-check with the body constructors. A numeric ``Status n` still type-checks: a status outside 200 to 599, or a non-empty body with status 204, 205, or 304, raises `Invalid_argument` at runtime. An empty string body with one of these statuses sends no body. A ``Status 101` raises `Invalid_argument` too. [`Workero.Status`](./Workero-Status.md) has ``Continue` and ``Switching_Protocols` only to read codes; use [`Workero.Websocket`](./Workero-Websocket.md) for 101\. See [`Workero.Status`](./Workero-Status.md) for status names.
 
 To forward an upstream response with one additional header, retain its original headers:
 

@@ -33,7 +33,7 @@ let () = Workero.serve handler
 - [`Workero.Socket.reader`](./Workero-Socket.md#val-reader) and [`Workero.Socket.writer`](./Workero-Socket.md#val-writer) give the [`Workero.Stream`](./Workero-Stream.md) readers and writers. Each locks its stream, so call each one once for each socket, or unlock the stream with [`Workero.Stream.Reader.release`](./Workero-Stream-Reader.md#val-release) or [`Workero.Stream.Writer.release`](./Workero-Stream-Writer.md#val-release). [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) waits when the server is slow to read (back-pressure).
 - [`Workero.Stream.Reader.read`](./Workero-Stream-Reader.md#val-read) gives `None` when the server ends its side. [`Workero.Stream.Writer.close`](./Workero-Stream-Writer.md#val-close) ends yours.
 - [`Workero.Socket.close`](./Workero-Socket.md#val-close) closes both sides. [`Workero.Socket.closed`](./Workero-Socket.md#val-closed) waits for the socket to close.
-- [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives the remote and local address, when the runtime reports them.
+- [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) gives the remote and local address, when the runtime reports them. `workerd` gives no `local_address`.
 
 ## TLS
 
@@ -83,4 +83,4 @@ A Worker has no `connect` handler. Cloudflare does not deliver incoming TCP conn
 
 ## Limits
 
-Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does.
+Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does. Cloudflare also limits the number of open connections for each request; see its documentation.

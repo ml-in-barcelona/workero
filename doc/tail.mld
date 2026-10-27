@@ -111,6 +111,9 @@ let () =
 
 {1 Limits}
 
+The tests run the streaming tail only in [workerd]. The Cloudflare
+documentation was not checked for it.
+
 In local [workerd], {!Workero.Trace.wall_time} and {!Workero.Trace.cpu_time}
 are [0.] and {!Workero.Trace.script_name} is [None]. The tests cannot produce
 an email or a custom event, so {!Workero.Trace.Email} and

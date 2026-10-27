@@ -47,7 +47,7 @@ let () = Workero.serve handler
   the socket to close.
 
 - {!Workero.Socket.opened} gives the remote and local address, when the runtime
-  reports them.
+  reports them. [workerd] gives no [local_address].
 
 {1 TLS}
 
@@ -111,4 +111,5 @@ of another Worker. Workero does not export it.
 
 Cloudflare refuses connections to Cloudflare addresses, loopback addresses and
 port 25. {!Workero.Socket.connect} raises {!Workero.Js_error} for them, or
-{!Workero.Socket.opened} does.
+{!Workero.Socket.opened} does. Cloudflare also limits the number of open
+connections for each request; see its documentation.

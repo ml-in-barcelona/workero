@@ -79,4 +79,4 @@ In `workerd` 2026-10-19 with `enable_request_signal`, aborting a `fetch` to a Wo
 
 ## Where signals apply
 
-`?signal` exists on [`Workero.fetch`](./Workero.md#val-fetch), [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) and [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request). [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request) builds a new request with the signal and leaves the signal of the request that you pass unchanged. Bindings such as KV, R2, D1 and Cache take no signal.
+`?signal` exists on [`Workero.fetch`](./Workero.md#val-fetch), [`Workero.Fetcher.fetch`](./Workero-Fetcher.md#val-fetch) and [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request). [`Workero.Fetcher.fetch_request`](./Workero-Fetcher.md#val-fetch_request) builds a new request with the signal and leaves the signal of the request that you pass unchanged. The new signal replaces the one that the request has; it does not combine them. Use [`Workero.Abort_signal.any`](./Workero-Abort_signal.md#val-any) for that. Bindings such as KV, R2, D1 and Cache take no signal.

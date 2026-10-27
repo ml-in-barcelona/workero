@@ -45,3 +45,10 @@ A Worker has no file system. To read a file at run time, embed it with the wasm\
 ## Libraries that need native code
 
 A library with C stubs that have no wasm implementation fails the build. `workero build` lists the missing functions. Provide a wasm implementation with `(wasm_of_ocaml (wasm_files ...))`, or drop the library. See [the CLI](./cli.md).
+
+
+## Differences from native OCaml
+
+- `Sys.word_size` is 32, and `int` has 31 bits.
+- The program has no threads or sub-processes. It can open only outbound TCP connections, with [`Workero.Socket`](./Workero-Socket.md).
+Successful compilation does not prove that the runtime dependencies of a library are available in a Worker. See [Testing a worker](./testing.md).

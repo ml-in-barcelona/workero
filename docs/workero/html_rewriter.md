@@ -52,11 +52,13 @@ let price el =
   Workero.Html_rewriter.(
     Element.set_inner_content el (Text (Workero.Response.body_text res)))
 ```
-The runtime waits for a handler to return before it parses on. In `workerd`, two handlers that wait run one after the other, in document order. Cloudflare does not document this order, so do not depend on it.
+The runtime waits for a handler to return before it parses on. In `workerd`, two handlers that wait run one after the other, in document order. Cloudflare does not document this order, and the tests do not prove it, so do not depend on it.
 
 Make every change before the handler returns. A node is invalid after that, and using it raises [`Workero.Js_error`](./Workero.md#exception-Js_error).
 
 If a handler raises, the parse stops and the body of the transformed response errors with the exception text. A client that already got bytes sees a truncated response. Handle expected failures inside the handler.
+
+A handler runs as a fiber, which costs about 1\.5 times a plain callback. A page with tens of thousands of matches pays about 2 microseconds more for each match.
 
 
 ## Text nodes

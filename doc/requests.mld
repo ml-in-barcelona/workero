@@ -52,7 +52,10 @@ Named no-body statuses ([`No_Content], [`Reset_Content], [`Not_Modified]) do
 not type-check with the body constructors. A numeric [`Status n] still
 type-checks: a status outside 200 to 599, or a non-empty body with status 204,
 205, or 304, raises [Invalid_argument] at runtime. An empty string body with
-one of these statuses sends no body. See {!Workero.Status} for status names.
+one of these statuses sends no body. A [`Status 101] raises [Invalid_argument]
+too. {!Workero.Status} has [`Continue] and [`Switching_Protocols] only to read
+codes; use {!Workero.Websocket} for 101. See {!Workero.Status} for status
+names.
 
 To forward an upstream response with one additional header, retain its
 original headers:

@@ -76,7 +76,8 @@ the HTTP response. A queue-only Worker can omit [Workero.serve].
 {!Workero.Queue.val-message} for several. Both wait for the queue to accept the
 send. A [~delay_seconds] of 0 to 86400 delays delivery; a batch delay applies
 only to messages without their own delay. Other values raise [Invalid_argument].
-Queue rejections raise {!Workero.Js_error}. See the
+Configure dead letter queues and [max_retries] in [wrangler.toml]. Queue
+rejections raise {!Workero.Js_error}. See the
 {{:https://developers.cloudflare.com/queues/platform/limits/}Queues limits}.
 
 Pass [~content_type:`V8] to {!Workero.Queue.send} or
