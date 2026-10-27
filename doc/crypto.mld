@@ -162,5 +162,4 @@ non-extractable key that you export, or a failed unwrap.
 {!Workero.Crypto.Key.val-import} of an unfit key also raises it.
 
 Not available: Ed448 and X448 ([workerd] does not know them), and RSA public
-exponents other than 3 and 65537 ([workerd] rejects them). See
-{{!page-known_issues}Known issues}.
+exponents other than 3 and 65537 ([workerd] rejects them). See the {{:https://github.com/ml-in-barcelona/workero/issues}open issues}.

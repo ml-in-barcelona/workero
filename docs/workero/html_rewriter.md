@@ -81,4 +81,4 @@ let rewriter =
 
 ## Limits
 
-See [Troubleshooting and support](./known_issues.md) for what the module does not wrap.
+See the [open issues](https://github.com/ml-in-barcelona/workero/issues) for what the module does not wrap.

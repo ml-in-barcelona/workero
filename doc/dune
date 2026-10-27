@@ -42,6 +42,5 @@
   interop
   how_it_works
   libraries
-  known_issues
   cli
   template))

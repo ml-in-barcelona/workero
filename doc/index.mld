@@ -33,7 +33,7 @@ durable multi-step programs.
 - {{!page-testing}Test a Worker}.
 - {{!page-libraries}OCaml library compatibility}.
 - {{!page-limits}Runtime limits}.
-- {{!page-known_issues}Troubleshooting and support}.
+- {{:https://github.com/ml-in-barcelona/workero/issues}Troubleshooting and support}: open issues.
 
 {1 Advanced}
 

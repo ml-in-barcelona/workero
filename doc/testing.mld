@@ -38,9 +38,8 @@ tests startup failure in [test/worker-init/], handler exports in
 [workerd] has no Workflows engine and no email delivery, so the Workflow and
 email tests use JavaScript stand-ins in [test/worker/services/]. The Container
 tests in [test/worker-containers/] start real containers. They run only where
-Docker and the test images exist, and print [SKIP containers] otherwise. See
-{{!page-known_issues}Support and known issues} for what these tests do not
-prove.
+Docker and the test images exist, and print [SKIP containers] otherwise. See the {{:https://github.com/ml-in-barcelona/workero/issues}open issues}
+for what these tests do not prove.
 
 The Durable Object suite in [test/worker/cases/do.mjs] tests synchronous SQLite
 queries and writes, transaction commit and rollback (including an attempt to

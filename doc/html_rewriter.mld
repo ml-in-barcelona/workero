@@ -107,5 +107,5 @@ let rewriter =
 
 {1 Limits}
 
-See {{!page-known_issues}Troubleshooting and support} for what the module does
+See the {{:https://github.com/ml-in-barcelona/workero/issues}open issues} for what the module does
 not wrap.

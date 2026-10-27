@@ -104,4 +104,4 @@ let key_of_password password salt =
 
 Bad arguments that the library can check raise `Invalid_argument`. A rejection from the runtime raises [`Workero.Js_error`](./Workero.md#exception-Js_error): a key in the wrong format, a non-extractable key that you export, or a failed unwrap. [`Workero.Crypto.Key.import`](./Workero-Crypto-Key.md#val-import) of an unfit key also raises it.
 
-Not available: Ed448 and X448 (`workerd` does not know them), and RSA public exponents other than 3 and 65537 (`workerd` rejects them). See [Known issues](./known_issues.md).
+Not available: Ed448 and X448 (`workerd` does not know them), and RSA public exponents other than 3 and 65537 (`workerd` rejects them). See the [open issues](https://github.com/ml-in-barcelona/workero/issues).

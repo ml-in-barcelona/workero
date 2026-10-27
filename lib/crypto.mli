@@ -28,8 +28,9 @@ val random_bytes : int -> string
     {!Key.type-public} or {!Key.type-private_}. The compiler rejects an HMAC key
     in {!rsa_pss_verify}, and a public key in {!rsa_pss_sign}.
 
-    A rejection from the runtime raises {!Promise.Js_error}. See
-    {{!page-known_issues}Known issues} for what is missing. *)
+    A rejection from the runtime raises {!Promise.Js_error}. See the
+    {{:https://github.com/ml-in-barcelona/workero/issues}open issues} for what
+    is missing. *)
 
 type hash =
   | Sha1

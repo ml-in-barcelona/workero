@@ -182,5 +182,4 @@ The runtime enforces its
 {{:https://developers.cloudflare.com/workflows/reference/limits/}limits}: 1,024
 steps (free) or 10,000 (paid, up to 25,000) per instance, 1 MiB for a step
 result and for an event payload, 365 days for a sleep, and an instance id of up
-to 100 characters. See {{!page-known_issues}Troubleshooting and support} for
-what workero leaves out and for what its tests prove.
+to 100 characters. See the {{:https://github.com/ml-in-barcelona/workero/issues}open issues} for what workero leaves out.

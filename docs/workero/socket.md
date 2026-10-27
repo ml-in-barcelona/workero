@@ -83,4 +83,4 @@ A Worker has no `connect` handler. Cloudflare does not deliver incoming TCP conn
 
 ## Limits
 
-Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does. See [Support and known issues](./known_issues.md).
+Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does.

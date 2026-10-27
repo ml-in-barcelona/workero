@@ -102,8 +102,7 @@ a {!Workero.Stream.t}, for example from {!Workero.Stream.pipe}. The text form is
 while the call waits.
 
 [reply] creates the [EmailMessage] from the [cloudflare:email] module when it is
-called. [workerd] does not provide that module. See
-{{!page-known_issues}Support and known issues}.
+called. [workerd] does not provide that module.
 
 {1 Errors}
 

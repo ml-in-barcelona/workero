@@ -22,7 +22,7 @@ Raises `Invalid_argument` when `n` is negative or more than 65536, the limit of 
 
 The type of a key names its algorithm, and for an asymmetric key its half: [`Key.public`](./Workero-Crypto-Key.md#type-public) or [`Key.private_`](./Workero-Crypto-Key.md#type-private_). The compiler rejects an HMAC key in [`rsa_pss_verify`](./#val-rsa_pss_verify), and a public key in [`rsa_pss_sign`](./#val-rsa_pss_sign).
 
-A rejection from the runtime raises [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error). See [Known issues](./known_issues.md) for what is missing.
+A rejection from the runtime raises [`Promise.Js_error`](./Workero-Promise.md#exception-Js_error). See the [open issues](https://github.com/ml-in-barcelona/workero/issues) for what is missing.
 
 ```ocaml
 type hash = 

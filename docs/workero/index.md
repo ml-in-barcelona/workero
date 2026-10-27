@@ -27,7 +27,7 @@ Use [Runtime APIs](./runtime_apis.md) to register handlers, route HTTP requests,
 - [Test a Worker](./testing.md).
 - [OCaml library compatibility](./libraries.md).
 - [Runtime limits](./limits.md).
-- [Troubleshooting and support](./known_issues.md).
+- [Troubleshooting and support](https://github.com/ml-in-barcelona/workero/issues): open issues.
 
 ## Advanced
 

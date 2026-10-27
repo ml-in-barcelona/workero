@@ -395,7 +395,7 @@ containerEngine = (localDocker = (
   socketPath = "unix:/var/run/docker.sock",
   containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
 ```
-Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. CI pins the `proxy-everything` image to a digest. Without `containerEgressInterceptorImage`, `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers". See [Support and known issues](./known_issues.md) for what the tests cover.
+Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. CI pins the `proxy-everything` image to a digest. Without `containerEgressInterceptorImage`, `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers".
 
 
 ## Control concurrency and background work
