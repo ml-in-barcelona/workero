@@ -18,6 +18,12 @@ let handle req env _ctx =
         (Response.text
            (invalid (fun () ->
                 opt (Option.map Jsonkit.to_string (Env.json env name)))))
+  | "/json/of-js" ->
+      Some
+        (Response.text
+           (invalid (fun () ->
+                Jsonkit.to_string
+                  (JSON.of_js (Js_of_ocaml.Js.Unsafe.get (Env.to_js env) name)))))
   | "/secret-store/get" ->
       let store = Secret_store.of_env env name in
       Some

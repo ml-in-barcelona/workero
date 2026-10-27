@@ -51,3 +51,12 @@ let abort_reason reason =
     | `Timeout msg -> ("TimeoutError", msg)
   in
   Js.Unsafe.new_obj (global "DOMException") [| str msg; str name |]
+
+let int_of_number f =
+  if
+    Float.is_integer f
+    && f >= float_of_int min_int
+    && f < float_of_int max_int
+    && not (f = 0. && 1. /. f < 0.)
+  then Some (int_of_float f)
+  else None

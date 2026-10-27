@@ -26,6 +26,18 @@ const cases = [
   { name: "Env.json reads an array variable", request: ["http://test/env/json?name=LIMITS"], status: 200, body: '[1,"two",null]' },
   { name: "Env.json of a string variable", request: ["http://test/env/json?name=GREETING"], status: 200, body: "none" },
   { name: "Env.json of a missing name", request: ["http://test/env/json?name=NOPE"], status: 200, body: "none" },
+  {
+    name: "Env.json reads integers outside the int range as floats",
+    request: ["http://test/env/json?name=BIG"],
+    status: 200,
+    body: '{"hi":4294967296000.0,"lo":-4294967296000.0,"e":1e+20,"i":5,"m":-5,"z":0}',
+  },
+  {
+    name: "JSON.of_js reads integers outside the int range as floats",
+    request: ["http://test/json/of-js?name=BIG"],
+    status: 200,
+    body: '{"hi":4294967296000.0,"lo":-4294967296000.0,"e":1e+20,"i":5,"m":-5,"z":0}',
+  },
   { name: "Secret_store.get", request: ["http://test/secret-store/get?name=STORE"], status: 200, body: "store-value" },
   { name: "Secret_store.get of null", request: ["http://test/secret-store/get?name=STORE_NULL"], status: 200, body: "none" },
   { name: "Secret_store.get of undefined", request: ["http://test/secret-store/get?name=STORE_UNDEFINED"], status: 200, body: "none" },

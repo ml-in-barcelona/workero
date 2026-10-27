@@ -37,6 +37,7 @@ cp test/worker/cases/*.mjs "$out/cases/"
   echo '        (name = "API_TOKEN", text = "tok-123"),'
   printf '%s\n' '        (name = "SETTINGS", json = "{\"foo\":42,\"nested\":{\"list\":[1,2]},\"name\":\"x\"}"),'
   printf '%s\n' '        (name = "LIMITS", json = "[1,\"two\",null]"),'
+  printf '%s\n' '        (name = "BIG", json = "{\"hi\":4294967296000,\"lo\":-4294967296000,\"e\":1e20,\"i\":5,\"m\":-5,\"z\":0}"),'
   echo '        (name = "BACKEND", service = "backend"),'
   for class in Counter Alarms NoFetch Awaiting class Sqlite Rooms NoWsHandler Rpc RpcNoHandler; do
     echo "        (name = \"$(echo "$class" | tr a-z A-Z)\", durableObjectNamespace = \"$class\"),"

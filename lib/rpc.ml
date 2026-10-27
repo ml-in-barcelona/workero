@@ -96,15 +96,6 @@ let elements v =
     (int_of_js (Js.Unsafe.get all "length"))
     (fun i -> Js.Unsafe.get all i)
 
-let int_of_number f =
-  if
-    Float.is_integer f
-    && f >= float_of_int min_int
-    && f < float_of_int max_int
-    && not (f = 0. && 1. /. f < 0.)
-  then Some (int_of_float f)
-  else None
-
 let max_depth = 1000
 
 let is_plain v =

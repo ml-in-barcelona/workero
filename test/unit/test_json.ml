@@ -60,6 +60,21 @@ let test_of_js () =
   Alcotest.check json_text "date" (`String "1970-01-01T00:00:00.000Z")
     (Workero.JSON.of_js (Helpers.js_eval "new Date(0)"))
 
+let test_of_js_large_integers () =
+  let digits f = Printf.sprintf "%.0f" f in
+  let over = float_of_int max_int +. 1. in
+  let under = float_of_int min_int -. 1. in
+  Alcotest.check json_text "outside the int range"
+    (`List [ `Float over; `Float under; `Float 1e15; `Float 1e20 ])
+    (Workero.JSON.of_js
+       (Helpers.js_eval
+          ("[" ^ digits over ^ ", " ^ digits under ^ ", 1e15, 1e20]")));
+  Alcotest.check json_text "inside the int range"
+    (`List [ `Int 0; `Int 7; `Int (-7); `Int (max_int - 1); `Int min_int ])
+    (Workero.JSON.of_js
+       (Helpers.js_eval
+          (Printf.sprintf "[-0, 7, -7, %d, %d]" (max_int - 1) min_int)))
+
 let test_of_js_without_json_form () =
   List.iter
     (fun src ->
@@ -122,6 +137,8 @@ let () =
       ( "js",
         [
           Alcotest.test_case "of_js" `Quick test_of_js;
+          Alcotest.test_case "of_js large integers" `Quick
+            test_of_js_large_integers;
           Alcotest.test_case "of_js without a json form" `Quick
             test_of_js_without_json_form;
           Alcotest.test_case "to_js" `Quick test_to_js;
