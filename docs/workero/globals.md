@@ -11,7 +11,7 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` in one terminal and `curl http://localhost:8787/` in a second terminal. The response is a version 4 UUID.
+Run `opam exec -- wrangler dev` in one terminal and `curl http://localhost:8787/` in a second terminal. The response is a version 4 UUID.
 
 
 ## Timers

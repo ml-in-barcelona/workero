@@ -19,7 +19,7 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` in one terminal. In a second terminal, send a file:
+Run `opam exec -- wrangler dev` in one terminal. In a second terminal, send a file:
 
 ```sh
 printf 'hello' > avatar.txt

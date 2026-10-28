@@ -66,8 +66,8 @@ The lookup itself does not perform I/O. Operations that wait for a runtime resul
 To deploy KV, R2 or D1, create the remote resources first:
 
 ```sh
-npx wrangler kv namespace create KV
-npx wrangler r2 bucket create my-bucket
-npx wrangler d1 create my-database
+opam exec -- wrangler kv namespace create KV
+opam exec -- wrangler r2 bucket create my-bucket
+opam exec -- wrangler d1 create my-database
 ```
 Copy the identifiers into `wrangler.toml`. Do not run these creation commands for local development. See the binding pages for their examples and checks.

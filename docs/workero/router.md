@@ -27,7 +27,7 @@ let router =
 
 let () = Workero.serve (Router.to_handler router)
 ```
-Run `npx wrangler dev` in the project, then try these requests:
+Run `opam exec -- wrangler dev` in the project, then try these requests:
 
 ```sh
 curl http://localhost:8787/api/users/me

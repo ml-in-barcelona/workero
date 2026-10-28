@@ -41,6 +41,7 @@
     (>= 0.1.1)))
   (alcotest :with-test)
   (conf-npm :with-test)
+  (workerd :with-test)
   (odoc
    (and
     :with-doc

@@ -6,7 +6,7 @@ deploying the worker. See {{!page-limits}Limits} for Cloudflare platform limits.
 
 {1 Run a worker test}
 
-+ Install [workerd] on [PATH]. The repository CI uses [npm install -g workerd].
++ Install [workerd] on [PATH] with [opam install workerd].
 + Build the worker: [workero build src/main.bc.wasm.js --out _worker-test].
 + Write a [workerd] config. List the files of [_worker-test] as modules
   ([.js] as [esModule], [.wasm] as [wasm]). Bind the worker to a test worker as

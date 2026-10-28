@@ -2,17 +2,20 @@
 
 This directory is a Cloudflare Worker project written in OCaml. Copy it
 outside the workero source checkout so Dune treats the copy as its own project.
-You need an active OCaml 5.4 or later opam switch, Node.js and npm. Install
-workero from a source clone before you run the copy:
+You need an active OCaml 5.4 or later opam switch and Node.js 22 or later for
+Wrangler. wasm_of_ocaml needs `wasm-opt` from binaryen 119 or later on `PATH`:
+run `npm install -g binaryen` or build it from
+[source](https://github.com/WebAssembly/binaryen). Install workero from a source
+clone before you run the copy:
 
 ```sh
 eval "$(opam env)"
 git clone https://github.com/ml-in-barcelona/workero.git workero-source
 opam pin add workero ./workero-source -y
+opam install wrangler -y
 cp -R workero-source/template my-worker
 cd my-worker
-npm install
-npx wrangler dev
+opam exec -- wrangler dev
 ```
 
 In another terminal, run `curl http://127.0.0.1:8787/`. Expect

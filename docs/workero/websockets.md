@@ -25,7 +25,7 @@ let handler req _env ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev`. In a browser console on another local page, run:
+Run `opam exec -- wrangler dev`. In a browser console on another local page, run:
 
 ```javascript
 const ws = new WebSocket("ws://localhost:8787/");

@@ -57,7 +57,8 @@ let () =
   Workero.queue consume
 ]}
 
-Run [npx wrangler dev] in one terminal. In a second terminal, send a job:
+Run [opam exec -- wrangler dev] in one terminal. In a second terminal, send a
+job:
 
 {@sh[
 curl -X POST http://localhost:8787/jobs
@@ -119,8 +120,8 @@ The consumer runs in a fiber, so it can use {!Workero.fetch}, bindings and
 Create the remote queue with an authenticated Wrangler, then deploy the Worker:
 
 {@sh[
-npx wrangler queues create jobs
-npx wrangler deploy
+opam exec -- wrangler queues create jobs
+opam exec -- wrangler deploy
 ]}
 
 See {{!page-getting_started}Getting started} for authentication. If the producer

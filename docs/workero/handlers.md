@@ -46,7 +46,7 @@ Configure `wrangler.toml`:
 [triggers]
 crons = ["*/5 * * * *"]
 ```
-[`Workero.Scheduled.scheduled_time`](./Workero-Scheduled.md#val-scheduled_time) gives milliseconds since the Unix epoch. With `npx wrangler dev --test-scheduled` running, use this command to fire the trigger locally:
+[`Workero.Scheduled.scheduled_time`](./Workero-Scheduled.md#val-scheduled_time) gives milliseconds since the Unix epoch. With `opam exec -- wrangler dev --test-scheduled` running, use this command to fire the trigger locally:
 
 ```sh
 curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"

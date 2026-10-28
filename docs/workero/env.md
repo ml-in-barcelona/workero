@@ -21,12 +21,12 @@ let handler _req env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` and request `/`. Deploy the Worker with `npx wrangler deploy` to use the same `vars` in Cloudflare. Do not put keys or tokens in `vars`. See [Cloudflare variables](https://developers.cloudflare.com/workers/configuration/environment-variables/).
+Run `opam exec -- wrangler dev` and request `/`. Deploy the Worker with `opam exec -- wrangler deploy` to use the same `vars` in Cloudflare. Do not put keys or tokens in `vars`. See [Cloudflare variables](https://developers.cloudflare.com/workers/configuration/environment-variables/).
 
 
 ## Require a Worker secret
 
-Use a Worker secret for a value that belongs to this Worker. For local development, put `API_TOKEN=local-test-token` in `.dev.vars` beside `wrangler.toml`. Keep `.dev.vars*` out of Git. Run `npx wrangler dev` and request `/`; the Worker below answers `token set` without exposing the value.
+Use a Worker secret for a value that belongs to this Worker. For local development, put `API_TOKEN=local-test-token` in `.dev.vars` beside `wrangler.toml`. Keep `.dev.vars*` out of Git. Run `opam exec -- wrangler dev` and request `/`; the Worker below answers `token set` without exposing the value.
 
 ```ocaml
 let handler _req env _ctx =
@@ -35,7 +35,7 @@ let handler _req env _ctx =
 
 let () = Workero.serve handler
 ```
-For the deployed Worker, run `npx wrangler secret put API_TOKEN` and enter the value at the prompt. This command creates and deploys a new Worker version. Then deploy your code with `npx wrangler deploy`. [`Workero.Env.secret`](./Workero-Env.md#val-secret) reads the same string shape as `Env.var`, but requires it: if it is absent or not a string, it raises `Invalid_argument` with the name and type, never the value. A local `.dev.vars` file does not upload the secret. See [Cloudflare Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+For the deployed Worker, run `opam exec -- wrangler secret put API_TOKEN` and enter the value at the prompt. This command creates and deploys a new Worker version. Then deploy your code with `opam exec -- wrangler deploy`. [`Workero.Env.secret`](./Workero-Env.md#val-secret) reads the same string shape as `Env.var`, but requires it: if it is absent or not a string, it raises `Invalid_argument` with the name and type, never the value. A local `.dev.vars` file does not upload the secret. See [Cloudflare Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
 
 
 ## Read an object or array variable
@@ -63,7 +63,7 @@ let handler _req env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` and request `/`; the response is `50`. The same `vars` are sent with `npx wrangler deploy`. Add `jsonkit` to your Dune `libraries` when using `Jsonkit` directly. [`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) and [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) convert general JSON-shaped JavaScript values; [JSON](./json.md) covers JSON HTTP bodies.
+Run `opam exec -- wrangler dev` and request `/`; the response is `50`. The same `vars` are sent with `opam exec -- wrangler deploy`. Add `jsonkit` to your Dune `libraries` when using `Jsonkit` directly. [`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) and [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) convert general JSON-shaped JavaScript values; [JSON](./json.md) covers JSON HTTP bodies.
 
 
 ## Read a shared Secrets Store secret
@@ -91,13 +91,13 @@ let () = Workero.serve handler
 For local `wrangler dev`, create a local store and secret, without `--remote`:
 
 ```sh
-npx wrangler secrets-store store create local-store
-npx wrangler secrets-store secret create <local-store-id> --name api-key --scopes workers
+opam exec -- wrangler secrets-store store create local-store
+opam exec -- wrangler secrets-store secret create <local-store-id> --name api-key --scopes workers
 ```
-Enter the secret at the prompt. Put the returned local store ID in `store_id`, run `npx wrangler dev`, and request `/`. Expect `key set`. Local development cannot read production Secrets Store secrets. To deploy, create a remote store and secret:
+Enter the secret at the prompt. Put the returned local store ID in `store_id`, run `opam exec -- wrangler dev`, and request `/`. Expect `key set`. Local development cannot read production Secrets Store secrets. To deploy, create a remote store and secret:
 
 ```sh
-npx wrangler secrets-store store create shared-store --remote
-npx wrangler secrets-store secret create <remote-store-id> --name api-key --scopes workers --remote
+opam exec -- wrangler secrets-store store create shared-store --remote
+opam exec -- wrangler secrets-store secret create <remote-store-id> --name api-key --scopes workers --remote
 ```
-Put the remote store ID in `store_id`, then run `npx wrangler deploy`. You need a Secrets Store role that allows binding access. Do not put a secret value on a command line or log it. See [Cloudflare Secrets Store bindings](https://developers.cloudflare.com/secrets-store/integrations/workers/) and [Wrangler commands](https://developers.cloudflare.com/workers/wrangler/commands/).
+Put the remote store ID in `store_id`, then run `opam exec -- wrangler deploy`. You need a Secrets Store role that allows binding access. Do not put a secret value on a command line or log it. See [Cloudflare Secrets Store bindings](https://developers.cloudflare.com/secrets-store/integrations/workers/) and [Wrangler commands](https://developers.cloudflare.com/workers/wrangler/commands/).

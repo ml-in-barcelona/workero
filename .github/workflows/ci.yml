@@ -42,9 +42,6 @@ jobs:
       - name: Build
         run: opam exec -- dune build
 
-      - name: Install workerd
-        run: npm install -g workerd
-
       - name: Prepare container test images
         run: |
           docker build -t workero-test-httpd:1 test/worker-containers
@@ -54,7 +51,7 @@ jobs:
       - name: Test
         env:
           WORKERO_REQUIRE_CONTAINERS: '1'
-        run: make test
+        run: opam exec -- make test
 
       - name: Check formatting
         run: opam exec -- dune build @fmt

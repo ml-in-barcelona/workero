@@ -44,12 +44,12 @@ consistent, so treat the limit as approximate.
 
 {1 Verify and deploy}
 
-Run [npx wrangler dev] and request [/] repeatedly with the same
+Run [opam exec -- wrangler dev] and request [/] repeatedly with the same
 [cf-connecting-ip] header. After the configured limit in one period, expect
 status 429. Wrangler simulates Rate Limiting locally; it does not connect to
-remote rate counters. Deploy with [npx wrangler deploy] and repeat the check
-on the deployed Worker with one key. Results can differ by location because
-the counters are approximate and local to a Cloudflare location. Plain
+remote rate counters. Deploy with [opam exec -- wrangler deploy] and repeat the
+check on the deployed Worker with one key. Results can differ by location
+because the counters are approximate and local to a Cloudflare location. Plain
 [workerd] tests in this repository use a stub in
 [test/worker/services/limiter.mjs], not Cloudflare's rate counters. See
 {{:https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/}Rate Limiting bindings} and

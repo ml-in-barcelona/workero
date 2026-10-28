@@ -75,10 +75,10 @@ let handler _req env _ctx =
 let () = Workero.serve handler
 ]}
 
-Run [npx wrangler dev] and request [/]. The response body is the content of
-[public/hello.txt]. The assets binding is simulated locally. On deploy,
-[npx wrangler deploy] uploads the directory in [assets]; there is no separate
-asset resource to create. See
+Run [opam exec -- wrangler dev] and request [/]. The response body is the
+content of [public/hello.txt]. The assets binding is simulated locally. On
+deploy, [opam exec -- wrangler deploy] uploads the directory in [assets]; there
+is no separate asset resource to create. See
 {{:https://developers.cloudflare.com/workers/static-assets/binding/}Static Assets binding}.
 
 {1 Verify the service binding}
@@ -87,7 +87,7 @@ Run the target Worker in the same [wrangler dev] session by passing several
 configuration files:
 
 {@sh[
-npx wrangler dev -c wrangler.toml -c ../backend/wrangler.toml
+opam exec -- wrangler dev -c wrangler.toml -c ../backend/wrangler.toml
 ]}
 
 Request [/users] locally and check that the backend receives the [POST] and
