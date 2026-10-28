@@ -40,6 +40,7 @@
     :with-dev-setup
     (>= 0.1.1)))
   (alcotest :with-test)
+  (conf-npm :with-test)
   (odoc
    (and
     :with-doc
