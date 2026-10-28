@@ -26,6 +26,6 @@ Raises `Invalid_argument` for an `Int` beyond ±`2^53`, which a JavaScript numbe
 ```ocaml
 val of_js : Js_of_ocaml.Js.Unsafe.any -> t
 ```
-Reads a JavaScript value: `null` or `undefined` is `Null`; a number with no fractional part within ±`2^53` is `Int`; any other number is `Float`; a `bigint` is `Int`, exact in 64 bits; a string is `Text`; an `ArrayBuffer`, a typed array or an array of byte numbers is `Blob`.
+Reads a JavaScript value: `null` or `undefined` is `Null`; a number with no fractional part within ±`2^53` is `Int`; any other number is `Float`; a `bigint` is `Int`, exact in 64 bits; a string is `Text`; an `ArrayBuffer`, a typed array or any JavaScript `Array` is `Blob`. An `Array` goes through `new Uint8Array(array)` with no check of its elements: a non-number becomes a byte by JavaScript conversion, and a number outside 0 to 255 wraps.
 
 Raises `Invalid_argument` for any other JavaScript value, and for a `bigint` outside the int64 range.

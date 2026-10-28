@@ -15,12 +15,25 @@ let handler req _env _ctx =
   | Ok user -> Workero.JSON.response (user_to_json user)
   | Error message -> Workero.JSON.error message
 ```
-Without the ppx, write the decoder by hand:
+Without the ppx, write the decoder by hand. Match on ``Assoc`, decode each field with a `Jsonkit.Of_json` function, and raise `Jsonkit.Of_json_error` for a missing field. [`decode`](./#val-decode) turns that error into `Error message`:
 
 ```ocaml
 let user_of_json json =
-  Jsonkit.Of_json.
-    { name = json |> field "name" string; age = json |> field "age" int }
+  match json with
+  | `Assoc fields ->
+      let field name decode =
+        match List.assoc_opt name fields with
+        | Some value -> decode value
+        | None ->
+            raise
+              (Jsonkit.Of_json_error
+                 (Jsonkit.Json_error ("missing field " ^ name)))
+      in
+      {
+        name = field "name" Jsonkit.Of_json.string;
+        age = field "age" Jsonkit.Of_json.int;
+      }
+  | json -> Jsonkit.of_json_error_type_mismatch json "object"
 ```
 ```ocaml
 val response : 

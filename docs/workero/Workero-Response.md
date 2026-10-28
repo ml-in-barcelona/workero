@@ -11,7 +11,7 @@ val text :
   string ->
   t
 ```
-A UTF-8 text body. The runtime sets `content-type` to `text/plain;charset=UTF-8` unless `headers` has one. `status` is 200 by default. The type of `status` leaves out the statuses that allow no body (``No_Content`, ``Reset_Content`, ``Not_Modified`); use [`empty`](./#val-empty) for those. ``Status n` can still name one: with the empty string it works, and the body is sent as no body.
+A UTF-8 text body. The runtime sets `content-type` to `text/plain;charset=UTF-8` unless `headers` has one. An empty string is sent as no body, and then the runtime sets no `content-type`. `status` is 200 by default. The type of `status` leaves out the statuses that allow no body (``No_Content`, ``Reset_Content`, ``Not_Modified`); use [`empty`](./#val-empty) for those. ``Status n` can still name one: with the empty string it works, and the body is sent as no body.
 
 Raises `Invalid_argument` when ``Status n` has `n` outside 200 to 599 (the runtime accepts no other code), or when `n` is 204, 205 or 304 and the body is not empty. The same holds for [`html`](./#val-html), [`make`](./#val-make), [`of_stream`](./#val-of_stream), [`stream`](./#val-stream), [`copy`](./#val-copy) and [`empty`](./#val-empty).
 

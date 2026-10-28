@@ -49,5 +49,8 @@ a cyclic object or a [BigInt]. {!Workero.JSON.to_js} converts [Jsonkit.t] to a
 new JavaScript value; it raises [Invalid_argument] for [nan] or an infinite
 float. See {!Workero.JSON} for these functions' complete contracts.
 
-Without the ppx, write a decoder with [Jsonkit.Of_json]. See
+Without the ppx, write a decoder that matches on [`Assoc] and uses the
+[Jsonkit.Of_json] functions for each field. Raise [Jsonkit.Of_json_error] for
+a missing field. {!Workero.JSON.decode} turns it into [Error]. See
+{!Workero.JSON} for an example. See
 {{!page-requests}Requests and responses} for other body formats.

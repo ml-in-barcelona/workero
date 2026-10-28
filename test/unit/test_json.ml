@@ -73,7 +73,9 @@ let test_of_js_large_integers () =
     (`List [ `Int 0; `Int 7; `Int (-7); `Int (max_int - 1); `Int min_int ])
     (Workero.JSON.of_js
        (Helpers.js_eval
-          (Printf.sprintf "[-0, 7, -7, %d, %d]" (max_int - 1) min_int)))
+          (Printf.sprintf "[-0, 7, -7, %d, %d]" (max_int - 1) min_int)));
+  Alcotest.check json_text "largest int" (`Int max_int)
+    (Workero.JSON.of_js (Helpers.js_eval (string_of_int max_int)))
 
 let test_of_js_without_json_form () =
   List.iter

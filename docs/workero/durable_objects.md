@@ -358,10 +358,17 @@ open Workero
 let () =
   Durable_object.register "Sandbox" (fun state env ->
       let container = Option.get (Durable_object.State.container state) in
-      Durable_object.Container.intercept_outbound_http container
-        "api.example.com" (Fetcher.of_env env "SELF");
-      Durable_object.make ())
+      Durable_object.make
+        ~fetch:(fun _req ->
+          Durable_object.Container.intercept_outbound_http container
+            "api.example.com" (Fetcher.of_env env "SELF");
+          if not (Durable_object.Container.running container) then
+            Durable_object.Container.start container;
+          Response.text "intercepting")
+        ())
 ```
+These functions suspend, so call them from a handler, not from the function passed to [register](./Workero-Durable_object.md#val-register).
+
 [`Workero.Durable_object.Container.exec`](./Workero-Durable_object-Container.md#val-exec) runs a program in the running container. [`Workero.Durable_object.Container.Process.output`](./Workero-Durable_object-Container-Process.md#val-output) waits for it and returns its standard output, standard error and exit code. Use [`Workero.Durable_object.Container.Process.stdin`](./Workero-Durable_object-Container-Process.md#val-stdin) and [`Workero.Durable_object.Container.Process.stdout`](./Workero-Durable_object-Container-Process.md#val-stdout) to stream instead:
 
 ```ocaml
@@ -393,7 +400,7 @@ durableObjectNamespaces = [
 ...
 containerEngine = (localDocker = (
   socketPath = "unix:/var/run/docker.sock",
-  containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
+  containerEgressInterceptorImage = "cloudflare/proxy-everything:510e5ce")),
 ```
 Run `workerd` with `--experimental`. Docker and both images must exist on the machine. `test/worker-containers/run.sh` shows a full setup. CI pins the `proxy-everything` image to a digest. Without `containerEgressInterceptorImage`, `workerd` fails the first request with "containerEgressInterceptorImage must be configured for containers".
 

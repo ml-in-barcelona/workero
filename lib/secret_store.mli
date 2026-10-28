@@ -9,7 +9,8 @@ type t
 val of_env : Env.t -> string -> t
 (** [of_env env name] is the secret bound as [name].
 
-    Raises [Invalid_argument] when [env] has no binding [name]. *)
+    Raises [Invalid_argument] when [env] has no binding [name], when the binding
+    is not an object, or when it has no [get] method. *)
 
 val get : t -> string option
 (** The value of the secret, or [None] when the runtime returns [null] or

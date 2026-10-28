@@ -72,5 +72,7 @@ Local cache behavior may differ from a deployed data center; these requests do
 not prove a production cache hit. Deploy only after you have set a suitable
 cache policy for your origin. See the
 {{:https://developers.cloudflare.com/workers/examples/cache-api/}Cloudflare Cache API example}
-for deployment patterns. See {{!page-getting_started}Getting started} for
-deployment steps.
+for deployment patterns. Cloudflare documents functional Cache API operations
+for Workers on custom domains. Check the cache on a custom domain or route,
+not on a [*.workers.dev] hostname. See {{!page-getting_started}Getting started}
+for deployment steps.

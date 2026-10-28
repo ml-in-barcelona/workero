@@ -35,4 +35,4 @@ The host and the password are valid only inside the running Worker. The password
 
 ## Test
 
-See the [open issues](https://github.com/ml-in-barcelona/workero/issues) for the limits. `workerd` has a `hyperdrive` binding type, and the tests of workero use it. Its host ends with `.hyperdrive.local` and no database listens behind it. The tests check the details only. `wrangler dev` connects to `localConnectionString` instead.
+See the [open issues](https://github.com/ml-in-barcelona/workero/issues) for the limits. `workerd` has a `hyperdrive` binding type, and the tests of workero use it. No database listens behind it. The tests check the details only. `wrangler dev` connects to `localConnectionString` instead.

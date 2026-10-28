@@ -19,7 +19,7 @@ Test the routes you use in [workerd] and in your deployment:
 - [Marshal].
 - [Str] regular expressions.
 - [Digest]: MD5 and BLAKE2b.
-- {!Workero.Timer}, {!Workero.Date}, {!Workero.Crypto} and {!Workero.Console}.
+- {!Workero.Timer}, {!Workero.Date} and {!Workero.Crypto}.
 - JavaScript interop with [Js_of_ocaml], for example [JSON].
 
 {1 [jsonkit]}

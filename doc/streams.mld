@@ -104,7 +104,7 @@ that nobody has read.
 
 {1 Client disconnect}
 
-The Worker gets no disconnect event when the client leaves. A later
+A handler is not told directly when the client leaves. A later
 {!Workero.Stream.Writer.write} can raise {!Workero.Js_error}. Catch it to
 clean up.
 
@@ -122,9 +122,10 @@ let handler _req _env ctx =
 let () = Workero.serve handler
 ]}
 
-A loop that does not write cannot see the disconnect. With the
-[enable_request_signal] compatibility flag, {!Workero.Request.signal} aborts
-when the client cancels; see {{!page-abort}Abort and timeouts}.
+A loop that does not write learns of the disconnect only through
+{!Workero.Request.signal}. With the [enable_request_signal] compatibility flag
+it aborts when the runtime detects that the client canceled, but not for every
+disconnect; see {{!page-abort}Abort and timeouts}.
 
 {1 Release a lock}
 

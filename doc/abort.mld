@@ -31,9 +31,10 @@ sending a request.
 
 {!Workero.Abort_controller.create} makes a controller, and
 {!Workero.Abort_controller.signal} gives its signal. {!Workero.Abort_controller.abort}
-aborts it, with an optional message that becomes the message of the
-[AbortError]. {!Workero.Abort_signal.any} combines signals: it aborts with the
-first one.
+aborts it. [~reason:(`Abort msg)] gives an [AbortError] and
+[~reason:(`Timeout msg)] a [TimeoutError], both with message [msg]. Without
+[reason], the signal gets the default [AbortError].
+{!Workero.Abort_signal.any} combines signals: it aborts with the first one.
 
 {@ocaml[
 let handler _req _env _ctx =

@@ -35,7 +35,7 @@ The port, or 80 or 443 when the URL has none.
 ```ocaml
 val path : t -> string
 ```
-The decoded path, starting with `"/"`. The query string and fragment are not part of it. A path with a malformed escape, such as `"%zz"`, is returned undecoded.
+The decoded path, starting with `"/"`. The query string and fragment are not part of it. A path that `decodeURIComponent` rejects is returned undecoded. That is a malformed escape, such as `"%zz"`, or an escape that is not valid UTF-8, such as `"%FF"`.
 
 ```ocaml
 val pathname : t -> string

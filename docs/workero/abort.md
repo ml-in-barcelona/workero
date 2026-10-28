@@ -23,7 +23,7 @@ When the signal aborts, the runtime rejects the request. The call raises [`Worke
 
 ## Abort by hand
 
-[`Workero.Abort_controller.create`](./Workero-Abort_controller.md#val-create) makes a controller, and [`Workero.Abort_controller.signal`](./Workero-Abort_controller.md#val-signal) gives its signal. [`Workero.Abort_controller.abort`](./Workero-Abort_controller.md#val-abort) aborts it, with an optional message that becomes the message of the `AbortError`. [`Workero.Abort_signal.any`](./Workero-Abort_signal.md#val-any) combines signals: it aborts with the first one.
+[`Workero.Abort_controller.create`](./Workero-Abort_controller.md#val-create) makes a controller, and [`Workero.Abort_controller.signal`](./Workero-Abort_controller.md#val-signal) gives its signal. [`Workero.Abort_controller.abort`](./Workero-Abort_controller.md#val-abort) aborts it. `~reason:(`Abort msg)` gives an `AbortError` and `~reason:(`Timeout msg)` a `TimeoutError`, both with message `msg`. Without `reason`, the signal gets the default `AbortError`. [`Workero.Abort_signal.any`](./Workero-Abort_signal.md#val-any) combines signals: it aborts with the first one.
 
 ```ocaml
 let handler _req _env _ctx =

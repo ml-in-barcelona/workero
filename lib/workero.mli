@@ -99,10 +99,10 @@ val tail_stream :
 (** [tail_stream handler] registers the streaming tail handler, like
     [tailStream(onset, env, ctx)] in a JavaScript Worker. The runtime calls
     [handler] once for each invocation of a producer Worker that lists this
-    Worker in [streaming_tails], with the onset event. [handler] returns the
-    function that receives each later event of the same invocation, as it
-    happens, up to the outcome. Both run in a fiber, like {!tail}. Build a tail
-    Worker as its own program. *)
+    Worker in [streaming_tail_consumers], with the onset event. [handler]
+    returns the function that receives each later event of the same invocation,
+    as it happens, up to the outcome. Both run in a fiber, like {!tail}. Build a
+    tail Worker as its own program. *)
 
 val fetch :
   ?signal:Abort_signal.t ->

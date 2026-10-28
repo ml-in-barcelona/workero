@@ -9,7 +9,7 @@
     handlers that suspend.
 
     A node is valid only while its handler runs. Use it later and the runtime
-    raises {!Workero.Js_error}. Do not keep a node in a reference.
+    throws an error. Do not keep a node in a reference.
 
     An exception raised by a handler stops the parse. The body of the
     transformed response errors with the exception text, and the original body

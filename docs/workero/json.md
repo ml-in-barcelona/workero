@@ -31,4 +31,4 @@ let () = Workero.serve handler
 
 For a binding that gives you a JavaScript value, [`Workero.JSON.of_js`](./Workero-JSON.md#val-of_js) converts its JSON representation to `Jsonkit.t`. It follows `JSON.stringify`: it drops object fields with `undefined` or function values and raises `Invalid_argument` for values with no JSON representation, such as a cyclic object or a `BigInt`. [`Workero.JSON.to_js`](./Workero-JSON.md#val-to_js) converts `Jsonkit.t` to a new JavaScript value; it raises `Invalid_argument` for `nan` or an infinite float. See [`Workero.JSON`](./Workero-JSON.md) for these functions' complete contracts.
 
-Without the ppx, write a decoder with `Jsonkit.Of_json`. See [Requests and responses](./requests.md) for other body formats.
+Without the ppx, write a decoder that matches on ``Assoc` and uses the `Jsonkit.Of_json` functions for each field. Raise `Jsonkit.Of_json_error` for a missing field. [`Workero.JSON.decode`](./Workero-JSON.md#val-decode) turns it into `Error`. See [`Workero.JSON`](./Workero-JSON.md) for an example. See [Requests and responses](./requests.md) for other body formats.

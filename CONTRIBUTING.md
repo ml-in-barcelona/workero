@@ -2,7 +2,8 @@
 
 `make help` lists the targets. Run `make build` to build the library, CLI, and
 examples. Run `make fmt` to format the code, and `make test` to run the unit,
-worker, worker-init, worker-exports, worker-tail, and CLI tests.
+worker, worker-init, worker-exports, worker-tail, worker-containers, and CLI
+tests.
 
 ## Tests
 
@@ -43,6 +44,11 @@ worker, worker-init, worker-exports, worker-tail, and CLI tests.
   `tests.mjs` calls the producer, polls the sink and checks the summaries. It
   reads each producer response body: the tail event arrives only after the
   response ends.
+- Container tests in `test/worker-containers/` run with
+  `make test-worker-containers`. They start real Docker containers from a
+  Durable Object in `workerd test`. When Docker or the test images are missing,
+  the run prints a `SKIP containers:` line and succeeds. Set
+  `WORKERO_REQUIRE_CONTAINERS=1` to make that case fail.
 - CLI tests in `test/cli/` run with `make test-cli`. They check `workero build`
   and `workero package`, including arguments, output, class discovery,
   initialization timeouts, and errors. Fixtures

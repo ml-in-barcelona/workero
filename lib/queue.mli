@@ -51,7 +51,9 @@ val send : ?content_type:content_type -> ?delay_seconds:int -> t -> body -> unit
     [delay_seconds] delays delivery, from 0 to 86400.
 
     Raises [Invalid_argument] when [delay_seconds] is outside 0 to 86400, or
-    when [content_type] is not [`V8] and differs from the one [body] implies.
+    when [content_type] is not [`V8] and differs from the one [body] implies, or
+    when [body] is [Json] with a float that JSON cannot write ([nan] or an
+    infinity).
     @raise Js_error
       when the runtime rejects the message, for example when it is too large. *)
 

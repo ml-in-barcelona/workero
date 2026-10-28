@@ -179,7 +179,7 @@ echo "ok - a program without entrypoints has no entrypoint glue"
 
 rm -rf "$out"
 if workero test/cli/entrypoint-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and an entrypoint share a name"; fi
-grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing class"
+grep -qF 'class \"Same\" is already registered' "$log" || fail "the error names the clashing class"
 echo "ok - build fails when a Durable Object and an entrypoint share a name"
 
 rm -rf "$out"
@@ -202,5 +202,5 @@ echo "ok - a program without workflows has no workflow glue"
 
 rm -rf "$out"
 if workero test/cli/workflow-clash/main.bc.wasm.js; then fail "build fails when a Durable Object and a workflow share a name"; fi
-grep -q 'class Same is registered twice' "$log" || fail "the error names the clashing workflow"
+grep -qF 'class \"Same\" is already registered' "$log" || fail "the error names the clashing workflow"
 echo "ok - build fails when a Durable Object and a workflow share a name"

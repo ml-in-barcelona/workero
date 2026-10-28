@@ -72,7 +72,7 @@ To change the status or the headers, pass `~status` or `~headers` to [`Workero.R
 
 ## Client disconnect
 
-The Worker gets no disconnect event when the client leaves. A later [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) can raise [`Workero.Js_error`](./Workero.md#exception-Js_error). Catch it to clean up.
+A handler is not told directly when the client leaves. A later [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) can raise [`Workero.Js_error`](./Workero.md#exception-Js_error). Catch it to clean up.
 
 ```ocaml
 let handler _req _env ctx =
@@ -87,7 +87,7 @@ let handler _req _env ctx =
 
 let () = Workero.serve handler
 ```
-A loop that does not write cannot see the disconnect. With the `enable_request_signal` compatibility flag, [`Workero.Request.signal`](./Workero-Request.md#val-signal) aborts when the client cancels; see [Abort and timeouts](./abort.md).
+A loop that does not write learns of the disconnect only through [`Workero.Request.signal`](./Workero-Request.md#val-signal). With the `enable_request_signal` compatibility flag it aborts when the runtime detects that the client canceled, but not for every disconnect; see [Abort and timeouts](./abort.md).
 
 
 ## Release a lock

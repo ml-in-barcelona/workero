@@ -22,8 +22,9 @@ val port : t -> int
 
 val path : t -> string
 (** The decoded path, starting with ["/"]. The query string and fragment are not
-    part of it. A path with a malformed escape, such as ["%zz"], is returned
-    undecoded. *)
+    part of it. A path that [decodeURIComponent] rejects is returned undecoded.
+    That is a malformed escape, such as ["%zz"], or an escape that is not valid
+    UTF-8, such as ["%FF"]. *)
 
 val pathname : t -> string
 (** The raw path as the JavaScript [pathname]: percent-encoded, so ["%2F"] stays

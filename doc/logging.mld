@@ -30,8 +30,9 @@ Worker. See {{:https://developers.cloudflare.com/workers/observability/logs/}Wor
 [console]. Each call writes one entry without an OCaml buffer to flush.
 Standard output and standard error also reach Workers logs, but they use
 OCaml buffers. Workero flushes those buffers when a {!Workero.serve},
-{!Workero.scheduled}, or {!Workero.queue} handler finishes, even if it raises.
-Durable Object initialization, fetch, and alarm handlers also flush them.
+{!Workero.scheduled}, {!Workero.queue}, {!Workero.email}, {!Workero.tail} or
+{!Workero.tail_stream} handler finishes, even if it raises. The handlers of
+Durable Objects, entrypoints and Workflows also flush them.
 Thus [Printf.printf] inside these handlers needs no newline or [%!] to appear
 when the handler ends.
 

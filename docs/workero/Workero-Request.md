@@ -27,7 +27,7 @@ The raw query without the `"?"`; `""` when there is none.
 ```ocaml
 val header : t -> string -> string option
 ```
-`header req name` is the value of header `name`, matched without regard to letter case. Repeated headers are joined with `", "`. Use [`header_all`](./#val-header_all) for `cookie` lists and `set-cookie`.
+`header req name` is the value of header `name`, matched without regard to letter case. Repeated headers are joined with `", "`. Use [`header_all`](./#val-header_all) for `set-cookie`.
 
 ```ocaml
 val header_all : t -> string -> string list

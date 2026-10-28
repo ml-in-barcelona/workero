@@ -93,15 +93,16 @@ file name without [.bc.wasm.js].
   {!Workero.Workflow.register}. The probe runs for at most 30 seconds by
   default. Set [WORKERO_PROBE_TIMEOUT] to a positive number of seconds to
   change it; absent, invalid and nonpositive values use 30 seconds. The probe
-  does not call a fetch, scheduled, queue or email handler.
+  does not call a fetch, scheduled, queue, email, tail or tail_stream handler.
 + Writes the final [index.js]. It imports every [.wasm] file and [connect] from
   [cloudflare:sockets] (see {{!page-socket}Sockets}), exports the registered
-  {!Workero.serve}, {!Workero.scheduled}, {!Workero.queue} and
-  {!Workero.email} handlers through its default export, and adds named exports
-  for registered Durable Object and entrypoint classes. If Durable Object
-  classes exist, it writes [durable-object.js] for their initialization, fetch,
-  alarm, and WebSocket event handlers. If entrypoint classes exist, it writes
-  [entrypoint.js] for their RPC methods (see {{!page-entrypoints}Entrypoints}).
+  {!Workero.serve}, {!Workero.scheduled}, {!Workero.queue}, {!Workero.email},
+  {!Workero.tail} and {!Workero.tail_stream} handlers through its default
+  export, and adds named exports for registered Durable Object and entrypoint
+  classes. If Durable Object classes exist, it writes [durable-object.js] for
+  their initialization, fetch, alarm, and WebSocket event handlers. If
+  entrypoint classes exist, it writes [entrypoint.js] for their RPC methods (see
+  {{!page-entrypoints}Entrypoints}).
   If Workflow classes exist, it writes [workflow.js], which imports
   [cloudflare:workflows] (see {{!page-workflows}Workflows}). It removes a stale
   [durable-object.js], [entrypoint.js] or [workflow.js] when no classes of that
@@ -116,10 +117,10 @@ code 1. Other errors, such as file-system exceptions during a copy, print
 [workero: internal error, uncaught exception:] and the exception, and exit with
 code 125.
 
-A build that registers no fetch, scheduled, queue or email handler and no
-Durable Object, entrypoint or Workflow class can complete, but its generated
-worker fails to load with [registered no handler]. Register at least one of
-them at module initialization.
+A build that registers no fetch, scheduled, queue, email, tail or tail_stream
+handler and no Durable Object, entrypoint or Workflow class can complete, but
+its generated worker fails to load with [registered no handler]. Register at
+least one of them at module initialization.
 
 {1 Errors}
 

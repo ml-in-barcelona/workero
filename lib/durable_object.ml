@@ -605,7 +605,12 @@ let register ?(rpc = []) name create =
              m name))
     rpc;
   let classes = classes () in
-  if has_own classes name then
+  let root = Registry.root () in
+  let taken table =
+    let t = Js.Unsafe.get root table in
+    typeof t <> "undefined" && has_own t name
+  in
+  if has_own classes name || taken "entrypoints" || taken "workflows" then
     invalid_arg (Printf.sprintf "%s: class %S is already registered" who name);
   let factory state env : js =
     match
