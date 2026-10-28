@@ -1,7 +1,6 @@
 project_name = workero
 
 DUNE = opam exec -- dune
-export PATH := $(shell opam var bin):$(PATH)
 
 .PHONY: help
 help: ## Print this help message
@@ -28,27 +27,27 @@ test-unit: ## Run the alcotest unit tests (node)
 
 .PHONY: test-worker
 test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in workerd
-	DUNE="$(DUNE)" test/worker/run.sh
+	DUNE="$(DUNE)" opam exec -- test/worker/run.sh
 
 .PHONY: test-worker-init
 test-worker-init: ## Build test/worker-init and check that an OCaml exception at init fails the build
-	DUNE="$(DUNE)" test/worker-init/run.sh
+	DUNE="$(DUNE)" opam exec -- test/worker-init/run.sh
 
 .PHONY: test-worker-exports
 test-worker-exports: ## Build test/worker-exports and check which handlers each worker exports
-	DUNE="$(DUNE)" test/worker-exports/run.sh
+	DUNE="$(DUNE)" opam exec -- test/worker-exports/run.sh
 
 .PHONY: test-worker-tail
 test-worker-tail: ## Build test/worker-tail and run its tail handler in workerd behind a producer Worker
-	DUNE="$(DUNE)" test/worker-tail/run.sh
+	DUNE="$(DUNE)" opam exec -- test/worker-tail/run.sh
 
 .PHONY: test-worker-containers
 test-worker-containers: ## Run a real Docker container from a Durable Object; prints SKIP when Docker or the images are missing
-	DUNE="$(DUNE)" test/worker-containers/run.sh
+	DUNE="$(DUNE)" opam exec -- test/worker-containers/run.sh
 
 .PHONY: test-cli
 test-cli: ## Run workero build on test/cli fixtures and check its errors
-	DUNE="$(DUNE)" test/cli/run.sh
+	DUNE="$(DUNE)" opam exec -- test/cli/run.sh
 
 .PHONY: fmt
 fmt: ## Format the code
