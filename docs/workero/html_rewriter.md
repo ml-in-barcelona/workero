@@ -54,7 +54,7 @@ let price el =
 ```
 The runtime waits for a handler to return before it parses on. In `workerd`, two handlers that wait run one after the other, in document order. Cloudflare does not document this order, and the tests do not prove it, so do not depend on it.
 
-Make every change before the handler returns. A node is invalid after that, and using it raises [`Workero.Js_error`](./Workero.md#exception-Js_error).
+Make every change before the handler returns. A node is invalid after that, and using it makes the runtime throw an error.
 
 If a handler raises, the parse stops and the body of the transformed response errors with the exception text. A client that already got bytes sees a truncated response. Handle expected failures inside the handler.
 
@@ -76,7 +76,8 @@ let rewriter =
            Buffer.add_string titles (Text_chunk.text t);
            if Text_chunk.last_in_text_node t then
              Text_chunk.replace t
-               (Text (String.uppercase_ascii (Buffer.contents titles)))
+               (Text (String.uppercase_ascii (Buffer.contents titles)));
+             Buffer.clear titles)
            else Text_chunk.remove t)
          "title")
 ```

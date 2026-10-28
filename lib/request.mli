@@ -17,7 +17,7 @@ val query_string : t -> string
 val header : t -> string -> string option
 (** [header req name] is the value of header [name], matched without regard to
     letter case. Repeated headers are joined with [", "]. Use {!header_all} for
-    [cookie] lists and [set-cookie]. *)
+    [set-cookie]. *)
 
 val header_all : t -> string -> string list
 (** Every value of a header; one entry per [set-cookie], one joined entry for

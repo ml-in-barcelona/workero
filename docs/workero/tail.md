@@ -60,8 +60,12 @@ The URL and headers of a request are redacted by default. [`Workero.Trace.Reques
 
 A streaming tail Worker gets each event of an invocation as it happens, not after it ends. Register [`Workero.tail_stream`](./Workero.md#val-tail_stream). The runtime calls it once per invocation with the onset, and the function that it returns gets the later events, up to the outcome.
 
-The producer lists the Worker in `streamingTails` in a `workerd` config.
+The producer lists the Worker in `streaming_tail_consumers` in its `wrangler.toml`. The `workerd` field is `streamingTails`.
 
+```toml
+[[streaming_tail_consumers]]
+service = "my-tail"
+```
 ```ocaml
 let () =
   Workero.tail_stream (fun onset _env _ctx ->
@@ -79,6 +83,6 @@ let () =
 
 ## Limits
 
-The tests run the streaming tail only in `workerd`. The Cloudflare documentation was not checked for it.
+The tests run the streaming tail only in `workerd`.
 
 In local `workerd`, [`Workero.Trace.wall_time`](./Workero-Trace.md#val-wall_time) and [`Workero.Trace.cpu_time`](./Workero-Trace.md#val-cpu_time) are `0.` and [`Workero.Trace.script_name`](./Workero-Trace.md#val-script_name) is `None`. The tests cannot produce an email or a custom event, so [`Workero.Trace.event.Email`](./Workero-Trace.md#type-event.Email) and [`Workero.Trace.event.Custom`](./Workero-Trace.md#type-event.Custom) have no test.

@@ -45,14 +45,18 @@ val await : 'a t -> 'a
     resolved value. For a rejection made by {!error_of_exn}, [map], [bind],
     [make] or [of_js], it re-raises the original OCaml exception. For any other
     rejection it raises {!Js_error}. It works inside the handlers given to
-    {!Workero.serve}, {!Workero.scheduled} and {!Workero.queue}, inside the
-    [init], [fetch], [alarm], [websocket_message], [websocket_close] and
-    [websocket_error] handlers of {!Durable_object.make}, and inside functions
-    passed to {!Context.wait_until}, {!Durable_object.State.wait_until} and
+    {!Workero.serve}, {!Workero.scheduled}, {!Workero.queue}, {!Workero.email},
+    {!Workero.tail} and {!Workero.tail_stream}, inside the [init], [fetch],
+    [alarm], [rpc], [websocket_message], [websocket_close] and [websocket_error]
+    handlers of {!Durable_object.make}, inside the handlers of
+    {!Entrypoint.make} and the function of {!Workflow.register}, and inside
+    functions passed to {!Context.wait_until},
+    {!Durable_object.State.wait_until} and
     {!Durable_object.State.block_concurrency_while}. It cannot suspend inside
-    the function passed to {!Durable_object.register} or
+    the function passed to {!Durable_object.register}, {!Entrypoint.register} or
     {!Durable_object.Storage.transaction_sync}; the latter raises
-    [Invalid_argument] and rolls back. *)
+    [Invalid_argument] and rolls back. See
+    {{!page-async}Async and background work} for the full list. *)
 
 val map : ('a -> 'b) -> 'a t -> 'b t
 (** An exception raised by the function rejects the result, see {!await}. *)

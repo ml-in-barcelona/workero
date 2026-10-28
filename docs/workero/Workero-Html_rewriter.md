@@ -5,7 +5,7 @@ Rewrite an HTML response while it streams, like the JavaScript `HTMLRewriter`. T
 
 Every handler function runs in its own fiber and may call [`Promise.await`](./Workero-Promise.md#val-await), [`Workero.fetch`](./Workero.md#val-fetch) and the other bindings. The runtime waits for a function to return before it parses on. Do not rely on the order of work between two handlers that suspend.
 
-A node is valid only while its handler runs. Use it later and the runtime raises [`Workero.Js_error`](./Workero.md#exception-Js_error). Do not keep a node in a reference.
+A node is valid only while its handler runs. Use it later and the runtime throws an error. Do not keep a node in a reference.
 
 An exception raised by a handler stops the parse. The body of the transformed response errors with the exception text, and the original body is canceled. A client that already received bytes sees a truncated response.
 

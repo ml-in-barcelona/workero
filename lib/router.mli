@@ -16,6 +16,10 @@ type handler = params -> Request.t -> Env.t -> Context.t -> Response.t
 type route
 
 val get : string -> handler -> route
+(** [get pattern handler] is a route for one method. The pattern syntax is in
+    {!make}. This function, the other method functions and {!any} raise
+    [Invalid_argument] when the pattern is invalid. *)
+
 val head : string -> handler -> route
 val post : string -> handler -> route
 val put : string -> handler -> route
@@ -24,12 +28,14 @@ val delete : string -> handler -> route
 val options : string -> handler -> route
 
 val any : string -> handler -> route
-(** Every method, tried after the routes of the request method. *)
+(** Every method, tried after the routes of the request method. Raises
+    [Invalid_argument] when the pattern is invalid. *)
 
 val scope : string -> route list -> route list
 (** [scope "/api" routes] prefixes every pattern. The prefix follows the pattern
     syntax; ["/"] adds nothing. A child route at ["/"] matches ["/api"], not
-    ["/api/"]. Nested scopes mount routes under successive prefixes. *)
+    ["/api/"]. Nested scopes mount routes under successive prefixes. Raises
+    [Invalid_argument] when the prefix is not a valid pattern. *)
 
 val wrap : (handler -> handler) -> route list -> route list
 (** Middleware is a function on handlers. [wrap with_cors routes] applies it to
@@ -69,10 +75,9 @@ val make :
     gets a 308 to the path without them, query kept. [`Reject] answers it with
     [not_found]. The router does not redirect a protocol-relative path.
 
-    Raises [Invalid_argument] when a pattern is invalid, when a method and
-    pattern appear twice, or when two patterns for the same method could match
-    the same path with the same specificity, such as [/:a<string>/x] and
-    [/x/:b<string>]. *)
+    Raises [Invalid_argument] when a method and pattern appear twice, or when
+    two patterns for the same method could match the same path with the same
+    specificity, such as [/:a<string>/x] and [/x/:b<string>]. *)
 
 type found =
   | Found of handler * params

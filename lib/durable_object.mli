@@ -2,13 +2,14 @@
 
     A Durable Object class is a function from its {!State} and the {!Env} to the
     handlers of one object, built with {!make} and bound to a name with
-    {!register}. Declare the class in [wrangler.toml] with [[durable_objects]]
-    and a migration with [new_sqlite_classes], or with the [exports] map and
-    [storage = "sqlite"]. [workero build] exports every registered class.
-    {!Storage} requires a SQLite-backed class; its key-value and SQL methods
-    fail on legacy storage. [fetch], [alarm], hibernatable WebSocket event
-    handlers, and the RPC methods that you declare with [~rpc] in {!register}
-    are exported. See {{!page-durable_objects}Durable Objects}.
+    {!register}. Declare the class in [wrangler.toml] with
+    [[durable_objects.bindings]] and a migration with [new_sqlite_classes], or
+    with the [exports] map and [storage = "sqlite"]. [workero build] exports
+    every registered class. {!Storage} requires a SQLite-backed class; its
+    key-value and SQL methods fail on legacy storage. [fetch], [alarm],
+    hibernatable WebSocket event handlers, and the RPC methods that you declare
+    with [~rpc] in {!register} are exported. See
+    {{!page-durable_objects}Durable Objects}.
 
     Handlers on one object interleave only where they suspend, so a handler that
     uses only the synchronous key-value methods and never calls {!Promise.await}
@@ -443,10 +444,11 @@ val register : ?rpc:string list -> string -> (State.t -> Env.t -> t) -> unit
 
     Raises [Invalid_argument] when [class_name] is empty, starts with a digit,
     has a character other than an ASCII letter, a digit, ["_"] or ["$"], is
-    ["default"], ["then"] or ["__proto__"], or is already registered. Reserved
-    words such as ["class"] are accepted: the generated module exports the class
-    under that name without declaring a variable of it. It also raises
-    [Invalid_argument] for an invalid or repeated name in [rpc]. *)
+    ["default"], ["then"] or ["__proto__"], or is already used by a Durable
+    Object, an entrypoint or a Workflow class. Reserved words such as ["class"]
+    are accepted: the generated module exports the class under that name without
+    declaring a variable of it. It also raises [Invalid_argument] for an invalid
+    or repeated name in [rpc]. *)
 
 val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 (** [call stub name args] calls the RPC method [name] of the object that [stub]
@@ -460,7 +462,7 @@ val call : Fetcher.t -> string -> Rpc.t list -> Rpc.t
 
 module Namespace : sig
   type t
-  (** A [[durable_objects]] binding. *)
+  (** A [[durable_objects.bindings]] binding. *)
 
   type location_hint = Wnam | Enam | Sam | Weur | Eeur | Apac | Oc | Afr | Me
   type jurisdiction = Eu | Fedramp

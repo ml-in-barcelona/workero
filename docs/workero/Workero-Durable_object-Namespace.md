@@ -4,7 +4,7 @@
 ```ocaml
 type t
 ```
-A `[durable_objects]` binding.
+A `[durable_objects.bindings]` binding.
 
 ```ocaml
 type location_hint = 

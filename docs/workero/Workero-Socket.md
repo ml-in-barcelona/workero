@@ -33,13 +33,13 @@ val connect :
   unit ->
   t
 ```
-`connect ~host ~port ()` starts a connection and returns at once. A failed connection shows in [`opened`](./#val-opened), in [`closed`](./#val-closed) and in the reads and writes. Call [`opened`](./#val-opened) to wait for the connection.
+`connect ~host ~port ()` starts a connection and returns at once. It raises [`Js_error`](./Workero.md#exception-Js_error) only when the runtime throws from its `connect` call, for an address that it rejects at once. Any other failed connection shows as an error from [`opened`](./#val-opened), from [`closed`](./#val-closed) and from the reads and writes. Call [`opened`](./#val-opened) to wait for the connection.
 
 `secure_transport` is `Off` by default. `allow_half_open` is `false` by default: when the server ends its side, the runtime closes the write side too. With `true`, the write side stays open.
 
 Raises `Invalid_argument` when `host` is empty or `port` is outside 1 to 65535, and `Failure` when the runtime has no `cloudflare:sockets` (a program run outside a Worker, for example in Node.js).
 
-raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime refuses the address, for example a Cloudflare address, a loopback address or port 25.
+raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime throws from its connect call. Which addresses it rejects at once is up to the runtime; the tests do not cover it.
 ```ocaml
 val opened : t -> info
 ```
@@ -48,7 +48,7 @@ Waits until the connection is up and gives its [`info`](./#type-info). Suspends.
 ```ocaml
 val upgraded : t -> bool
 ```
-`true` once [`start_tls`](./#val-start_tls) has upgraded the socket to TLS.
+The `upgraded` property of the JavaScript socket: `true` when the runtime reports that the socket was upgraded to TLS. In `workerd` tests it is `false` before and after [`start_tls`](./#val-start_tls), on the old and the new socket.
 
 ```ocaml
 val closed : t -> unit

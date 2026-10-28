@@ -14,7 +14,7 @@ The routes in `examples/features/main.mlx` demonstrate these features. The examp
 - `Marshal`.
 - `Str` regular expressions.
 - `Digest`: MD5 and BLAKE2b.
-- [`Workero.Timer`](./Workero-Timer.md), [`Workero.Date`](./Workero-Date.md), [`Workero.Crypto`](./Workero-Crypto.md) and [`Workero.Console`](./Workero-Console.md).
+- [`Workero.Timer`](./Workero-Timer.md), [`Workero.Date`](./Workero-Date.md) and [`Workero.Crypto`](./Workero-Crypto.md).
 - JavaScript interop with `Js_of_ocaml`, for example `JSON`.
 
 ## `jsonkit`

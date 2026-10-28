@@ -20,7 +20,7 @@ let () = Workero.serve handler
 
 ## Raw and decoded paths
 
-[`Workero.URL.path`](./Workero-URL.md#val-path) decodes percent escapes: `"/a%2Fb"` becomes `"/a/b"`. [`Workero.URL.pathname`](./Workero-URL.md#val-pathname) and [`Workero.Request.path`](./Workero-Request.md#val-path) keep the percent-encoded path. Use the raw path if encoded slashes must remain distinct from path separators. A malformed escape such as `%zz` leaves the whole `URL.path` undecoded. A `+` in a path stays `+`.
+[`Workero.URL.path`](./Workero-URL.md#val-path) decodes percent escapes: `"/a%2Fb"` becomes `"/a/b"`. [`Workero.URL.pathname`](./Workero-URL.md#val-pathname) and [`Workero.Request.path`](./Workero-Request.md#val-path) keep the percent-encoded path. Use the raw path if encoded slashes must remain distinct from path separators. A path that `decodeURIComponent` rejects leaves the whole `URL.path` undecoded: a malformed escape such as `%zz`, or an escape that is not valid UTF-8 such as `%FF`. A `+` in a path stays `+`.
 
 Query values follow URL search-parameter rules: `+` becomes a space. [`Workero.URL.query`](./Workero-URL.md#val-query) returns the first matching value; [`Workero.URL.query_all`](./Workero-URL.md#val-query_all) returns all matching values in order. A key without `=` has the value `""`. To keep the original query encoding, use [`Workero.Request.query_string`](./Workero-Request.md#val-query_string) or [`Workero.URL.search`](./Workero-URL.md#val-search).
 

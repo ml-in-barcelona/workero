@@ -59,7 +59,7 @@ val send :
 ```
 `send queue body` adds one message to the queue. It suspends until the queue accepts it. Call it inside an event handler or a [`Context.wait_until`](./Workero-Context.md#val-wait_until) function. `content_type` defaults to the one that `body` implies. `delay_seconds` delays delivery, from 0 to 86400\.
 
-Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, or when `content_type` is not ``V8` and differs from the one `body` implies.
+Raises `Invalid_argument` when `delay_seconds` is outside 0 to 86400, or when `content_type` is not ``V8` and differs from the one `body` implies, or when `body` is `Json` with a float that JSON cannot write (`nan` or an infinity).
 
 raises [`Js_error`](./Workero.md#exception-Js_error) when the runtime rejects the message, for example when it is too large.
 ```ocaml

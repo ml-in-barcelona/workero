@@ -501,10 +501,18 @@ open Workero
 let () =
   Durable_object.register "Sandbox" (fun state env ->
       let container = Option.get (Durable_object.State.container state) in
-      Durable_object.Container.intercept_outbound_http container
-        "api.example.com" (Fetcher.of_env env "SELF");
-      Durable_object.make ())
+      Durable_object.make
+        ~fetch:(fun _req ->
+          Durable_object.Container.intercept_outbound_http container
+            "api.example.com" (Fetcher.of_env env "SELF");
+          if not (Durable_object.Container.running container) then
+            Durable_object.Container.start container;
+          Response.text "intercepting")
+        ())
 ]}
+
+These functions suspend, so call them from a handler, not from the function
+passed to {{!Workero.Durable_object.register}register}.
 
 {!Workero.Durable_object.Container.exec} runs a program in the running
 container. {!Workero.Durable_object.Container.Process.val-output} waits for it and
@@ -551,7 +559,7 @@ durableObjectNamespaces = [
 ...
 containerEngine = (localDocker = (
   socketPath = "unix:/var/run/docker.sock",
-  containerEgressInterceptorImage = "cloudflare/proxy-everything:main")),
+  containerEgressInterceptorImage = "cloudflare/proxy-everything:510e5ce")),
 ]}
 
 Run [workerd] with [--experimental]. Docker and both images must exist on the

@@ -77,9 +77,11 @@ dot segments and control characters. A plus sign remains [+].
 By default, a request for [/api/users/42/?q=1] gets a [308] redirect to
 [/api/users/42?q=1]. Set [~trailing_slash:`Reject] on
 {!Workero.Router.make} to use [404] instead. Supply [~not_found] to use your
-own handler for misses. {!Workero.Router.make} raises [Invalid_argument] for
-invalid, duplicate or equally specific overlapping routes. It does not choose
-one based on declaration order.
+own handler for misses. The route functions ([get], [post],
+{!Workero.Router.any} and the others) and {!Workero.Router.scope} raise
+[Invalid_argument] for an invalid pattern. {!Workero.Router.make} raises it for
+duplicate or equally specific overlapping routes. It does not choose one based
+on declaration order.
 
 For a lookup without an HTTP response, use {!Workero.Router.find} with a raw,
 percent-encoded path without a query. Unlike [to_handler], [find] does not

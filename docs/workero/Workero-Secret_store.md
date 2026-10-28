@@ -11,7 +11,7 @@ val of_env : Env.t -> string -> t
 ```
 `of_env env name` is the secret bound as `name`.
 
-Raises `Invalid_argument` when `env` has no binding `name`.
+Raises `Invalid_argument` when `env` has no binding `name`, when the binding is not an object, or when it has no `get` method.
 
 ```ocaml
 val get : t -> string option

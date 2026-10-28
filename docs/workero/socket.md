@@ -29,7 +29,7 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-- [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) returns at once. A refused connection shows in [`Workero.Socket.opened`](./Workero-Socket.md#val-opened), which suspends until the connection is up.
+- [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) returns at once. It raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the runtime throws from its `connect` call. Any other failed connection shows as an error from [`Workero.Socket.opened`](./Workero-Socket.md#val-opened), which suspends until the connection is up.
 - [`Workero.Socket.reader`](./Workero-Socket.md#val-reader) and [`Workero.Socket.writer`](./Workero-Socket.md#val-writer) give the [`Workero.Stream`](./Workero-Stream.md) readers and writers. Each locks its stream, so call each one once for each socket, or unlock the stream with [`Workero.Stream.Reader.release`](./Workero-Stream-Reader.md#val-release) or [`Workero.Stream.Writer.release`](./Workero-Stream-Writer.md#val-release). [`Workero.Stream.Writer.write`](./Workero-Stream-Writer.md#val-write) waits when the server is slow to read (back-pressure).
 - [`Workero.Stream.Reader.read`](./Workero-Stream-Reader.md#val-read) gives `None` when the server ends its side. [`Workero.Stream.Writer.close`](./Workero-Stream-Writer.md#val-close) ends yours.
 - [`Workero.Socket.close`](./Workero-Socket.md#val-close) closes both sides. [`Workero.Socket.closed`](./Workero-Socket.md#val-closed) waits for the socket to close.
@@ -61,7 +61,7 @@ let handler _req _env _ctx =
 
 let () = Workero.serve handler
 ```
-[`Workero.Socket.upgraded`](./Workero-Socket.md#val-upgraded) is `true` on the old socket after the upgrade.
+[`Workero.Socket.upgraded`](./Workero-Socket.md#val-upgraded) reads the `upgraded` property of a JavaScript socket. In the `workerd` tests it is `false` before and after `start_tls`.
 
 `start_tls` returns a new socket. The old socket stops working. The runtime fails the upgrade while a reader or writer still locks a stream, so release both first.
 
@@ -83,4 +83,4 @@ A Worker has no `connect` handler. Cloudflare does not deliver incoming TCP conn
 
 ## Limits
 
-Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) for them, or [`Workero.Socket.opened`](./Workero-Socket.md#val-opened) does. Cloudflare also limits the number of open connections for each request; see its documentation.
+Cloudflare refuses connections to Cloudflare addresses, loopback addresses and port 25\. [`Workero.Socket.connect`](./Workero-Socket.md#val-connect) raises [`Workero.Js_error`](./Workero.md#exception-Js_error) when the runtime rejects the address at once. Otherwise the error comes from [`Workero.Socket.opened`](./Workero-Socket.md#val-opened). The tests do not cover which one applies. Cloudflare also limits the number of open connections for each request; see its documentation.

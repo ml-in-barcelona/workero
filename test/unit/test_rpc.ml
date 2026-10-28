@@ -60,6 +60,9 @@ let test_numbers () =
   let read s = Rpc.of_js (js_eval s) in
   Alcotest.(check bool) "int" true (read "42" = `Int 42);
   Alcotest.(check bool) "float" true (read "1.5" = `Float 1.5);
+  Alcotest.(check bool)
+    "largest int" true
+    (read (string_of_int max_int) = `Int max_int);
   Alcotest.(check bool) "huge" true (read "1e300" = `Float 1e300);
   Alcotest.(check bool)
     "negative zero" true

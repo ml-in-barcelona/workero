@@ -27,9 +27,11 @@ val connect :
   port:int ->
   unit ->
   t
-(** [connect ~host ~port ()] starts a connection and returns at once. A failed
-    connection shows in {!opened}, in {!closed} and in the reads and writes.
-    Call {!opened} to wait for the connection.
+(** [connect ~host ~port ()] starts a connection and returns at once. It raises
+    {!Js_error} only when the runtime throws from its [connect] call, for an
+    address that it rejects at once. Any other failed connection shows as an
+    error from {!opened}, from {!closed} and from the reads and writes. Call
+    {!opened} to wait for the connection.
 
     [secure_transport] is [Off] by default. [allow_half_open] is [false] by
     default: when the server ends its side, the runtime closes the write side
@@ -39,15 +41,17 @@ val connect :
     65535, and [Failure] when the runtime has no [cloudflare:sockets] (a program
     run outside a Worker, for example in Node.js).
     @raise Js_error
-      when the runtime refuses the address, for example a Cloudflare address, a
-      loopback address or port 25. *)
+      when the runtime throws from its [connect] call. Which addresses it
+      rejects at once is up to the runtime; the tests do not cover it. *)
 
 val opened : t -> info
 (** Waits until the connection is up and gives its {!info}. Suspends. Raises
     {!Js_error} when the connection fails. *)
 
 val upgraded : t -> bool
-(** [true] once {!start_tls} has upgraded the socket to TLS. *)
+(** The [upgraded] property of the JavaScript socket: [true] when the runtime
+    reports that the socket was upgraded to TLS. In [workerd] tests it is
+    [false] before and after {!start_tls}, on the old and the new socket. *)
 
 val closed : t -> unit
 (** Waits until the socket is closed. Suspends. Raises {!Js_error} when the
