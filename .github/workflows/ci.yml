@@ -28,7 +28,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install binaryen
-        run: npm install -g binaryen@132
+        run: |
+          curl -sSfL https://github.com/WebAssembly/binaryen/releases/download/version_132/binaryen-version_132-x86_64-linux.tar.gz | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-version_132/bin" >> "$GITHUB_PATH"
 
       - uses: ml-in-barcelona/gh-ci-action@v1.2.0
         with:
@@ -43,7 +45,7 @@ jobs:
         run: opam exec -- dune build
 
       - name: Install workerd
-        run: npm install -g workerd
+        run: opam install -y workerd
 
       - name: Prepare container test images
         run: |
@@ -54,7 +56,7 @@ jobs:
       - name: Test
         env:
           WORKERO_REQUIRE_CONTAINERS: '1'
-        run: make test
+        run: opam exec -- make test
 
       - name: Check formatting
         run: opam exec -- dune build @fmt

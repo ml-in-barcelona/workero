@@ -254,11 +254,6 @@ let find_workerd () =
     |> List.filter (fun d -> d <> "")
   in
   let in_path binary = List.map (fun d -> Filename.concat d binary) path_dirs in
-  let in_node_modules =
-    List.map
-      (fun d -> Filename.concat d "node_modules/.bin/workerd")
-      (ancestors (Sys.getcwd ()))
-  in
   match Sys.getenv_opt "WORKERD" with
   | Some value when value <> "" -> (
       let candidates =
@@ -268,14 +263,13 @@ let find_workerd () =
       | Some path -> path
       | None -> fail "WORKERD is set to %s, which does not exist" value)
   | _ -> (
-      match List.find_opt executable (in_path "workerd" @ in_node_modules) with
+      match List.find_opt executable (in_path "workerd") with
       | Some path -> path
       | None ->
           fail
             "workerd not found. workero build runs the program in workerd to \
              find its Durable Object, entrypoint and Workflow classes. Install \
-             it (npm install workerd, or wrangler), add it to PATH or set \
-             WORKERD")
+             it (opam install workerd), add it to PATH or set WORKERD")
 
 let probe_marker = "workero-class:"
 let probe_end = "workero-classes-end"

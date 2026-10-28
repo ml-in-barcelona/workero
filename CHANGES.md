@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Install `workerd` and `wrangler` with opam (`opam install . --deps-only` in the template copy). The docs, the template, CI and the examples no longer use npm. `template/package.json` and `examples/package.json` are removed. `workero build` no longer looks for `workerd` in `node_modules/.bin`; use `PATH` or `WORKERD`.
+
 ## 0.1.0
 
 - The `workero` library and the `workero build` CLI.

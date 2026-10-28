@@ -57,7 +57,7 @@ was stored. [Cache.match_] returns [None] for a miss; [Cache.delete] returns
 
 {1 Verify locally}
 
-Run [npx wrangler dev] in one terminal. In a second terminal:
+Run [wrangler dev] in one terminal. In a second terminal:
 
 {@sh[
 curl -i http://localhost:8787/

@@ -18,8 +18,8 @@ worker, worker-init, worker-exports, worker-tail, and CLI tests.
   module (or `main.ml`) and a case to `test/worker/cases/*.mjs`.
   `tests.mjs` imports those suites. Check `status`, `body`, `headers`, or `throws`
   for a handler that raises. A service binding rethrows where HTTP answers
-  500. `workerd` must be on `PATH`; `npm install workerd` or `wrangler`
-  provides it. KV, R2, and Cache bindings point at small JS services in
+  500. `workerd` must be on `PATH`; `opam install workerd` provides it. KV,
+  R2, and Cache bindings point at small JS services in
   `test/worker/services/`. D1 uses a wrapped test adapter backed by Durable
   Object SQLite. These substitutes test the binding interface, not Cloudflare
   production storage. The

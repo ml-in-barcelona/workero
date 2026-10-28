@@ -98,9 +98,9 @@ prove remote writes or model results. See
 To deploy KV, R2 or D1, create the remote resources first:
 
 {@sh[
-npx wrangler kv namespace create KV
-npx wrangler r2 bucket create my-bucket
-npx wrangler d1 create my-database
+wrangler kv namespace create KV
+wrangler r2 bucket create my-bucket
+wrangler d1 create my-database
 ]}
 
 Copy the identifiers into [wrangler.toml]. Do not run these creation commands

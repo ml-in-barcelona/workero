@@ -6,7 +6,7 @@ Test your worker with `workerd test` to run the compiled WebAssembly in the Work
 
 ## Run a worker test
 
-1. Install `workerd` on `PATH`. The repository CI uses `npm install -g workerd`.
+1. Install `workerd` on `PATH`. Run `opam install workerd` to install it.
 2. Build the worker: `workero build src/main.bc.wasm.js --out _worker-test`.
 3. Write a `workerd` config. List the files of `_worker-test` as modules (`.js` as `esModule`, `.wasm` as `wasm`). Bind the worker to a test worker as a service.
 4. In the test worker, call the service with `env.WORKER.fetch(url)` and compare the status, headers, and body. Call `env.WORKER.scheduled({ cron, scheduledTime })` to test the cron handler. To invoke the queue handler with `env.WORKER.queue(name, messages)`, enable `service_binding_extra_handlers` on the test worker and run `workerd test --experimental config.capnp`.

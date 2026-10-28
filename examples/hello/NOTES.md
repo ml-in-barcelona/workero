@@ -2,13 +2,13 @@
 
 Historical: written for the standalone experiment (own dune project, `mk-worker.sh`, `dev.sh`, `load-wasm.js`, `eff.ml`). That project is now `examples/hello/main.ml`, built by `workero build`, whose CLI embeds `load-wasm.js` (`bin/load-wasm.js`, identical to the experiment copy) and `Workero.Promise.await`.
 
-Versions: OCaml 5.5.1, dune 3.24.2, js_of_ocaml / wasm_of_ocaml-compiler 6.4.1, binaryen 132 (npm),
+Versions: OCaml 5.5.1, dune 3.24.2, js_of_ocaml / wasm_of_ocaml-compiler 6.4.1, binaryen 132,
 ocamlformat 0.29.0, ocaml-lsp-server 1.27.0, wrangler 4.151.3, workerd 1.20261019.1, node 22.22.3.
 compatibility_date 2026-10-01, no compatibility flags.
 
 Environment: sandbox made ~/.opam read-only, so opam root is local (.opam-root).
-opam needs `opam option depext=false` and npm's wasm-opt on PATH (conf-binaryen has no apt package here).
-npm needs `--cache`, wrangler needs WRANGLER_LOG_PATH / XDG_CONFIG_HOME inside the project (dev.sh).
+opam needs `opam option depext=false` and wasm-opt on PATH (conf-binaryen has no apt package here).
+wrangler needs WRANGLER_LOG_PATH / XDG_CONFIG_HOME inside the project (dev.sh).
 dune did not promote hello.opam inside the sandbox; copied from _build/default/hello.opam.
 
 ## Results

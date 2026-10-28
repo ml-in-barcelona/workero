@@ -50,7 +50,7 @@ let () =
   Workero.serve send;
   Workero.queue consume
 ```
-Run `npx wrangler dev` in one terminal. In a second terminal, send a job:
+Run `wrangler dev` in one terminal. In a second terminal, send a job:
 
 ```sh
 curl -X POST http://localhost:8787/jobs
@@ -81,7 +81,7 @@ If the handler returns without an explicit acknowledgement or retry, Cloudflare 
 Create the remote queue with an authenticated Wrangler, then deploy the Worker:
 
 ```sh
-npx wrangler queues create jobs
-npx wrangler deploy
+wrangler queues create jobs
+wrangler deploy
 ```
 See [Getting started](./getting_started.md) for authentication. If the producer and consumer use separate Workers, deploy both with the same queue name.

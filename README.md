@@ -6,9 +6,11 @@ style: `Workero.fetch` waits for a response while other requests can run.
 
 ## Start a Worker
 
-You need an active opam switch with OCaml 5.4 or later, Git, and Node.js 22 or
-later with npm. The `workero` package is not yet available from the opam package
-index. Run these commands from a directory outside any Dune project:
+You need an active opam switch with OCaml 5.4 or later, Git, Node.js 22 or
+later, and binaryen 119 or later (from your system package manager, or
+`opam install binaryen-bin`). The `workero` package is not yet available from
+the opam package index. Run these commands from a directory outside any Dune
+project:
 
 ```sh
 eval "$(opam env)"
@@ -16,12 +18,12 @@ git clone https://github.com/ml-in-barcelona/workero.git workero-source
 opam pin add workero ./workero-source -y
 cp -R workero-source/template my-worker
 cd my-worker
-npm install
-npx wrangler dev
+opam install . --deps-only
+wrangler dev
 ```
 
-The source pin installs the library and CLI. `npm install` installs Wrangler,
-workerd, and binaryen's `wasm-opt`. The CLI uses workerd to check initialization
+The source pin installs the library and CLI. `opam install . --deps-only`
+installs Wrangler and workerd. The CLI uses workerd to check initialization
 and discover Durable Object, entrypoint, and Workflow classes. Wrangler prints
 the local URL, usually `http://127.0.0.1:8787`. In another terminal, run:
 

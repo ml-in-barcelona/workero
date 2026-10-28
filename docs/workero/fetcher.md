@@ -56,7 +56,7 @@ let handler _req env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` and request `/`. The response body is the content of `public/hello.txt`. The assets binding is simulated locally. On deploy, `npx wrangler deploy` uploads the directory in `assets`; there is no separate asset resource to create. See [Static Assets binding](https://developers.cloudflare.com/workers/static-assets/binding/).
+Run `wrangler dev` and request `/`. The response body is the content of `public/hello.txt`. The assets binding is simulated locally. On deploy, `wrangler deploy` uploads the directory in `assets`; there is no separate asset resource to create. See [Static Assets binding](https://developers.cloudflare.com/workers/static-assets/binding/).
 
 
 ## Verify the service binding
@@ -64,6 +64,6 @@ Run `npx wrangler dev` and request `/`. The response body is the content of `pub
 Run the target Worker in the same `wrangler dev` session by passing several configuration files:
 
 ```sh
-npx wrangler dev -c wrangler.toml -c ../backend/wrangler.toml
+wrangler dev -c wrangler.toml -c ../backend/wrangler.toml
 ```
 Request `/users` locally and check that the backend receives the `POST` and JSON body. Deploy both Workers before testing the service call on Cloudflare. The workero tests exercise a service binding in `workerd`; they do not test the assets binding. See [Cloudflare service bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/).

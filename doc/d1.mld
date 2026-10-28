@@ -14,10 +14,10 @@ binding = "DB"
 ]}
 
 Create the local table before you send requests. [--local] writes to the same
-local D1 storage that [npx wrangler dev] uses:
+local D1 storage that [wrangler dev] uses:
 
 {@sh[
-npx wrangler d1 execute DB --local \
+wrangler d1 execute DB --local \
   --command "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
 ]}
 
@@ -58,7 +58,7 @@ into SQL text. An SQL error raises {!Workero.Js_error}. Use
 
 {1 Verify locally}
 
-Run [npx wrangler dev] in one terminal. In a second terminal:
+Run [wrangler dev] in one terminal. In a second terminal:
 
 {@sh[
 curl -X POST -d ada http://localhost:8787/users
@@ -75,7 +75,7 @@ Remote creation requires an authenticated Wrangler. If you do not let
 create a database and copy the printed ID into [wrangler.toml]:
 
 {@sh[
-npx wrangler d1 create my-database
+wrangler d1 create my-database
 ]}
 
 {@toml[
@@ -90,7 +90,7 @@ deployed Worker. If Wrangler provisions the database on deploy, deploy first,
 then create the table:
 
 {@sh[
-npx wrangler d1 execute DB --remote \
+wrangler d1 execute DB --remote \
   --command "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
 ]}
 

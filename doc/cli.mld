@@ -131,10 +131,9 @@ code 1 for these handled errors:
 - dune does not produce the loader or the [.wasm.assets] directory (the
   executable lacks [(modes wasm)], or the path is wrong),
 - the target is outside the dune root ([workero build] only),
-- [workerd] cannot be found on [PATH], through [WORKERD] or in a parent
-  [node_modules/.bin] directory. If [WORKERD] is set to a nonempty value, it
-  takes precedence; a name without a slash is looked up on [PATH], while a
-  path is checked directly,
+- [workerd] cannot be found on [PATH] or through [WORKERD]. If [WORKERD] is
+  set to a nonempty value, it takes precedence; a name without a slash is
+  looked up on [PATH], while a path is checked directly,
 - the program fails during initialization in [workerd]. Its [workerd] output
   is printed before [workero: the program failed to initialise in workerd],
 - initialization takes longer than [WORKERO_PROBE_TIMEOUT] (30 seconds by
@@ -162,8 +161,8 @@ command = "workero build src/main.bc.wasm.js"
 watch_dir = "src"
 ]}
 
-wasm_of_ocaml needs [wasm-opt] from binaryen 119 or later on [PATH]. The npm
-package [binaryen] provides it.
+wasm_of_ocaml needs [wasm-opt] from binaryen 119 or later on [PATH]. Install
+binaryen from your system package manager, or run [opam install binaryen-bin].
 
 {1 Advanced: a dune rule}
 

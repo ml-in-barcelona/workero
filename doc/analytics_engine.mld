@@ -44,10 +44,10 @@ on the number and size of fields.
 
 {1 Verify and deploy}
 
-Run [npx wrangler dev] and request [/]. Expect [ok] from the handler.
+Run [wrangler dev] and request [/]. Expect [ok] from the handler.
 Wrangler provides a local Analytics Engine simulation, but this response
 does not prove a data point reached the remote dataset. Deploy with
-[npx wrangler deploy], send a request to the deployed Worker, then query
+[wrangler deploy], send a request to the deployed Worker, then query
 [events] through the SQL API to check the actual data. Cloudflare creates a
 dataset on its first remote write. A plain workerd test does not use a
 Cloudflare dataset: workero's tests use a recording stub at

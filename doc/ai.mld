@@ -74,9 +74,9 @@ not binary data. Do not set [stream] in the input of [run].
 
 {1 Verify and deploy}
 
-With account access, run [npx wrangler dev] and request [/?q=hello]. Confirm
+With account access, run [wrangler dev] and request [/?q=hello]. Confirm
 that the response contains the model's JSON answer. Setting [remote = false]
-does not provide a local model. Deploy with [npx wrangler deploy] and repeat
+does not provide a local model. Deploy with [wrangler deploy] and repeat
 the request on the deployed Worker. A plain [workerd] configuration cannot run
 the actual model; workero's tests use a stub in [test/worker/services/ai.mjs]
 to check request and response conversion, not model output. Wrangler supports

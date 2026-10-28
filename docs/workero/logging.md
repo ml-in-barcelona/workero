@@ -16,7 +16,7 @@ let handler req _env _ctx =
 
 let () = Workero.serve handler
 ```
-Run `npx wrangler dev` in one terminal and `curl -i -X POST http://localhost:8787/` in a second terminal. The response has status 405\. Wrangler prints `request method not allowed` as a warning. Use `npx wrangler tail` or the Cloudflare dashboard for a deployed Worker. See [Workers logs](https://developers.cloudflare.com/workers/observability/logs/).
+Run `wrangler dev` in one terminal and `curl -i -X POST http://localhost:8787/` in a second terminal. The response has status 405\. Wrangler prints `request method not allowed` as a warning. Use `wrangler tail` or the Cloudflare dashboard for a deployed Worker. See [Workers logs](https://developers.cloudflare.com/workers/observability/logs/).
 
 
 ## Console and standard output

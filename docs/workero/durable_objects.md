@@ -64,7 +64,7 @@ class_name = "Counter"
 tag = "v1"
 new_sqlite_classes = ["Counter"]
 ```
-The class name must match `register`. Use a new migration tag when you add another class; do not replace an already deployed migration. The generated entry point exports `Counter` as a JavaScript class. `workero build` runs the OCaml program in `workerd` to discover registrations, so register each class at module initialization. It needs `workerd` on `PATH`, in a parent `node_modules/.bin`, or at `WORKERD`. The build prints `workero: Durable Object classes: Counter` when it finds this class. See [The workero CLI](./cli.md) for build options and failure cases.
+The class name must match `register`. Use a new migration tag when you add another class; do not replace an already deployed migration. The generated entry point exports `Counter` as a JavaScript class. `workero build` runs the OCaml program in `workerd` to discover registrations, so register each class at module initialization. It needs `workerd` on `PATH` or at `WORKERD`. The build prints `workero: Durable Object classes: Counter` when it finds this class. See [The workero CLI](./cli.md) for build options and failure cases.
 
 For a new Worker, Wrangler also supports `exports` in place of `migrations`:
 
@@ -78,7 +78,7 @@ Keep the binding in either case. Do not combine the two class declarations; once
 
 ### Test locally
 
-Run `npx wrangler dev` and send requests in another terminal:
+Run `wrangler dev` and send requests in another terminal:
 
 ```sh
 curl 'http://localhost:8787/?name=alice'

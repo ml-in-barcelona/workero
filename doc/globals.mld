@@ -13,7 +13,7 @@ let handler _req _env _ctx =
 let () = Workero.serve handler
 ]}
 
-Run [npx wrangler dev] in one terminal and [curl http://localhost:8787/] in a
+Run [wrangler dev] in one terminal and [curl http://localhost:8787/] in a
 second terminal. The response is a version 4 UUID.
 
 {1 Timers}

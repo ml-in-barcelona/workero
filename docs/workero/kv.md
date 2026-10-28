@@ -6,7 +6,7 @@ Store and list text values by key with [`Workero.KV`](./Workero-KV.md), the supp
 
 ## Configure the binding
 
-For local development, put this in `wrangler.toml`. Wrangler creates local storage when you run `npx wrangler dev`:
+For local development, put this in `wrangler.toml`. Wrangler creates local storage when you run `wrangler dev`:
 
 ```toml
 [[kv_namespaces]]
@@ -44,7 +44,7 @@ let () = Workero.serve handler
 
 ## Verify locally
 
-Run `npx wrangler dev` in one terminal. In a second terminal:
+Run `wrangler dev` in one terminal. In a second terminal:
 
 ```sh
 curl -X PUT -d hello "http://localhost:8787/kv?k=greeting"
@@ -59,7 +59,7 @@ The responses are `stored`, `hello` and `greeting`, in that order.
 Remote creation requires an authenticated Wrangler. If you do not let [Wrangler provision it on deploy](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning), create a namespace and copy its printed ID into `wrangler.toml`:
 
 ```sh
-npx wrangler kv namespace create KV
+wrangler kv namespace create KV
 ```
 ```toml
 [[kv_namespaces]]

@@ -45,7 +45,7 @@ The example keeps the upstream status, body and headers. `Response.copy` makes t
 
 ## Verify locally
 
-Run `npx wrangler dev` in one terminal. In a second terminal:
+Run `wrangler dev` in one terminal. In a second terminal:
 
 ```sh
 curl -i http://localhost:8787/

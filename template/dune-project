@@ -11,4 +11,6 @@
  (depends
   (ocaml
    (>= 5.4))
-  workero))
+  workero
+  workerd
+  wrangler))

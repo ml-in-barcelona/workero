@@ -69,7 +69,7 @@ A build that registers no fetch, scheduled, queue or email handler and no Durabl
 - `dune build` fails (`workero build` only),
 - dune does not produce the loader or the `.wasm.assets` directory (the executable lacks `(modes wasm)`, or the path is wrong),
 - the target is outside the dune root (`workero build` only),
-- `workerd` cannot be found on `PATH`, through `WORKERD` or in a parent `node_modules/.bin` directory. If `WORKERD` is set to a nonempty value, it takes precedence; a name without a slash is looked up on `PATH`, while a path is checked directly,
+- `workerd` cannot be found on `PATH` or through `WORKERD`. If `WORKERD` is set to a nonempty value, it takes precedence; a name without a slash is looked up on `PATH`, while a path is checked directly,
 - the program fails during initialization in `workerd`. Its `workerd` output is printed before `workero: the program failed to initialise in workerd`,
 - initialization takes longer than `WORKERO_PROBE_TIMEOUT` (30 seconds by default). `workero` kills the probe and prints its output and the timeout,
 - `workerd` exits successfully but does not report registered class names,
@@ -88,7 +88,7 @@ main = "_worker/index.js"
 command = "workero build src/main.bc.wasm.js"
 watch_dir = "src"
 ```
-wasm\_of\_ocaml needs `wasm-opt` from binaryen 119 or later on `PATH`. The npm package `binaryen` provides it.
+wasm\_of\_ocaml needs `wasm-opt` from binaryen 119 or later on `PATH`. Install binaryen from your system package manager, or run `opam install binaryen-bin`.
 
 
 ## Advanced: a dune rule
