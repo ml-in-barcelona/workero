@@ -51,7 +51,7 @@ jobs:
       - name: Test
         env:
           WORKERO_REQUIRE_CONTAINERS: '1'
-        run: opam exec -- make test
+        run: make test
 
       - name: Check formatting
         run: opam exec -- dune build @fmt

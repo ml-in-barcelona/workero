@@ -1,6 +1,7 @@
 project_name = workero
 
 DUNE = opam exec -- dune
+export PATH := $(shell opam var bin):$(PATH)
 
 .PHONY: help
 help: ## Print this help message
