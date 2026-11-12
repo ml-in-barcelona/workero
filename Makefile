@@ -1,6 +1,7 @@
 project_name = workero
 
 DUNE = opam exec -- dune
+export DUNE_ROOT := $(CURDIR)
 
 .PHONY: help
 help: ## Print this help message
@@ -12,18 +13,18 @@ help: ## Print this help message
 
 .PHONY: build
 build: ## Build the library, the CLI and the examples
-	$(DUNE) build
+	$(DUNE) build --root .
 
 .PHONY: dev
 dev: ## Build in watch mode
-	$(DUNE) build -w
+	$(DUNE) build --root . -w
 
 .PHONY: test
 test: test-unit test-worker test-worker-init test-worker-exports test-worker-tail test-worker-containers test-cli ## Run the unit, worker and CLI tests
 
 .PHONY: test-unit
 test-unit: ## Run the alcotest unit tests (node)
-	$(DUNE) test
+	$(DUNE) test --root .
 
 .PHONY: test-worker
 test-worker: ## Build test/worker with workero and run test/worker/tests.mjs in workerd
@@ -51,15 +52,15 @@ test-cli: ## Run workero build on test/cli fixtures and check its errors
 
 .PHONY: fmt
 fmt: ## Format the code
-	$(DUNE) build @fmt --auto-promote
+	$(DUNE) build --root . @fmt --auto-promote
 
 .PHONY: example
 example: ## Build examples/basic into _worker/
-	$(DUNE) exec workero -- build examples/basic/main.bc.wasm.js
+	$(DUNE) exec --root . workero -- build examples/basic/main.bc.wasm.js
 
 .PHONY: docs
 docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
-	$(DUNE) build --cache=disabled @doc @doc-markdown
+	$(DUNE) build --root . --cache=disabled @doc @doc-markdown
 	rm -rf docs
 	mkdir docs
 	cp _build/default/_doc/_markdown/index.md docs/
@@ -68,5 +69,5 @@ docs: ## Build the HTML and Markdown docs; copy the Markdown to docs/
 
 .PHONY: clean
 clean: ## Clean artifacts
-	$(DUNE) clean
+	$(DUNE) clean --root .
 	rm -rf _worker _worker-test _worker-cli-test _worker-init-test _worker-exports-test _worker-tail-test _worker-containers-test
